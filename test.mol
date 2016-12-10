@@ -1,1 +1,1 @@
-score 'root = { [$c $d] $e | $d $e $f }
+score 'root = { 2:[$c $d] $e | $d $e $f }

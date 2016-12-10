@@ -1,3 +1,4 @@
+// by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
 use std::*;
 use std::io::prelude::*;
 use std::os::unix::io::FromRawFd;

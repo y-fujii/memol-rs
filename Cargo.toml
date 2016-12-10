@@ -1,0 +1,16 @@
+[package]
+name = "memol"
+version = "0.1.0"
+authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+
+build = "build.rs"
+
+[dependencies]
+lalrpop-util = "*"
+
+[build-dependencies]
+lalrpop = "*"
+libbindgen = { git = "https://github.com/servo/rust-bindgen" }
+
+[profile.release]
+lto = true

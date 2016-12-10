@@ -1,0 +1,106 @@
+// by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, 2-clause BSD license.  
+use std::str::FromStr;
+use ast::*;
+
+grammar;
+
+pub definition: Definition = {
+	<a:definition> "score" <b:label> "=" <c:phrase_with> => { let mut a = a; a.scores.push( (b, c) ); a },
+	<a:definition> "value" <b:label> "=" <c:values>      => { let mut a = a; a.values.push( (b, c) ); a },
+	                                                     => Definition{ scores: Vec::new(), values: Vec::new() },
+};
+
+phrase_with: Box<Phrase> = {
+	<a:phrase_with> "with" <b:r"[h-z]"> "=" <c:phrase_prim> => Box::new( Phrase::With( a, b.chars().next().unwrap(), c ) ),
+	<a:phrase_with> "with" "*"          "=" <c:phrase_prim> => Box::new( Phrase::With( a, '*',                       c ) ),
+	<phrase_prim>                                           => <>,
+};
+
+phrase_prim: Box<Phrase> = {
+	"_"                        => Box::new( Phrase::Score( vec![ Box::new( Note::Rest ) ] ) ),
+	"/"                        => Box::new( Phrase::Repeat ),
+	<label>                    => Box::new( Phrase::Variable( <> ) ),
+	"[" <sequence_content> "]" => Box::new( Phrase::Sequence( <> ) ),
+	"(" <parallel_content> ")" => Box::new( Phrase::Parallel( <> ) ),
+	"{" <score_content> "}"    => Box::new( Phrase::Score( <> ) ),
+};
+
+sequence_content: Vec<Box<Phrase>> = {
+	<a:sequence_content> <b:phrase_with> => { let mut a = a; a.push( b ); a },
+	                                     => Vec::new(),
+};
+
+parallel_content: Vec<(Box<Phrase>, bool)> = {
+	<a:parallel_content> <b:phrase_with> "*" => { let mut a = a; a.push( (b, true ) ); a },
+	<a:parallel_content> <b:phrase_with>     => { let mut a = a; a.push( (b, false) ); a },
+	                                         => Vec::new(),
+};
+
+score_content: Vec<Box<Note>> = {
+	<a:score_content> "|" <b:group_content> => { let mut a = a;          a.push( Box::new( Note::Group( b ) ) ); a },
+	                      <b:group_content> => { let mut a = Vec::new(); a.push( Box::new( Note::Group( b ) ) ); a },
+};
+
+note: Box<Note> = {
+	"_"                                   => Box::new( Note::Rest ),
+	"/"                                   => Box::new( Note::Repeat ),
+	    <a:pitch_lower> <b:key_signature> => Box::new( Note::RelativeNote( -1, a.0, a.1, b ) ),
+	    <a:pitch_upper> <b:key_signature> => Box::new( Note::RelativeNote(  1, a.0, a.1, b ) ),
+	"$" <a:pitch_lower> <b:key_signature> => Box::new( Note::AbsoluteNote(     a.0, a.1, b ) ),
+	"$" <a:pitch_upper> <b:key_signature> => Box::new( Note::AbsoluteNote(     a.0, a.1, b ) ),
+	"[" <group_content> "]"               => Box::new( Note::Group( <> ) ),
+	"(" <chord_content> ")"               => Box::new( Note::Chord( <> ) ),
+	<note> "^"                            => Box::new( Note::Tie( <> ) ),
+};
+
+octave: Box<Note> = {
+	"<" => { Box::new( Note::Octave(  1 ) ) },
+	">" => { Box::new( Note::Octave( -1 ) ) },
+};
+
+key_signature: i32 = {
+	"+" <key_signature> => <> + 1,
+	"-" <key_signature> => <> - 1,
+	                    => 0,
+};
+
+group_content: Vec<(Box<Note>, i32)> = {
+	<a:group_content>              <b:note> => { let mut a = a; a.push( (b, 1) ); a },
+	<a:group_content> <c:uint> ":" <b:note> => { let mut a = a; a.push( (b, c) ); a },
+	<a:group_content> <b:octave>            => { let mut a = a; a.push( (b, 0) ); a },
+	                                        => Vec::new(),
+};
+
+chord_content: Vec<Box<Note>> = {
+	<a:chord_content> <b:note>   => { let mut a = a; a.push( b ); a },
+	<a:chord_content> <b:octave> => { let mut a = a; a.push( b ); a },
+	                             => Vec::new(),
+};
+
+values: Box<Values> = {
+	=> Box::new( Values::Rest ),
+};
+
+pitch_lower: (char, i32) = {
+	<a:r"[a-g]">          => ('*', a.chars().next().unwrap() as i32 - 'a' as i32),
+	<a:r"[h-z]"> <b:sint> => (a.chars().next().unwrap(), b),
+};
+
+pitch_upper: (char, i32) = {
+	<a:r"[A-G]">          => ('*', a.chars().next().unwrap() as i32 - 'A' as i32),
+	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
+};
+
+sint: i32 = {
+	"-" <uint> => -<>,
+	"+" <uint> =>  <>,
+	    <uint> =>  <>,
+};
+
+uint: i32 = {
+	r"[0-9]+" => i32::from_str( <> ).unwrap(),
+};
+
+label: String = {
+	r"'[a-zA-Z0-9_]+" => String::from( &<>[1..] ),
+};

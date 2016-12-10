@@ -6,10 +6,16 @@ pub struct Definition {
 	pub values: Vec<(String, Box<Values>)>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Dir {
+	Absolute,
+	Lower,
+	Upper,
+}
+
 #[derive(Debug)]
 pub enum Note {
-	RelativeNote( i32, char, i32, i32 ),
-	AbsoluteNote( char, i32, i32 ),
+	Note( Dir, char, i32, i32 ),
 	Rest,
 	Repeat,
 	Octave( i32 ),

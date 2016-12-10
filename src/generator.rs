@@ -4,6 +4,21 @@ use ratio;
 use ast;
 
 
+#[derive(Debug)]
+pub struct Error;
+
+impl fmt::Display for Error {
+	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+		write!( f, "" )
+	}
+}
+
+impl error::Error for Error {
+	fn description( &self ) -> &str {
+		""
+	}
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct FlatNote {
 	pub bgn: ratio::Ratio,
@@ -34,9 +49,9 @@ impl<'a> Generator<'a> {
 		Generator{ defs: defs }
 	}
 
-	pub fn generate( &self, key: &str ) -> Option<Vec<FlatNote>> {
-		let ninf = ratio::Ratio::new( -1000, 1 );
-		let pinf = ratio::Ratio::new(  1000, 1 );
+	pub fn generate( &self, key: &str ) -> Result<Vec<FlatNote>, Error> {
+		let ninf = ratio::Ratio::new( -1, 0 );
+		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
 		syms.insert( '*', vec![
 			FlatNote{ bgn: ninf, end: pinf, nnum:  9 },
@@ -50,26 +65,21 @@ impl<'a> Generator<'a> {
 		let span = Span{
 			bgn: ratio::Ratio::new( 0, 1 ),
 			end: ratio::Ratio::new( 0, 1 ),
-			nnum: 0,
+			nnum: 60,
 			tied: false,
 			syms: &syms,
 		};
 
-		if let Some( &(_, ref v) ) = self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
-			let mut dst = Vec::new();
-			if let Some( _ ) = self.generate_phrase( &span, v, &mut dst ) {
-				Some( dst )
-			}
-			else {
-				None
-			}
-		}
-		else {
-			None
-		}
+		let phra = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
+			Some( &(_, ref v) ) => v,
+			None                => return Err( Error{} ),
+		};
+		let mut dst = Vec::new();
+		self.generate_phrase( &span, phra, &mut dst )?;
+		return Ok( dst );
 	}
 
-	fn generate_phrase<'b>( &self, span: &Span<'b>, phra: &Box<ast::Phrase>, dst: &mut Vec<FlatNote> ) -> Option<Span<'b>> {
+	fn generate_phrase<'b>( &self, span: &Span<'b>, phra: &Box<ast::Phrase>, dst: &mut Vec<FlatNote> ) -> Result<Span<'b>, Error> {
 		match **phra {
 			ast::Phrase::Score( ref ns ) => {
 				let mut nnum = span.nnum;
@@ -81,14 +91,9 @@ impl<'a> Generator<'a> {
 						tied: false,
 						syms: span.syms,
 					};
-					if let Some( nn ) = self.generate_note( &span, n, dst ) {
-						nnum = nn;
-					}
-					else {
-						return None;
-					}
+					nnum = self.generate_note( &span, n, dst )?;
 				}
-				return Some( Span{
+				return Ok( Span{
 					bgn: span.bgn,
 					end: span.bgn + ns.len() as i32,
 					nnum: nnum,
@@ -100,26 +105,36 @@ impl<'a> Generator<'a> {
 		}
 	}
 
-	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Option<i32> {
+	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
 		match **note {
-			ast::Note::AbsoluteNote( sym, ord, sig ) => {
-				if let Some( fs ) = span.syms.get( &sym ) {
-					if let Some( f ) = fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
-						let f = FlatNote{
-							bgn: span.bgn,
-							end: span.end,
-							nnum: f.nnum + sig,
-						};
-						dst.push( f );
-						return Some( f.nnum );
-					}
-					else {
-						return None;
-					}
-				}
-				else {
-					return None;
-				}
+			ast::Note::Note( dir, sym, ord, sig ) => {
+				let fs = match span.syms.get( &sym ) {
+					Some( fs ) => fs,
+					None       => return Err( Error{} ),
+				};
+				let f = match fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
+					Some( f ) => f,
+					None      => return Err( Error{} ),
+				};
+				let nnum = match dir {
+					ast::Dir::Absolute => f.nnum + sig,
+					ast::Dir::Lower => {
+						// XXX: negative nnum.
+						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						nnum - if nnum <= span.nnum { 0 } else { 12 }
+					},
+					ast::Dir::Upper => {
+						// XXX: negative nnum.
+						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						nnum + if nnum >= span.nnum { 0 } else { 12 }
+					},
+				};
+				dst.push( FlatNote{
+					bgn: span.bgn,
+					end: span.end,
+					nnum: nnum,
+				} );
+				return Ok( nnum );
 			},
 			ast::Note::Group( ref ns ) => {
 				let tot: i32 = ns.iter().map( |&(_, i)| i ).sum();
@@ -133,15 +148,10 @@ impl<'a> Generator<'a> {
 						tied: acc == 0 && span.tied,
 						syms: span.syms,
 					};
-					if let Some( nn ) = self.generate_note( &span, n, dst ) {
-						nnum = nn;
-					}
-					else {
-						return None;
-					}
+					nnum = self.generate_note( &span, n, dst )?;
 					acc += i;
 				}
-				return Some( nnum );
+				return Ok( nnum );
 			},
 			_ => panic!(),
 		}

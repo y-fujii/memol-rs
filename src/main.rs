@@ -30,7 +30,7 @@ fn main() {
 
 			if let Ok( tree ) = tree {
 				let genr = generator::Generator::new( &tree );
-				if let Some( flats ) = genr.generate( "root" ) {
+				if let Ok( flats ) = genr.generate( "root" ) {
 					for f in flats.iter() {
 						println!( "{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, f.nnum );
 					}

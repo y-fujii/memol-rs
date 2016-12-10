@@ -1,1 +1,1 @@
-score 'root = { 2:[c D] E | d E F }
+score 'root = { 2:[c D] E | < d E (F c) F }

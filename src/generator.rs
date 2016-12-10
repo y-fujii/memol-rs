@@ -24,6 +24,7 @@ pub struct FlatNote {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
 	pub nnum: i32,
+	pub tied: bool,
 	/*
 	tie_bgn: bool,
 	tie_end: bool,
@@ -54,13 +55,13 @@ impl<'a> Generator<'a> {
 		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
 		syms.insert( '*', vec![
-			FlatNote{ bgn: ninf, end: pinf, nnum:  9 },
-			FlatNote{ bgn: ninf, end: pinf, nnum: 11 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  0 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  2 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  4 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  5 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  7 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  9, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum: 11, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  0, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  2, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  4, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  5, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  7, tied: false },
 		] );
 		let span = Span{
 			bgn: ratio::Ratio::new( 0, 1 ),
@@ -106,7 +107,7 @@ impl<'a> Generator<'a> {
 	}
 
 	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
-		match **note {
+		let nnum = match **note {
 			ast::Note::Note( dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( fs ) => fs,
@@ -133,8 +134,37 @@ impl<'a> Generator<'a> {
 					bgn: span.bgn,
 					end: span.end,
 					nnum: nnum,
+					tied: span.tied,
 				} );
-				return Ok( nnum );
+				nnum
+			},
+			ast::Note::Rest => {
+				span.nnum
+			},
+			ast::Note::Repeat => {
+				panic!();
+			},
+			ast::Note::Octave( oct ) => {
+				span.nnum + oct * 12
+			},
+			ast::Note::Chord( ref ns ) => {
+				let mut span = Span{
+					bgn: span.bgn,
+					end: span.end,
+					nnum: span.nnum,
+					tied: span.tied,
+					syms: span.syms,
+				};
+
+				let mut it = ns.iter();
+				if let Some( n ) = it.next() {
+					span.nnum = self.generate_note( &span, n, dst )?;
+				}
+				let nnum1 = span.nnum;
+				for n in ns {
+					span.nnum = self.generate_note( &span, n, dst )?;
+				}
+				nnum1
 			},
 			ast::Note::Group( ref ns ) => {
 				let tot: i32 = ns.iter().map( |&(_, i)| i ).sum();
@@ -151,9 +181,19 @@ impl<'a> Generator<'a> {
 					nnum = self.generate_note( &span, n, dst )?;
 					acc += i;
 				}
-				return Ok( nnum );
+				nnum
 			},
-			_ => panic!(),
-		}
+			ast::Note::Tie( ref n ) => {
+				let span = Span{
+					bgn: span.bgn,
+					end: span.end,
+					nnum: span.nnum,
+					tied: true,
+					syms: span.syms,
+				};
+				self.generate_note( &span, n, dst )?
+			},
+		};
+		Ok( nnum )
 	}
 }

@@ -25,11 +25,14 @@ impl PartialOrd for Ratio {
 
 impl cmp::Ord for Ratio {
     fn cmp( &self, other: &Ratio ) -> cmp::Ordering {
+		let lhs = self.y * other.x;
+		let rhs = other.y * self.x;
+		// 0 denominator is interpreted as +0.
 		if self.x * other.x < 0 {
-			(other.y * self.x).cmp( &(self.y * other.x) )
+			rhs.cmp( &lhs )
 		}
 		else {
-			(self.y * other.x).cmp( &(other.y * self.x) )
+			lhs.cmp( &rhs )
 		}
     }
 }
@@ -38,10 +41,10 @@ impl ops::Add for Ratio {
 	type Output = Ratio;
 
 	fn add( self, other: Ratio ) -> Ratio {
-		Ratio {
-			y: self.y * other.x + self.x * other.y,
-			x: self.x * other.x,
-		}
+		Ratio::new(
+			self.y * other.x + self.x * other.y,
+			self.x * other.x,
+		)
 	}
 }
 
@@ -49,10 +52,10 @@ impl ops::Add<i32> for Ratio {
 	type Output = Ratio;
 
 	fn add( self, other: i32 ) -> Ratio {
-		Ratio {
-			y: self.y + other * self.x,
-			x: self.x,
-		}
+		Ratio::new(
+			self.y + other * self.x,
+			self.x,
+		)
 	}
 }
 
@@ -60,10 +63,10 @@ impl ops::Sub for Ratio {
 	type Output = Ratio;
 
 	fn sub( self, other: Ratio ) -> Ratio {
-		Ratio {
-			y: self.y * other.x - self.x * other.y,
-			x: self.x * other.x,
-		}
+		Ratio::new(
+			self.y * other.x - self.x * other.y,
+			self.x * other.x,
+		)
 	}
 }
 
@@ -71,10 +74,10 @@ impl ops::Mul for Ratio {
 	type Output = Ratio;
 
 	fn mul( self, other: Ratio ) -> Ratio {
-		Ratio {
-			y: self.y * other.y,
-			x: self.x * other.x,
-		}
+		Ratio::new(
+			self.y * other.y,
+			self.x * other.x,
+		)
 	}
 }
 
@@ -82,15 +85,32 @@ impl ops::Div<i32> for Ratio {
 	type Output = Ratio;
 
 	fn div( self, other: i32 ) -> Ratio {
-		Ratio {
-			y: self.y,
-			x: self.x * other,
-		}
+		Ratio::new(
+			self.y,
+			self.x * other,
+		)
 	}
 }
 
 impl Ratio {
 	pub fn new( y: i32, x: i32 ) -> Ratio {
-		Ratio{ y: y, x: x }
+		let t = gcd( y, x );
+		Ratio{
+			y: y / t,
+			x: x / t,
+		}
 	}
+}
+
+// sign( gcd( y, x ) ) == sign( x )
+pub fn gcd( y: i32, x: i32 ) -> i32 {
+	let s = x < 0;
+	let mut y = y.abs();
+	let mut x = x.abs();
+	while x != 0 {
+		let t = y % x;
+		y = x;
+		x = t;
+	}
+	if s { -y } else { y }
 }

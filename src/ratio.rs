@@ -1,5 +1,6 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD License.
 use std::*;
+use misc;
 
 
 #[derive(Copy, Clone, Debug)]
@@ -81,6 +82,17 @@ impl ops::Mul for Ratio {
 	}
 }
 
+impl ops::Mul<i32> for Ratio {
+	type Output = Ratio;
+
+	fn mul( self, other: i32 ) -> Ratio {
+		Ratio::new(
+			self.y * other,
+			self.x,
+		)
+	}
+}
+
 impl ops::Div<i32> for Ratio {
 	type Output = Ratio;
 
@@ -94,7 +106,7 @@ impl ops::Div<i32> for Ratio {
 
 impl Ratio {
 	pub fn new( y: i32, x: i32 ) -> Ratio {
-		let t = gcd( y, x );
+		let t = misc::gcd( y, x );
 		Ratio{
 			y: y / t,
 			x: x / t,
@@ -104,17 +116,8 @@ impl Ratio {
 	pub fn max( self, other: Ratio ) -> Ratio {
 		if self < other { other } else { self }
 	}
-}
 
-// sign( gcd( y, x ) ) == sign( x )
-pub fn gcd( y: i32, x: i32 ) -> i32 {
-	let s = x < 0;
-	let mut y = y.abs();
-	let mut x = x.abs();
-	while x != 0 {
-		let t = y % x;
-		y = x;
-		x = t;
+	pub fn to_int( self ) -> i32 {
+		self.y / self.x
 	}
-	if s { -y } else { y }
 }

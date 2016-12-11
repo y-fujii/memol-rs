@@ -212,7 +212,7 @@ impl<'a> Generator<'a> {
 					span.nnum = self.generate_note( &span, n, dst )?;
 				}
 				let nnum1 = span.nnum;
-				for n in ns {
+				for n in it {
 					span.nnum = self.generate_note( &span, n, dst )?;
 				}
 				nnum1

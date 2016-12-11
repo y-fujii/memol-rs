@@ -100,6 +100,10 @@ impl Ratio {
 			x: x / t,
 		}
 	}
+
+	pub fn max( self, other: Ratio ) -> Ratio {
+		if self < other { other } else { self }
+	}
 }
 
 // sign( gcd( y, x ) ) == sign( x )

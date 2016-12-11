@@ -12,28 +12,22 @@ pub definition: Definition = {
 
 score_with: Box<Score> = {
 	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
-	<a:score_with> "with" "*"          "=" <c:score_prim> => Box::new( Score::With( a, '*',                       c ) ),
+	<a:score_with> "with" "_"          "=" <c:score_prim> => Box::new( Score::With( a, '_',                       c ) ),
 	<score_prim>                                          => <>,
 };
 
 score_prim: Box<Score> = {
-	"_"                        => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
-	"/"                        => Box::new( Score::Repeat ),
-	<label>                    => Box::new( Score::Variable( <> ) ),
-	"[" <sequence_content> "]" => Box::new( Score::Sequence( <> ) ),
-	"(" <parallel_content> ")" => Box::new( Score::Parallel( <> ) ),
-	"{" <score_content> "}"    => Box::new( Score::Score( <> ) ),
+	"_"                     => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
+	"/"                     => Box::new( Score::Repeat ),
+	<label>                 => Box::new( Score::Variable( <> ) ),
+	"[" <score_list> "]"    => Box::new( Score::Sequence( <> ) ),
+	"(" <score_list> ")"    => Box::new( Score::Parallel( <> ) ),
+	"{" <score_content> "}" => Box::new( Score::Score( <> ) ),
 };
 
-sequence_content: Vec<Box<Score>> = {
-	<a:sequence_content> <b:score_with> => { let mut a = a; a.push( b ); a },
-	                                    => Vec::new(),
-};
-
-parallel_content: Vec<(Box<Score>, bool)> = {
-	<a:parallel_content> <b:score_with> "*" => { let mut a = a; a.push( (b, true ) ); a },
-	<a:parallel_content> <b:score_with>     => { let mut a = a; a.push( (b, false) ); a },
-	                                        => Vec::new(),
+score_list: Vec<Box<Score>> = {
+	<a:score_list> <b:score_with> => { let mut a = a; a.push( b ); a },
+	                              => Vec::new(),
 };
 
 score_content: Vec<Box<Note>> = {
@@ -82,12 +76,12 @@ value: Box<Value> = {
 };
 
 pitch_lower: (char, i32) = {
-	<a:r"[a-g]">          => ('*', a.chars().next().unwrap() as i32 - 'a' as i32),
+	<a:r"[a-g]">          => ('_', a.chars().next().unwrap() as i32 - 'a' as i32),
 	<a:r"[h-z]"> <b:sint> => (a.chars().next().unwrap(), b),
 };
 
 pitch_upper: (char, i32) = {
-	<a:r"[A-G]">          => ('*', a.chars().next().unwrap() as i32 - 'A' as i32),
+	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i32 - 'A' as i32),
 	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
 };
 

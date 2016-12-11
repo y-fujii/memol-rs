@@ -1,1 +1,2 @@
-score 'root = { 2:[c D] E | < d E (F c) F }
+score 'test = { (cDEF) | (cDEF) }
+score 'root = { 2:[s0 S1] S2 | < s0 S1 (S2 S3) } with s = 'test

@@ -5,17 +5,25 @@ use ast;
 
 
 #[derive(Debug)]
-pub struct Error;
+pub struct Error {
+	text: String,
+}
+
+impl Error {
+	fn new<T>( text: &str ) -> Result<T, Error> {
+		Err( Error{ text: text.into() } )
+	}
+}
 
 impl fmt::Display for Error {
 	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
-		write!( f, "" )
+		f.write_str( &self.text )
 	}
 }
 
 impl error::Error for Error {
 	fn description( &self ) -> &str {
-		""
+		&self.text
 	}
 }
 
@@ -43,18 +51,15 @@ struct Span<'a> {
 #[derive(Debug)]
 pub struct Generator<'a> {
 	defs: &'a ast::Definition,
+	syms: collections::HashMap<char, Vec<FlatNote>>,
 }
 
 impl<'a> Generator<'a> {
 	pub fn new( defs: &ast::Definition ) -> Generator {
-		Generator{ defs: defs }
-	}
-
-	pub fn generate( &self, key: &str ) -> Result<Vec<FlatNote>, Error> {
 		let ninf = ratio::Ratio::new( -1, 0 );
 		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
-		syms.insert( '*', vec![
+		syms.insert( '_', vec![
 			FlatNote{ bgn: ninf, end: pinf, nnum:  9, tied: false },
 			FlatNote{ bgn: ninf, end: pinf, nnum: 11, tied: false },
 			FlatNote{ bgn: ninf, end: pinf, nnum:  0, tied: false },
@@ -63,25 +68,30 @@ impl<'a> Generator<'a> {
 			FlatNote{ bgn: ninf, end: pinf, nnum:  5, tied: false },
 			FlatNote{ bgn: ninf, end: pinf, nnum:  7, tied: false },
 		] );
+
+		Generator{ defs: defs, syms: syms }
+	}
+
+	pub fn generate( &self, key: &str ) -> Result<Vec<FlatNote>, Error> {
 		let span = Span{
 			bgn: ratio::Ratio::new( 0, 1 ),
 			end: ratio::Ratio::new( 0, 1 ),
 			nnum: 60,
 			tied: false,
-			syms: &syms,
+			syms: &self.syms,
 		};
-
-		let score = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
+		let s = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
 			Some( &(_, ref v) ) => v,
-			None                => return Err( Error{} ),
+			None                => return Error::new( "" ),
 		};
 		let mut dst = Vec::new();
-		self.generate_score( &span, score, &mut dst )?;
-		return Ok( dst );
+		self.generate_score( &span, s, &mut dst )?;
+		Ok( dst )
 	}
 
-	fn generate_score( &self, span: &Span, score: &Box<ast::Score>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
-		let len = match **score {
+	fn generate_score( &self, span: &Span, score: &Box<ast::Score>, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, Error> {
+		let end = match **score {
+			ast::Score::Repeat => panic!(),
 			ast::Score::Score( ref ns ) => {
 				let mut nnum = span.nnum;
 				for (i, n) in ns.iter().enumerate() {
@@ -94,33 +104,79 @@ impl<'a> Generator<'a> {
 					};
 					nnum = self.generate_note( &span, n, dst )?;
 				}
-				ns.len() as i32
+				span.bgn + ns.len() as i32
 			}
-			_ => panic!(),
+			ast::Score::Variable( ref key ) => {
+				let s = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
+					Some( &(_, ref v) ) => v,
+					None                => return Error::new( "" ),
+				};
+				self.generate_score( &span, s, dst )?
+			},
+			ast::Score::With( ref lhs, ref key, ref rhs ) => {
+				let mut dst_rhs = Vec::new();
+				self.generate_score( &span, rhs, &mut dst_rhs )?;
+				let mut syms = span.syms.clone(); // XXX
+				syms.insert( *key, dst_rhs );
+				let span = Span{
+					bgn: span.bgn,
+					end: span.end,
+					nnum: span.nnum,
+					tied: false,
+					syms: &syms,
+				};
+				self.generate_score( &span, lhs, dst )?
+			},
+			ast::Score::Parallel( ref ss ) => {
+				let mut t = span.bgn;
+				for s in ss.iter() {
+					let span = Span{
+						bgn: span.bgn,
+						end: span.end,
+						nnum: span.nnum,
+						tied: false,
+						syms: span.syms,
+					};
+					t = t.max( self.generate_score( &span, s, dst )? );
+				}
+				t
+			},
+			ast::Score::Sequence( ref ss ) => {
+				let mut t = span.bgn;
+				for s in ss.iter() {
+					let span = Span{
+						bgn: t,
+						end: t,
+						nnum: span.nnum,
+						tied: false,
+						syms: span.syms,
+					};
+					t = self.generate_score( &span, s, dst )?;
+				}
+				t
+			},
 		};
-		Ok( len )
+		Ok( end )
 	}
 
 	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
 		let nnum = match **note {
 			ast::Note::Note( dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
-					Some( fs ) => fs,
-					None       => return Err( Error{} ),
+					Some( v ) => v,
+					None      => return Error::new( "" ),
 				};
 				let f = match fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
-					Some( f ) => f,
-					None      => return Err( Error{} ),
+					Some( v ) => v,
+					None      => return Error::new( "" ),
 				};
 				let nnum = match dir {
 					ast::Dir::Absolute => f.nnum + sig,
 					ast::Dir::Lower => {
-						// XXX: negative nnum.
 						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
 						nnum - if nnum <= span.nnum { 0 } else { 12 }
 					},
 					ast::Dir::Upper => {
-						// XXX: negative nnum.
 						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
 						nnum + if nnum >= span.nnum { 0 } else { 12 }
 					},

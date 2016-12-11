@@ -30,7 +30,7 @@ pub enum Score {
 	Score( Vec<Box<Note>> ),
 	Variable( String ),
 	With( Box<Score>, char, Box<Score> ),
-	Parallel( Vec<(Box<Score>, bool)> ),
+	Parallel( Vec<Box<Score>> ),
 	Sequence( Vec<Box<Score>> ),
 }
 

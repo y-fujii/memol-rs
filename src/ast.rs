@@ -2,8 +2,8 @@
 
 #[derive(Debug)]
 pub struct Definition {
-	pub scores: Vec<(String, Box<Phrase>)>,
-	pub values: Vec<(String, Box<Values>)>,
+	pub scores: Vec<(String, Box<Score>)>,
+	pub values: Vec<(String, Box<Value>)>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -25,16 +25,16 @@ pub enum Note {
 }
 
 #[derive(Debug)]
-pub enum Phrase {
+pub enum Score {
 	Repeat,
 	Score( Vec<Box<Note>> ),
 	Variable( String ),
-	With( Box<Phrase>, char, Box<Phrase> ),
-	Parallel( Vec<(Box<Phrase>, bool)> ),
-	Sequence( Vec<Box<Phrase>> ),
+	With( Box<Score>, char, Box<Score> ),
+	Parallel( Vec<(Box<Score>, bool)> ),
+	Sequence( Vec<Box<Score>> ),
 }
 
 #[derive(Debug)]
-pub enum Values {
+pub enum Value {
 	Rest,
 }

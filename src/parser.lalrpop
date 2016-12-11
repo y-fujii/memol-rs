@@ -5,35 +5,35 @@ use ast::*;
 grammar;
 
 pub definition: Definition = {
-	<a:definition> "score" <b:label> "=" <c:phrase_with> => { let mut a = a; a.scores.push( (b, c) ); a },
-	<a:definition> "value" <b:label> "=" <c:values>      => { let mut a = a; a.values.push( (b, c) ); a },
-	                                                     => Definition{ scores: Vec::new(), values: Vec::new() },
+	<a:definition> "score" <b:label> "=" <c:score_with> => { let mut a = a; a.scores.push( (b, c) ); a },
+	<a:definition> "value" <b:label> "=" <c:value>      => { let mut a = a; a.values.push( (b, c) ); a },
+	                                                    => Definition{ scores: Vec::new(), values: Vec::new() },
 };
 
-phrase_with: Box<Phrase> = {
-	<a:phrase_with> "with" <b:r"[h-z]"> "=" <c:phrase_prim> => Box::new( Phrase::With( a, b.chars().next().unwrap(), c ) ),
-	<a:phrase_with> "with" "*"          "=" <c:phrase_prim> => Box::new( Phrase::With( a, '*',                       c ) ),
-	<phrase_prim>                                           => <>,
+score_with: Box<Score> = {
+	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
+	<a:score_with> "with" "*"          "=" <c:score_prim> => Box::new( Score::With( a, '*',                       c ) ),
+	<score_prim>                                          => <>,
 };
 
-phrase_prim: Box<Phrase> = {
-	"_"                        => Box::new( Phrase::Score( vec![ Box::new( Note::Rest ) ] ) ),
-	"/"                        => Box::new( Phrase::Repeat ),
-	<label>                    => Box::new( Phrase::Variable( <> ) ),
-	"[" <sequence_content> "]" => Box::new( Phrase::Sequence( <> ) ),
-	"(" <parallel_content> ")" => Box::new( Phrase::Parallel( <> ) ),
-	"{" <score_content> "}"    => Box::new( Phrase::Score( <> ) ),
+score_prim: Box<Score> = {
+	"_"                        => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
+	"/"                        => Box::new( Score::Repeat ),
+	<label>                    => Box::new( Score::Variable( <> ) ),
+	"[" <sequence_content> "]" => Box::new( Score::Sequence( <> ) ),
+	"(" <parallel_content> ")" => Box::new( Score::Parallel( <> ) ),
+	"{" <score_content> "}"    => Box::new( Score::Score( <> ) ),
 };
 
-sequence_content: Vec<Box<Phrase>> = {
-	<a:sequence_content> <b:phrase_with> => { let mut a = a; a.push( b ); a },
-	                                     => Vec::new(),
+sequence_content: Vec<Box<Score>> = {
+	<a:sequence_content> <b:score_with> => { let mut a = a; a.push( b ); a },
+	                                    => Vec::new(),
 };
 
-parallel_content: Vec<(Box<Phrase>, bool)> = {
-	<a:parallel_content> <b:phrase_with> "*" => { let mut a = a; a.push( (b, true ) ); a },
-	<a:parallel_content> <b:phrase_with>     => { let mut a = a; a.push( (b, false) ); a },
-	                                         => Vec::new(),
+parallel_content: Vec<(Box<Score>, bool)> = {
+	<a:parallel_content> <b:score_with> "*" => { let mut a = a; a.push( (b, true ) ); a },
+	<a:parallel_content> <b:score_with>     => { let mut a = a; a.push( (b, false) ); a },
+	                                        => Vec::new(),
 };
 
 score_content: Vec<Box<Note>> = {
@@ -77,8 +77,8 @@ chord_content: Vec<Box<Note>> = {
 	                             => Vec::new(),
 };
 
-values: Box<Values> = {
-	=> Box::new( Values::Rest ),
+value: Box<Value> = {
+	=> Box::new( Value::Rest ),
 };
 
 pitch_lower: (char, i32) = {

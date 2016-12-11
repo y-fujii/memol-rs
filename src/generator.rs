@@ -71,18 +71,18 @@ impl<'a> Generator<'a> {
 			syms: &syms,
 		};
 
-		let phra = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
+		let score = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
 			Some( &(_, ref v) ) => v,
 			None                => return Err( Error{} ),
 		};
 		let mut dst = Vec::new();
-		self.generate_phrase( &span, phra, &mut dst )?;
+		self.generate_score( &span, score, &mut dst )?;
 		return Ok( dst );
 	}
 
-	fn generate_phrase<'b>( &self, span: &Span<'b>, phra: &Box<ast::Phrase>, dst: &mut Vec<FlatNote> ) -> Result<Span<'b>, Error> {
-		match **phra {
-			ast::Phrase::Score( ref ns ) => {
+	fn generate_score( &self, span: &Span, score: &Box<ast::Score>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
+		let len = match **score {
+			ast::Score::Score( ref ns ) => {
 				let mut nnum = span.nnum;
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{
@@ -94,16 +94,11 @@ impl<'a> Generator<'a> {
 					};
 					nnum = self.generate_note( &span, n, dst )?;
 				}
-				return Ok( Span{
-					bgn: span.bgn,
-					end: span.bgn + ns.len() as i32,
-					nnum: nnum,
-					tied: false,
-					syms: span.syms,
-				} );
+				ns.len() as i32
 			}
 			_ => panic!(),
-		}
+		};
+		Ok( len )
 	}
 
 	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {

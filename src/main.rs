@@ -18,56 +18,34 @@ use std::*;
 use std::io::prelude::*;
 
 
+fn compile( src: &str ) -> Option<Vec<midi::Event>> {
+	let tree = match parser::parse_definition( src ) {
+		Err( _ ) => return None,
+		Ok ( v ) => v,
+	};
+	let ir = match irgen::Generator::new( &tree ).generate( "root" ) {
+		Err( _ ) => return None,
+		Ok ( v ) => v,
+	};
+	Some( midi::Generator::new().add_score( 0, &ir ).generate() )
+}
+
 fn main() {
+	let args: Vec<String> = env::args().collect();
+
 	|| -> Result<(), Box<error::Error>> {
-		let src_path = "test.mol";
-
-		{
-			let mut buf = String::new();
-			fs::File::open( src_path )?.read_to_string( &mut buf )?;
-
-			let tree = parser::parse_definition( &buf ).unwrap();
-			println!( "{:?}", tree );
-
-			let irgen = irgen::Generator::new( &tree );
-			let ir = irgen.generate( "root" )?;
-			let mut migen = midi::Generator::new( 48000 );
-			migen.add_score( 0, &ir );
-			let dst = migen.generate();
-			println!( "{:?}", dst );
-
-			let mut player = player::Player::new( "memol" )?;
-			player.set_data( dst );
-			player.activate()?;
-
-			notify::notify_wait( src_path )?;
-			Ok( () )
-		}
-
-		/*
+		let mut player = player::Player::new( "memol", &args[2] )?;
 		loop {
 			let mut buf = String::new();
-			fs::File::open( src_path )?.read_to_string( &mut buf )?;
+			fs::File::open( &args[1] )?.read_to_string( &mut buf )?;
 
-			let tree = parser::parse_definition( &buf );
-			println!( "{:?}", tree );
-
-			if let Ok( tree ) = tree {
-				let irgen = irgen::Generator::new( &tree );
-				if let Ok( flats ) = irgen.generate( "root" ) {
-					for f in flats.iter() {
-						println!( "{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, f.nnum );
-					}
-					let mut migen = midi::Generator::new( 48000 );
-					migen.add_score( 0, &flats );
-					let dst = migen.generate();
-					println!( "{:?}", dst );
-					player.set_data( dst );
-				}
+			if let Some( ev ) = compile( &buf ) {
+				player.set_data( ev );
+				player.seek( ratio::Ratio::new( 0, 1 ) )?;
+				player.play()?;
 			}
 
-			notify::notify_wait( src_path )?;
+			notify::notify_wait( &args[1] )?;
 		}
-		*/
 	}().unwrap();
 }

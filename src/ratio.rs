@@ -5,8 +5,8 @@ use misc;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Ratio {
-	pub y: i32,
-	pub x: i32,
+	pub y: i64,
+	pub x: i64,
 }
 
 impl cmp::PartialEq for Ratio {
@@ -49,10 +49,10 @@ impl ops::Add for Ratio {
 	}
 }
 
-impl ops::Add<i32> for Ratio {
+impl ops::Add<i64> for Ratio {
 	type Output = Ratio;
 
-	fn add( self, other: i32 ) -> Ratio {
+	fn add( self, other: i64 ) -> Ratio {
 		Ratio::new(
 			self.y + other * self.x,
 			self.x,
@@ -82,10 +82,10 @@ impl ops::Mul for Ratio {
 	}
 }
 
-impl ops::Mul<i32> for Ratio {
+impl ops::Mul<i64> for Ratio {
 	type Output = Ratio;
 
-	fn mul( self, other: i32 ) -> Ratio {
+	fn mul( self, other: i64 ) -> Ratio {
 		Ratio::new(
 			self.y * other,
 			self.x,
@@ -93,10 +93,10 @@ impl ops::Mul<i32> for Ratio {
 	}
 }
 
-impl ops::Div<i32> for Ratio {
+impl ops::Div<i64> for Ratio {
 	type Output = Ratio;
 
-	fn div( self, other: i32 ) -> Ratio {
+	fn div( self, other: i64 ) -> Ratio {
 		Ratio::new(
 			self.y,
 			self.x * other,
@@ -105,7 +105,7 @@ impl ops::Div<i32> for Ratio {
 }
 
 impl Ratio {
-	pub fn new( y: i32, x: i32 ) -> Ratio {
+	pub fn new( y: i64, x: i64 ) -> Ratio {
 		let t = misc::gcd( y, x );
 		Ratio{
 			y: y / t,
@@ -117,7 +117,7 @@ impl Ratio {
 		if self < other { other } else { self }
 	}
 
-	pub fn to_int( self ) -> i32 {
+	pub fn to_int( self ) -> i64 {
 		self.y / self.x
 	}
 }

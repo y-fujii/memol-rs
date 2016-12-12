@@ -96,15 +96,15 @@ impl<'a> Generator<'a> {
 				let mut nnum = span.nnum;
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{
-						bgn: span.bgn + i as i32,
-						end: span.bgn + i as i32 + 1,
+						bgn: span.bgn + i as i64,
+						end: span.bgn + i as i64 + 1,
 						nnum: nnum,
 						tied: false,
 						syms: span.syms,
 					};
 					nnum = self.generate_note( &span, n, dst )?;
 				}
-				span.bgn + ns.len() as i32
+				span.bgn + ns.len() as i64
 			}
 			ast::Score::Variable( ref key ) => {
 				let s = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
@@ -223,8 +223,8 @@ impl<'a> Generator<'a> {
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
-						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( acc,     tot ),
-						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( acc + i, tot ),
+						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
+						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
 						nnum: nnum,
 						tied: acc == 0 && span.tied,
 						syms: span.syms,

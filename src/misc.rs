@@ -3,7 +3,7 @@ use std::*;
 
 
 // sign( gcd( y, x ) ) == sign( x )
-pub fn gcd( y: i32, x: i32 ) -> i32 {
+pub fn gcd( y: i64, x: i64 ) -> i64 {
 	let s = x < 0;
 	let mut y = y.abs();
 	let mut x = x.abs();
@@ -15,8 +15,30 @@ pub fn gcd( y: i32, x: i32 ) -> i32 {
 	if s { -y } else { y }
 }
 
-/*
-pub fn lower_bound<T, U, F: FnMut( &T, &U ) -> bool>( xs: &Vec<T>, y: &U, mut cmp: F ) -> usize {
-	0
+pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usize {
+	/*
+		semantically equivalent to:
+			for (i, x) in xs.iter().enumerate() {
+				if !f( x ) {
+					return i;
+				}
+			}
+			return xs.len();
+
+		invariants:
+			f( xs[lo - 1] ) == true
+			f( xs[hi    ] ) == false
+	*/
+	let mut lo = 0;
+	let mut hi = xs.len();
+	while lo < hi {
+		let mi = (lo + hi) / 2;
+		if f( &xs[mi] ) {
+			lo = mi + 1;
+		}
+		else {
+			hi = mi;
+		}
+	}
+	lo
 }
-*/

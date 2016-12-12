@@ -1,2 +1,2 @@
-score 'test = { (cDEF) | (cDEF) }
-score 'root = { _ s0 S1 S2 S3 | < s0 S1 (S2 S3) } with s = 'test
+score 'test = { (cEGB) | (fACE) }
+score 'root = { ((s0 S1 S2 S3) [_ S1 S2 S3]) | < _ s0 S1 (S2 S3) } with s = 'test

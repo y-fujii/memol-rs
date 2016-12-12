@@ -1,18 +1,19 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
 use std::*;
+use ratio;
 use irgen;
 
 
 #[derive(Debug)]
 pub struct Event {
-	pub time: i32,
+	pub time: ratio::Ratio,
 	pub prio: i32,
 	pub len: i32,
 	pub msg: [u8; 4],
 }
 
 impl Event {
-	fn new( time: i32, prio: i32, msg: &[u8] ) -> Event {
+	fn new( time: ratio::Ratio, prio: i32, msg: &[u8] ) -> Event {
 		let mut this = Event{
 			time: time,
 			prio: prio,
@@ -26,27 +27,21 @@ impl Event {
 
 #[derive(Debug)]
 pub struct Generator {
-	base: i32,
 	dst: Vec<Event>,
 }
 
 impl Generator {
-	pub fn new( base: i32 ) -> Generator {
-		Generator{ base: base, dst: Vec::new() }
+	pub fn new() -> Generator {
+		Generator{ dst: Vec::new() }
 	}
 
-	pub fn add_score( &mut self, ch: i32, src: &Vec<irgen::FlatNote> ) {
+	pub fn add_score( mut self, ch: i32, src: &Vec<irgen::FlatNote> ) -> Self {
 		let vel = 79;
 		for f in src.iter() {
-			self.dst.push( Event::new(
-				(f.bgn * self.base).to_int(), 1,
-				&[ (0x90 + ch) as u8, f.nnum as u8, vel ],
-			) );
-			self.dst.push( Event::new(
-				(f.end * self.base).to_int(), 0,
-				&[ (0x80 + ch) as u8, f.nnum as u8, 0 ],
-			) );
+			self.dst.push( Event::new( f.bgn, 1, &[ (0x90 + ch) as u8, f.nnum as u8, vel ] ) );
+			self.dst.push( Event::new( f.end, 0, &[ (0x80 + ch) as u8, f.nnum as u8, 0   ] ) );
 		}
+		self
 	}
 
 	pub fn generate( &mut self ) -> Vec<Event> {

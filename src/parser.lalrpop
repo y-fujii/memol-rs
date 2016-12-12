@@ -13,12 +13,11 @@ pub definition: Definition = {
 score_with: Box<Score> = {
 	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
 	<a:score_with> "with" "_"          "=" <c:score_prim> => Box::new( Score::With( a, '_',                       c ) ),
+	<a:uint> <b:score_prim>                               => Box::new( Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
 	<score_prim>                                          => <>,
 };
 
 score_prim: Box<Score> = {
-	"_"                     => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
-	"/"                     => Box::new( Score::Repeat ),
 	<label>                 => Box::new( Score::Variable( <> ) ),
 	"[" <score_list> "]"    => Box::new( Score::Sequence( <> ) ),
 	"(" <score_list> ")"    => Box::new( Score::Parallel( <> ) ),
@@ -59,10 +58,10 @@ key_signature: i32 = {
 };
 
 group_content: Vec<(Box<Note>, i32)> = {
-	<a:group_content>              <b:note> => { let mut a = a; a.push( (b, 1) ); a },
-	<a:group_content> <c:uint> ":" <b:note> => { let mut a = a; a.push( (b, c) ); a },
-	<a:group_content> <b:octave>            => { let mut a = a; a.push( (b, 0) ); a },
-	                                        => Vec::new(),
+	<a:group_content>          <b:note> => { let mut a = a; a.push( (b, 1) ); a },
+	<a:group_content> <c:uint> <b:note> => { let mut a = a; a.push( (b, c) ); a },
+	<a:group_content> <b:octave>        => { let mut a = a; a.push( (b, 0) ); a },
+	                                    => Vec::new(),
 };
 
 chord_content: Vec<Box<Note>> = {

@@ -13,7 +13,7 @@ pub enum Dir {
 	Upper,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Note {
 	Note( Dir, char, i32, i32 ),
 	Rest,
@@ -24,9 +24,8 @@ pub enum Note {
 	Tie( Box<Note> ),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Score {
-	Repeat,
 	Score( Vec<Box<Note>> ),
 	Variable( String ),
 	With( Box<Score>, char, Box<Score> ),
@@ -34,7 +33,7 @@ pub enum Score {
 	Sequence( Vec<Box<Score>> ),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Value {
 	Rest,
 }

@@ -91,7 +91,6 @@ impl<'a> Generator<'a> {
 
 	fn generate_score( &self, span: &Span, score: &Box<ast::Score>, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, Error> {
 		let end = match **score {
-			ast::Score::Repeat => panic!(),
 			ast::Score::Score( ref ns ) => {
 				let mut nnum = span.nnum;
 				for (i, n) in ns.iter().enumerate() {

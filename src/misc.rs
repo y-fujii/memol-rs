@@ -2,6 +2,29 @@
 use std::*;
 
 
+#[derive(Debug)]
+pub struct Error {
+	text: String,
+}
+
+impl Error {
+	pub fn new<T>( text: &str ) -> Result<T, Error> {
+		Err( Error{ text: text.into() } )
+	}
+}
+
+impl fmt::Display for Error {
+	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+		f.write_str( &self.text )
+	}
+}
+
+impl error::Error for Error {
+	fn description( &self ) -> &str {
+		&self.text
+	}
+}
+
 // sign( gcd( y, x ) ) == sign( x )
 pub fn gcd( y: i64, x: i64 ) -> i64 {
 	let s = x < 0;

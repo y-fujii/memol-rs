@@ -18,16 +18,13 @@ use std::*;
 use std::io::prelude::*;
 
 
-fn compile( src: &str ) -> Option<Vec<midi::Event>> {
+fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 	let tree = match parser::parse_definition( src ) {
-		Err( _ ) => return None,
+		Err( e ) => return misc::Error::new( &format!( "{:?}", e ) ),
 		Ok ( v ) => v,
 	};
-	let ir = match irgen::Generator::new( &tree ).generate( "root" ) {
-		Err( _ ) => return None,
-		Ok ( v ) => v,
-	};
-	Some( midi::Generator::new().add_score( 0, &ir ).generate() )
+	let ir = irgen::Generator::new( &tree ).generate( "root" )?;
+	Ok( midi::Generator::new().add_score( 0, &ir ).generate() )
 }
 
 fn main() {
@@ -39,10 +36,15 @@ fn main() {
 			let mut buf = String::new();
 			fs::File::open( &args[1] )?.read_to_string( &mut buf )?;
 
-			if let Some( ev ) = compile( &buf ) {
-				player.set_data( ev );
-				player.seek( ratio::Ratio::new( 0, 1 ) )?;
-				player.play()?;
+			match compile( &buf ) {
+				Err( e ) => {
+					println!( "error: {:}", e );
+				},
+				Ok( ev ) => {
+					player.set_data( ev );
+					player.seek( ratio::Ratio::new( 0, 1 ) )?;
+					player.play()?;
+				},
 			}
 
 			notify::notify_wait( &args[1] )?;

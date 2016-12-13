@@ -10,20 +10,21 @@ pub struct FlatNote {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
 	pub nnum: i32,
-	pub tied: bool,
-	/*
-	tie_bgn: bool,
-	tie_end: bool,
-	*/
 }
 
 #[derive(Debug)]
 struct Span<'a> {
 	bgn: ratio::Ratio,
 	end: ratio::Ratio,
-	nnum: i32,
 	tied: bool,
 	syms: &'a collections::HashMap<char, Vec<FlatNote>>,
+}
+
+#[derive(Debug)]
+struct NoteState {
+	nnum: i32,
+	//note: &Box<Note>,
+	ties: collections::HashMap<i32, ratio::Ratio>,
 }
 
 #[derive(Debug)]
@@ -38,13 +39,13 @@ impl<'a> Generator<'a> {
 		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
 		syms.insert( '_', vec![
-			FlatNote{ bgn: ninf, end: pinf, nnum:  9, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum: 11, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  0, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  2, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  4, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  5, tied: false },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  7, tied: false },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  9 },
+			FlatNote{ bgn: ninf, end: pinf, nnum: 11 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  0 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  2 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  4 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  5 },
+			FlatNote{ bgn: ninf, end: pinf, nnum:  7 },
 		] );
 
 		Generator{ defs: defs, syms: syms }
@@ -54,7 +55,6 @@ impl<'a> Generator<'a> {
 		let span = Span{
 			bgn: ratio::Ratio::new( 0, 1 ),
 			end: ratio::Ratio::new( 0, 1 ),
-			nnum: 60,
 			tied: false,
 			syms: &self.syms,
 		};
@@ -63,23 +63,28 @@ impl<'a> Generator<'a> {
 			None                => return misc::Error::new( "" ),
 		};
 		let mut dst = Vec::new();
-		self.generate_score( &span, s, &mut dst )?;
+		self.generate_score( s, &span, &mut dst )?;
 		Ok( dst )
 	}
 
-	fn generate_score( &self, span: &Span, score: &Box<ast::Score>, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
+	fn generate_score( &self, score: &Box<ast::Score>, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match **score {
 			ast::Score::Score( ref ns ) => {
-				let mut nnum = span.nnum;
+				let mut state = NoteState{
+					nnum: 60,
+					ties: collections::HashMap::new(),
+				};
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{
 						bgn: span.bgn + i as i64,
 						end: span.bgn + i as i64 + 1,
-						nnum: nnum,
 						tied: false,
 						syms: span.syms,
 					};
-					nnum = self.generate_note( &span, n, dst )?;
+					self.generate_note( n, &span, &mut state, dst )?;
+				}
+				if !state.ties.is_empty() {
+					return misc::Error::new( "" );
 				}
 				span.bgn + ns.len() as i64
 			}
@@ -88,21 +93,20 @@ impl<'a> Generator<'a> {
 					Some( &(_, ref v) ) => v,
 					None                => return misc::Error::new( "" ),
 				};
-				self.generate_score( &span, s, dst )?
+				self.generate_score( s, &span, dst )?
 			},
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
 				let mut dst_rhs = Vec::new();
-				self.generate_score( &span, rhs, &mut dst_rhs )?;
+				self.generate_score( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone(); // XXX
 				syms.insert( *key, dst_rhs );
 				let span = Span{
 					bgn: span.bgn,
 					end: span.end,
-					nnum: span.nnum,
 					tied: false,
 					syms: &syms,
 				};
-				self.generate_score( &span, lhs, dst )?
+				self.generate_score( lhs, &span, dst )?
 			},
 			ast::Score::Parallel( ref ss ) => {
 				let mut t = span.bgn;
@@ -110,11 +114,10 @@ impl<'a> Generator<'a> {
 					let span = Span{
 						bgn: span.bgn,
 						end: span.end,
-						nnum: span.nnum,
 						tied: false,
 						syms: span.syms,
 					};
-					t = t.max( self.generate_score( &span, s, dst )? );
+					t = t.max( self.generate_score( s, &span, dst )? );
 				}
 				t
 			},
@@ -124,11 +127,10 @@ impl<'a> Generator<'a> {
 					let span = Span{
 						bgn: t,
 						end: t,
-						nnum: span.nnum,
 						tied: false,
 						syms: span.syms,
 					};
-					t = self.generate_score( &span, s, dst )?;
+					t = self.generate_score( s, &span, dst )?;
 				}
 				t
 			},
@@ -136,8 +138,8 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, misc::Error> {
-		let nnum = match **note {
+	fn generate_note( &self, note: &Box<ast::Note>, span: &Span, state: &mut NoteState, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
+		match **note {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( v ) => v,
@@ -150,78 +152,100 @@ impl<'a> Generator<'a> {
 				let nnum = match *dir {
 					ast::Dir::Absolute( n ) => f.nnum + n * 12 + sig,
 					ast::Dir::Lower => {
-						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
-						nnum - if nnum <= span.nnum { 0 } else { 12 }
+						let nnum = state.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						nnum - if nnum <= state.nnum { 0 } else { 12 }
 					},
 					ast::Dir::Upper => {
-						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
-						nnum + if nnum >= span.nnum { 0 } else { 12 }
+						let nnum = state.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						nnum + if nnum >= state.nnum { 0 } else { 12 }
 					},
 				};
-				dst.push( FlatNote{
-					bgn: span.bgn,
-					end: span.end,
-					nnum: nnum,
-					tied: span.tied,
-				} );
-				nnum
+				let bgn = match state.ties.remove( &nnum ) {
+					Some( v ) => v,
+					None      => span.bgn,
+				};
+				if span.tied {
+					state.ties.insert( nnum, bgn );
+				}
+				else {
+					dst.push( FlatNote{
+						bgn: bgn,
+						end: span.end,
+						nnum: nnum,
+					} );
+				}
+				state.nnum = nnum;
 			},
 			ast::Note::Rest => {
-				span.nnum
 			},
 			ast::Note::Repeat => {
 				panic!();
 			},
 			ast::Note::Octave( oct ) => {
-				span.nnum + oct * 12
+				state.nnum += oct * 12
 			},
 			ast::Note::Chord( ref ns ) => {
-				let mut span = Span{
-					bgn: span.bgn,
-					end: span.end,
-					nnum: span.nnum,
-					tied: span.tied,
-					syms: span.syms,
-				};
-
-				let mut it = ns.iter();
-				if let Some( n ) = it.next() {
-					span.nnum = self.generate_note( &span, n, dst )?;
+				let mut del_ties = Vec::new();
+				let mut new_ties = Vec::new();
+				let mut nnum = state.nnum;
+				for (i, n) in ns.iter().enumerate() {
+					let mut s = NoteState{
+						nnum: nnum,
+						ties: state.ties.clone(),
+					};
+					self.generate_note( n, span, &mut s, dst )?;
+					for k in state.ties.keys() {
+						match s.ties.get( k ) {
+							Some( v ) if *v < span.bgn => (),
+							_ => del_ties.push( *k ),
+						}
+					}
+					for (k, v) in s.ties.iter() {
+						match state.ties.get( k ) {
+							Some( v ) if *v < span.bgn => (),
+							_ => new_ties.push( (*k, *v) ),
+						}
+					}
+					nnum = s.nnum;
+					if i == 0 {
+						state.nnum = nnum;
+					}
 				}
-				let nnum1 = span.nnum;
-				for n in it {
-					span.nnum = self.generate_note( &span, n, dst )?;
+				for k in del_ties.iter() {
+					if state.ties.remove( k ) == None {
+						return misc::Error::new( "" );
+					}
 				}
-				nnum1
+				for &(k, v) in new_ties.iter() {
+					if state.ties.insert( k, v ) != None {
+						return misc::Error::new( "" );
+					}
+				}
 			},
 			ast::Note::Group( ref ns ) => {
 				let tot: i32 = ns.iter().map( |&(_, i)| i ).sum();
-				let mut nnum = span.nnum;
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
 						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
 						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
-						nnum: nnum,
 						tied: acc == 0 && span.tied,
 						syms: span.syms,
 					};
-					nnum = self.generate_note( &span, n, dst )?;
+					self.generate_note( n, &span, state, dst )?;
 					acc += i;
 				}
-				nnum
 			},
 			ast::Note::Tie( ref n ) => {
 				let span = Span{
 					bgn: span.bgn,
 					end: span.end,
-					nnum: span.nnum,
 					tied: true,
 					syms: span.syms,
 				};
-				self.generate_note( &span, n, dst )?
+				self.generate_note( n, &span, state, dst )?
 			},
 		};
-		Ok( nnum )
+		Ok( () )
 	}
 }

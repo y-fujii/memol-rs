@@ -1,4 +1,0 @@
-score 'chord  = { > (cEGB) | (DFAC) | (EGBD) | (FACE) | (b-DFA) | (aCEG) | (dFAC) | (GBDF) }
-score 'melody = { 2EdE | 2FeF | GCbC | 2bag | 3cc | 2DcD | EGGe | 2dcD }
-score 'accomp = 4 { ($q0 [_ 3Q2] [_ Q3]) | ($q0Q2Q3) _ ($q0Q2Q3) ___ ($q0Q2Q3) _ } with q = 'chord
-score 'root   = [ { __cD } 4('melody 'accomp) ]

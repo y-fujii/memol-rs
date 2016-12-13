@@ -18,12 +18,23 @@ use std::*;
 use std::io::prelude::*;
 
 
+fn dump_ir( src: &Vec<irgen::FlatNote> ) {
+	for f in src.iter() {
+		println!( "{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, f.nnum );
+	}
+}
+
 fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
+	let now = time::SystemTime::now();
 	let tree = match parser::parse_definition( src ) {
 		Err( e ) => return misc::Error::new( &format!( "{:?}", e ) ),
 		Ok ( v ) => v,
 	};
 	let ir = irgen::Generator::new( &tree ).generate( "root" )?;
+	let elapsed = now.elapsed().unwrap();
+
+	println!( "parsing & generation: {} ms.", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
+	dump_ir( &ir );
 	Ok( midi::Generator::new().add_score( 0, &ir ).generate() )
 }
 

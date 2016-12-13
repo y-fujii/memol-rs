@@ -59,11 +59,11 @@ impl Player {
 				port: port,
 			} );
 
-			if cext::jack_set_process_callback(
-				this.jack,
-				Some( Player::callback ),
-				&mut *this as *mut Player as *mut os::raw::c_void
-			) != 0 {
+			let this_ptr = &mut *this as *mut Player as *mut os::raw::c_void;
+			if cext::jack_set_process_callback( this.jack, Some( Player::process_callback ), this_ptr ) != 0 {
+				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+			}
+			if cext::jack_set_sync_callback( this.jack, Some( Player::sync_callback ), this_ptr ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
@@ -103,7 +103,7 @@ impl Player {
 		Ok( () )
 	}
 
-	extern fn callback( size: cext::jack_nframes_t, this_ptr: *mut os::raw::c_void ) -> os::raw::c_int {
+	extern fn process_callback( size: cext::jack_nframes_t, this_ptr: *mut os::raw::c_void ) -> os::raw::c_int {
 		unsafe {
 			let this = &mut *(this_ptr as *mut Player);
 
@@ -138,5 +138,19 @@ impl Player {
 			}
 		}
 		0
+	}
+
+	extern fn sync_callback( _: cext::jack_transport_state_t, _: *mut cext::jack_position_t, this_ptr: *mut os::raw::c_void ) -> i32 {
+		unsafe {
+			let this = &mut *(this_ptr as *mut Player);
+
+			let mut shared = match this.shared.try_lock() {
+				Err( _ ) => return 0,
+				Ok ( v ) => v,
+			};
+
+			shared.changed = true;
+			1 // ready to roll.
+		}
 	}
 }

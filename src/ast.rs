@@ -6,9 +6,9 @@ pub struct Definition {
 	pub values: Vec<(String, Box<Value>)>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum Dir {
-	Absolute,
+	Absolute( i32 ),
 	Lower,
 	Upper,
 }

@@ -160,7 +160,7 @@ impl<'a> Generator<'a> {
 
 	fn generate_note( &self, span: &Span, note: &Box<ast::Note>, dst: &mut Vec<FlatNote> ) -> Result<i32, Error> {
 		let nnum = match **note {
-			ast::Note::Note( dir, sym, ord, sig ) => {
+			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( v ) => v,
 					None      => return Error::new( "" ),
@@ -169,8 +169,8 @@ impl<'a> Generator<'a> {
 					Some( v ) => v,
 					None      => return Error::new( "" ),
 				};
-				let nnum = match dir {
-					ast::Dir::Absolute => f.nnum + sig,
+				let nnum = match *dir {
+					ast::Dir::Absolute( n ) => f.nnum + n * 12 + sig,
 					ast::Dir::Lower => {
 						let nnum = span.nnum / 12 * 12 + (f.nnum + sig) % 12;
 						nnum - if nnum <= span.nnum { 0 } else { 12 }

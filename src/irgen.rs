@@ -58,9 +58,9 @@ impl<'a> Generator<'a> {
 			tied: false,
 			syms: &self.syms,
 		};
-		let s = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
-			Some( &(_, ref v) ) => v,
-			None                => return misc::Error::new( "" ),
+		let s = match self.defs.scores.get( key ) {
+			Some( v ) => v,
+			None      => return misc::Error::new( "" ),
 		};
 		let mut dst = Vec::new();
 		self.generate_score( s, &span, &mut dst )?;
@@ -90,9 +90,9 @@ impl<'a> Generator<'a> {
 				span.bgn + ns.len() as i64
 			}
 			ast::Score::Variable( ref key ) => {
-				let s = match self.defs.scores.iter().find( |&&(ref k, _)| k == key ) {
-					Some( &(_, ref v) ) => v,
-					None                => return misc::Error::new( "" ),
+				let s = match self.defs.scores.get( key ) {
+					Some( v ) => v,
+					None      => return misc::Error::new( "" ),
 				};
 				self.generate_score( s, &span, dst )?
 			},
@@ -218,12 +218,12 @@ impl<'a> Generator<'a> {
 				}
 				state.note = Some( note );
 				for k in del_ties.iter() {
-					if state.ties.remove( k ) == None {
+					if let None = state.ties.remove( k ) {
 						return misc::Error::new( "" );
 					}
 				}
 				for &(k, v) in new_ties.iter() {
-					if state.ties.insert( k, v ) != None {
+					if let Some( _ ) = state.ties.insert( k, v ) {
 						return misc::Error::new( "" );
 					}
 				}

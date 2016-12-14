@@ -1,9 +1,10 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
+use std::*;
 
 #[derive(Debug)]
 pub struct Definition {
-	pub scores: Vec<(String, Box<Score>)>,
-	pub values: Vec<(String, Box<Value>)>,
+	pub scores: collections::HashMap<String, Box<Score>>,
+	pub values: collections::HashMap<String, Box<Value>>,
 }
 
 #[derive(Clone, Debug)]

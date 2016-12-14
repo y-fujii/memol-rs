@@ -50,8 +50,8 @@ fn main() {
 		}
 
 		let mut player = player::Player::new( "memol" )?;
-		for port in args.opt_strs( "c" ).iter() {
-			player.connect( port )?;
+		for port in args.opt_strs( "c" ) {
+			player.connect( &port )?;
 		}
 
 		loop {

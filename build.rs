@@ -13,4 +13,6 @@ fn main() {
 		.unwrap();
 
 	println!( "cargo:rustc-link-lib=jack" );
+	println!( "cargo:rerun-if-changed=src/parser.lalrpop" );
+	println!( "cargo:rerun-if-changed=src/cext.h" );
 }

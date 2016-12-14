@@ -25,10 +25,14 @@ pub definition: Definition = {
 };
 
 score_with: Box<Score> = {
-	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
-	<a:score_with> "with" "_"          "=" <c:score_prim> => Box::new( Score::With( a, '_',                       c ) ),
-	<a:uint> <b:score_prim>                               => Box::new( Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
-	<score_prim>                                          => <>,
+	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_repeat> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
+	<a:score_with> "with" "_"          "=" <c:score_repeat> => Box::new( Score::With( a, '_',                       c ) ),
+	<score_repeat>                                          => <>,
+};
+
+score_repeat: Box<Score> = {
+	<a:uint> <b:score_prim> => Box::new( Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+	<score_prim>            => <>,
 };
 
 score_prim: Box<Score> = {

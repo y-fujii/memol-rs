@@ -4,13 +4,7 @@ use std::*;
 
 #[derive(Debug)]
 pub struct Error {
-	text: String,
-}
-
-impl Error {
-	pub fn new<T>( text: &str ) -> Result<T, Error> {
-		Err( Error{ text: text.into() } )
-	}
+	pub text: String,
 }
 
 impl fmt::Display for Error {
@@ -23,6 +17,10 @@ impl error::Error for Error {
 	fn description( &self ) -> &str {
 		&self.text
 	}
+}
+
+pub fn error<T>( text: &str ) -> Result<T, Error> {
+	Err( Error{ text: text.into() } )
 }
 
 // sign( gcd( y, x ) ) == sign( x )

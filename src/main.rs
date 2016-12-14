@@ -2,6 +2,7 @@
 #![feature( untagged_unions )]
 
 extern crate lalrpop_util;
+extern crate getopts;
 #[allow( dead_code )]
 #[allow( non_upper_case_globals )]
 #[allow( non_camel_case_types )]
@@ -28,7 +29,7 @@ fn dump_ir( src: &Vec<irgen::FlatNote> ) {
 fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 	let now = time::SystemTime::now();
 	let tree = match parser::parse_definition( src ) {
-		Err( e ) => return misc::Error::new( &format!( "{:?}", e ) ),
+		Err( e ) => return misc::error( &format!( "{:?}", e ) ),
 		Ok ( v ) => v,
 	};
 	let ir = irgen::Generator::new( &tree ).generate( "root" )?;
@@ -40,13 +41,22 @@ fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 }
 
 fn main() {
-	let args: Vec<String> = env::args().collect();
-
 	|| -> Result<(), Box<error::Error>> {
-		let mut player = player::Player::new( "memol", &args[2] )?;
+		let mut opts = getopts::Options::new();
+		opts.optmulti( "c", "connect", "", "" );
+		let args = opts.parse( env::args().skip( 1 ) )?;
+		if args.free.len() != 1 {
+			return Err( Box::new( misc::Error{ text: "".into() } ) );
+		}
+
+		let mut player = player::Player::new( "memol" )?;
+		for port in args.opt_strs( "c" ).iter() {
+			player.connect( port )?;
+		}
+
 		loop {
 			let mut buf = String::new();
-			fs::File::open( &args[1] )?.read_to_string( &mut buf )?;
+			fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 
 			match compile( &buf ) {
 				Err( e ) => {
@@ -59,7 +69,7 @@ fn main() {
 				},
 			}
 
-			notify::notify_wait( &args[1] )?;
+			notify::notify_wait( &args.free[0] )?;
 		}
 	}().unwrap();
 }

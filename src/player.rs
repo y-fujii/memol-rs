@@ -16,6 +16,7 @@ pub struct Player {
 	shared: sync::Mutex<SharedData>,
 	jack: *mut cext::jack_client_t,
 	port: *mut cext::jack_port_t,
+	name: String,
 }
 
 impl Drop for Player {
@@ -27,7 +28,7 @@ impl Drop for Player {
 }
 
 impl Player {
-	pub fn new( name: &str, dest: &str ) -> io::Result<Box<Player>> {
+	pub fn new( name: &str ) -> io::Result<Box<Player>> {
 		unsafe {
 			let jack = cext::jack_client_open(
 				ffi::CString::new( name ).unwrap().as_ptr(),
@@ -57,6 +58,7 @@ impl Player {
 				} ),
 				jack: jack,
 				port: port,
+				name: name.into(),
 			} );
 
 			let this_ptr = &mut *this as *mut Player as *mut os::raw::c_void;
@@ -71,12 +73,6 @@ impl Player {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
-			cext::jack_connect(
-				this.jack,
-				ffi::CString::new( format!( "{}:out", name ) ).unwrap().as_ptr(),
-				ffi::CString::new( dest ).unwrap().as_ptr(),
-			);
-
 			Ok( this )
 		}
 	}
@@ -85,6 +81,19 @@ impl Player {
 		let mut shared = self.shared.lock().unwrap();
 		shared.events = events;
 		shared.changed = true;
+	}
+
+	pub fn connect( &self, port: &str ) -> io::Result<()> {
+		unsafe {
+			if cext::jack_connect(
+				self.jack,
+				ffi::CString::new( format!( "{}:out", self.name ) ).unwrap().as_ptr(),
+				ffi::CString::new( port ).unwrap().as_ptr(),
+			) != 0 {
+				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+			}
+		}
+		Ok( () )
 	}
 
 	pub fn play( &mut self ) -> io::Result<()> {

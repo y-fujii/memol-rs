@@ -35,11 +35,11 @@ impl Generator {
 		Generator{ dst: Vec::new() }
 	}
 
-	pub fn add_score( mut self, ch: i32, src: &Vec<irgen::FlatNote> ) -> Self {
+	pub fn add_score( mut self, ch: i32, src: &Vec<irgen::FlatNote> ) -> Generator {
 		let vel = 79;
 		for f in src.iter() {
 			self.dst.push( Event::new( f.bgn, 1, &[ (0x90 + ch) as u8, f.nnum as u8, vel ] ) );
-			self.dst.push( Event::new( f.end, 0, &[ (0x80 + ch) as u8, f.nnum as u8, 0   ] ) );
+			self.dst.push( Event::new( f.end, 0, &[ (0x80 + ch) as u8, f.nnum as u8, vel ] ) );
 		}
 		self
 	}

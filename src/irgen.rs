@@ -60,7 +60,7 @@ impl<'a> Generator<'a> {
 		};
 		let s = match self.defs.scores.get( key ) {
 			Some( v ) => v,
-			None      => return misc::Error::new( "" ),
+			None      => return misc::error( "" ),
 		};
 		let mut dst = Vec::new();
 		self.generate_score( s, &span, &mut dst )?;
@@ -85,14 +85,14 @@ impl<'a> Generator<'a> {
 					self.generate_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
-					return misc::Error::new( "" );
+					return misc::error( "" );
 				}
 				span.bgn + ns.len() as i64
 			}
 			ast::Score::Variable( ref key ) => {
 				let s = match self.defs.scores.get( key ) {
 					Some( v ) => v,
-					None      => return misc::Error::new( "" ),
+					None      => return misc::error( "" ),
 				};
 				self.generate_score( s, &span, dst )?
 			},
@@ -144,11 +144,11 @@ impl<'a> Generator<'a> {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( v ) => v,
-					None      => return misc::Error::new( "" ),
+					None      => return misc::error( "" ),
 				};
 				let f = match fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
 					Some( v ) => v,
-					None      => return misc::Error::new( "" ),
+					None      => return misc::error( "" ),
 				};
 				let nnum = match *dir {
 					ast::Dir::Absolute( n ) => f.nnum + n * 12 + sig,
@@ -183,7 +183,7 @@ impl<'a> Generator<'a> {
 			ast::Note::Repeat => {
 				match state.note {
 					Some( n ) => self.generate_note( n, span, state, dst )?,
-					None      => return misc::Error::new( "" ),
+					None      => return misc::error( "" ),
 				}
 			},
 			ast::Note::Octave( oct ) => {
@@ -219,12 +219,12 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 				for k in del_ties.iter() {
 					if let None = state.ties.remove( k ) {
-						return misc::Error::new( "" );
+						return misc::error( "" );
 					}
 				}
 				for &(k, v) in new_ties.iter() {
 					if let Some( _ ) = state.ties.insert( k, v ) {
-						return misc::Error::new( "" );
+						return misc::error( "" );
 					}
 				}
 			},

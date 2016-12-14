@@ -36,6 +36,7 @@ score_repeat: Box<Score> = {
 };
 
 score_prim: Box<Score> = {
+	"_"                     => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
 	<label>                 => Box::new( Score::Variable( <> ) ),
 	"[" <score_list> "]"    => Box::new( Score::Sequence( <> ) ),
 	"(" <score_list> ")"    => Box::new( Score::Parallel( <> ) ),

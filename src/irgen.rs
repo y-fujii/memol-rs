@@ -21,9 +21,9 @@ struct Span<'a> {
 }
 
 #[derive(Debug)]
-struct NoteState {
+struct NoteState<'a> {
 	nnum: i32,
-	//note: &Box<Note>,
+	note: Option<&'a ast::Note>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
 }
 
@@ -67,11 +67,12 @@ impl<'a> Generator<'a> {
 		Ok( dst )
 	}
 
-	fn generate_score( &self, score: &Box<ast::Score>, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
-		let end = match **score {
+	fn generate_score( &self, score: &ast::Score, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
+		let end = match *score {
 			ast::Score::Score( ref ns ) => {
 				let mut state = NoteState{
 					nnum: 60,
+					note: None,
 					ties: collections::HashMap::new(),
 				};
 				for (i, n) in ns.iter().enumerate() {
@@ -138,8 +139,8 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note( &self, note: &Box<ast::Note>, span: &Span, state: &mut NoteState, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
-		match **note {
+	fn generate_note<'b>( &self, note: &'b ast::Note, span: &Span, state: &mut NoteState<'b>, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
+		match *note {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( v ) => v,
@@ -175,11 +176,15 @@ impl<'a> Generator<'a> {
 					} );
 				}
 				state.nnum = nnum;
+				state.note = Some( note );
 			},
 			ast::Note::Rest => {
 			},
 			ast::Note::Repeat => {
-				panic!();
+				match state.note {
+					Some( n ) => self.generate_note( n, span, state, dst )?,
+					None      => return misc::Error::new( "" ),
+				}
 			},
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12
@@ -187,12 +192,13 @@ impl<'a> Generator<'a> {
 			ast::Note::Chord( ref ns ) => {
 				let mut del_ties = Vec::new();
 				let mut new_ties = Vec::new();
-				let mut nnum = state.nnum;
+				let mut s = NoteState{
+					nnum: state.nnum,
+					note: state.note,
+					ties: collections::HashMap::new(),
+				};
 				for (i, n) in ns.iter().enumerate() {
-					let mut s = NoteState{
-						nnum: nnum,
-						ties: state.ties.clone(),
-					};
+					s.ties = state.ties.clone();
 					self.generate_note( n, span, &mut s, dst )?;
 					for k in state.ties.keys() {
 						match s.ties.get( k ) {
@@ -206,11 +212,11 @@ impl<'a> Generator<'a> {
 							_ => new_ties.push( (*k, *v) ),
 						}
 					}
-					nnum = s.nnum;
 					if i == 0 {
-						state.nnum = nnum;
+						state.nnum = s.nnum;
 					}
 				}
+				state.note = Some( note );
 				for k in del_ties.iter() {
 					if state.ties.remove( k ) == None {
 						return misc::Error::new( "" );

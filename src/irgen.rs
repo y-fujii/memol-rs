@@ -235,7 +235,7 @@ impl<'a> Generator<'a> {
 					let span = Span{
 						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
 						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
-						tied: acc == 0 && span.tied,
+						tied: acc + i == tot && span.tied, // only apply to the last note.
 						syms: span.syms,
 					};
 					self.generate_note( n, &span, state, dst )?;

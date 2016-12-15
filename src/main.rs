@@ -46,7 +46,7 @@ fn main() {
 		opts.optmulti( "c", "connect", "", "" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
-			return Err( Box::new( misc::Error{ text: "".into() } ) );
+			return misc::error( "" );
 		}
 
 		let mut player = player::Player::new( "memol" )?;

@@ -19,8 +19,8 @@ impl error::Error for Error {
 	}
 }
 
-pub fn error<T>( text: &str ) -> Result<T, Error> {
-	Err( Error{ text: text.into() } )
+pub fn error<T, U: From<Error>>( text: &str ) -> Result<T, U> {
+	Err( From::from( Error{ text: text.into() } ) )
 }
 
 // sign( gcd( y, x ) ) == sign( x )

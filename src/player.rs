@@ -132,7 +132,7 @@ impl Player {
 			if shared.changed {
 				for ch in 0 .. 16 {
 					let msg: [u8; 3] = [ 0xb0 + ch, 0x7b, 0x00 ];
-					cext::jack_midi_event_write( buf, 0, &msg as *const u8, msg.len() as i32 );
+					cext::jack_midi_event_write( buf, 0, &msg as *const u8, msg.len() );
 				}
 				shared.changed = false;
 			}
@@ -143,7 +143,7 @@ impl Player {
 			let iend = misc::bsearch_boundary( &shared.events, |e| e.time < fend );
 			for ev in shared.events[ibgn .. iend].iter() {
 				let n = (ev.time * pos.frame_rate as i64).to_int() as u32 - pos.frame;
-				cext::jack_midi_event_write( buf, n, &ev.msg as *const u8, ev.len );
+				cext::jack_midi_event_write( buf, n, &ev.msg as *const u8, ev.len as usize );
 			}
 		}
 		0

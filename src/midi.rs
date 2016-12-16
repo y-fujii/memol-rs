@@ -45,8 +45,7 @@ impl Generator {
 	}
 
 	pub fn generate( &mut self ) -> Vec<Event> {
-		let mut tmp = Vec::new();
-		mem::swap( &mut tmp, &mut self.dst );
+		let mut tmp = mem::replace( &mut self.dst, Vec::new() );
 		tmp.sort_by_key( |e| (e.time, e.prio) );
 		tmp
 	}

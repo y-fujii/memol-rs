@@ -179,6 +179,11 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 			},
 			ast::Note::Rest => {
+				dst.push( FlatNote{
+					bgn: span.bgn,
+					end: span.end,
+					nnum: -1,
+				} );
 			},
 			ast::Note::Repeat => {
 				match state.note {

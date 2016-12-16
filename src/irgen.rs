@@ -51,7 +51,7 @@ impl<'a> Generator<'a> {
 		Generator{ defs: defs, syms: syms }
 	}
 
-	pub fn generate( &self, key: &str ) -> Result<Vec<FlatNote>, misc::Error> {
+	pub fn generate( &self, key: &str ) -> Result<Option<Vec<FlatNote>>, misc::Error> {
 		let span = Span{
 			bgn: ratio::Ratio::new( 0, 1 ),
 			end: ratio::Ratio::new( 0, 1 ),
@@ -60,11 +60,11 @@ impl<'a> Generator<'a> {
 		};
 		let s = match self.defs.scores.get( key ) {
 			Some( v ) => v,
-			None      => return misc::error( "" ),
+			None      => return Ok( None ),
 		};
 		let mut dst = Vec::new();
 		self.generate_score( s, &span, &mut dst )?;
-		Ok( dst )
+		Ok( Some( dst ) )
 	}
 
 	fn generate_score( &self, score: &ast::Score, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {

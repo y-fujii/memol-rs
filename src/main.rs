@@ -34,7 +34,9 @@ fn compile( src: &str, dump: bool ) -> Result<Vec<midi::Event>, misc::Error> {
 			if dump {
 				println!( "channel {}:", ch );
 				for f in ir.iter() {
-					println!( "\t{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, f.nnum );
+					if let Some( nnum ) = f.nnum {
+						println!( "\t{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, nnum );
+					}
 				}
 			}
 			migen = migen.add_score( ch, &ir );

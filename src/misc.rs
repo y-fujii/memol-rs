@@ -23,6 +23,15 @@ pub fn error<T, U: From<Error>>( text: &str ) -> Result<T, U> {
 	Err( From::from( Error{ text: text.into() } ) )
 }
 
+pub fn idiv( x: i32, y: i32 ) -> i32 {
+	let r = x / y;
+	if r * y <= x { r } else { r - 1 }
+}
+
+pub fn imod( x: i32, y: i32 ) -> i32 {
+	x - y * idiv( x, y )
+}
+
 // sign( gcd( y, x ) ) == sign( x )
 pub fn gcd( y: i64, x: i64 ) -> i64 {
 	let s = x < 0;

@@ -9,7 +9,7 @@ use ast;
 pub struct FlatNote {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
-	pub nnum: i32,
+	pub nnum: Option<i32>,
 }
 
 #[derive(Debug)]
@@ -39,13 +39,13 @@ impl<'a> Generator<'a> {
 		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
 		syms.insert( '_', vec![
-			FlatNote{ bgn: ninf, end: pinf, nnum:  9 },
-			FlatNote{ bgn: ninf, end: pinf, nnum: 11 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  0 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  2 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  4 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  5 },
-			FlatNote{ bgn: ninf, end: pinf, nnum:  7 },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 69 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 71 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 60 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 62 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 64 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 65 ) },
+			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 67 ) },
 		] );
 
 		Generator{ defs: defs, syms: syms }
@@ -150,14 +150,25 @@ impl<'a> Generator<'a> {
 					Some( v ) => v,
 					None      => return misc::error( "" ),
 				};
+				let nnum = match f.nnum {
+					Some( v ) => v,
+					None => {
+						dst.push( FlatNote{
+							bgn: span.bgn,
+							end: span.end,
+							nnum: None,
+						} );
+						return Ok( () );
+					},
+				};
 				let nnum = match *dir {
-					ast::Dir::Absolute( n ) => f.nnum + n * 12 + sig,
+					ast::Dir::Absolute( n ) => nnum + n * 12 + sig,
 					ast::Dir::Lower => {
-						let nnum = state.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
 						nnum - if nnum <= state.nnum { 0 } else { 12 }
 					},
 					ast::Dir::Upper => {
-						let nnum = state.nnum / 12 * 12 + (f.nnum + sig) % 12;
+						let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
 						nnum + if nnum >= state.nnum { 0 } else { 12 }
 					},
 				};
@@ -172,7 +183,7 @@ impl<'a> Generator<'a> {
 					dst.push( FlatNote{
 						bgn: bgn,
 						end: span.end,
-						nnum: nnum,
+						nnum: Some( nnum ),
 					} );
 				}
 				state.nnum = nnum;
@@ -182,7 +193,7 @@ impl<'a> Generator<'a> {
 				dst.push( FlatNote{
 					bgn: span.bgn,
 					end: span.end,
-					nnum: -1,
+					nnum: None,
 				} );
 			},
 			ast::Note::Repeat => {

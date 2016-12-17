@@ -38,11 +38,10 @@ impl Generator {
 	pub fn add_score( mut self, ch: i32, src: &Vec<irgen::FlatNote> ) -> Generator {
 		let vel = 79;
 		for f in src.iter() {
-			if f.nnum < 0 {
-				continue;
+			if let Some( nnum ) = f.nnum {
+				self.dst.push( Event::new( f.bgn * 2, 1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
+				self.dst.push( Event::new( f.end * 2, 0, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}
-			self.dst.push( Event::new( f.bgn, 1, &[ (0x90 + ch) as u8, f.nnum as u8, vel ] ) );
-			self.dst.push( Event::new( f.end, 0, &[ (0x80 + ch) as u8, f.nnum as u8, vel ] ) );
 		}
 		self
 	}

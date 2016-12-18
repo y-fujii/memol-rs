@@ -18,6 +18,7 @@ mod player;
 mod notify;
 use std::*;
 use std::io::prelude::*;
+use std::str::FromStr;
 
 
 fn compile( src: &str, dump: bool ) -> Result<Vec<midi::Event>, misc::Error> {
@@ -54,7 +55,12 @@ fn main() {
 		let mut opts = getopts::Options::new();
 		opts.optmulti( "c", "connect", "", "" );
 		opts.optflag( "d", "dump", "" );
+		opts.optopt( "s", "seek", "", "" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
+		let seek = match args.opt_str( "s" ) {
+			Some( ref v ) => Some( i64::from_str( v )? ),
+			None          => None,
+		};
 		if args.free.len() != 1 {
 			return misc::error( "" );
 		}
@@ -74,8 +80,10 @@ fn main() {
 				},
 				Ok( ev ) => {
 					player.set_data( ev );
-					player.seek( ratio::Ratio::new( 0, 1 ) )?;
-					player.play()?;
+					if let Some( t ) = seek {
+						player.seek( ratio::Ratio::new( t, 1 ) )?;
+						player.play()?;
+					}
 				},
 			}
 

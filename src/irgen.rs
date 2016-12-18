@@ -5,7 +5,7 @@ use ratio;
 use ast;
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct FlatNote {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,

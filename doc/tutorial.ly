@@ -10,34 +10,41 @@
 				padding: 0;
 			}
 			body {
-				margin: 2em auto;
-				max-width: 48em;
+				margin: 2rem auto;
+				max-width: 48rem;
 				text-align: justify;
 				   -moz-hyphens: auto;
 				-webkit-hyphens: auto;
-						hyphens: auto;
+				        hyphens: auto;
 			}
 			p, ul, dl, h1, h2, h3 {
-				margin: 1em 0;
+				margin: 1rem 0;
 			}
 			dd {
-				margin-left: 2em;
+				margin-left: 2rem;
 			}
 			li {
-				margin-left: 1em;
+				margin-left: 1rem;
 			}
 			h1 {
 				font-size: 200%;
 				text-align: center;
 			}
 			h2, h3 {
-				font-size: 150%;
+				margin-top: 2rem;
+				font-size: 125%;
+				border-bottom: solid 1px #e0e0e0;
 			}
 			h1, h2, h3, strong, dt {
 				font-weight: bold;
 			}
 			pre, code {
 				font-family: monospace, monospace;
+				background-color: #f8f8f8;
+			}
+			pre {
+				padding: 0.25rem 0.5rem;
+				border: solid 1px #e0e0e0;
 			}
 		</style>
 	</head>
@@ -141,7 +148,7 @@ language, absolute duration values are never specified in memol.  Group
 notation divides the duration equally into child notes and serializes them.
 Group notation can be nested itself and other notation. Each child note have an
 optional number prefix, which represents a relative ratio. For example,
-<code>"[3e 2c]"</code> gives "e" to the duration 5/3 and "c" to 2/5.
+<code>"[3e 2c]"</code> gives "e" to the duration 3/5 and "c" to 2/5.
 <pre>
 score 'out.0 = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </pre>
@@ -201,7 +208,7 @@ score 'part_b = { c D E F }
 score 'out.0 = ('part_a 'part_b)
 </pre>
 
-<h2>"With" syntax</h2>
+<h2><code>"with"</code> syntax</h2>
 <pre>
 score 'chord   = { (c E G B) (D F G B) | (c E G B) }
 score 'pattern = { [$q0 Q1 Q2 q1] ($q0 Q1 Q2 Q3) }
@@ -215,6 +222,7 @@ score 'out.0   = 2'pattern with q = 'chord
 <p>XXX
 <pre>
 value 'vel = { ... }
+</pre>
 
 </body>
 </html>

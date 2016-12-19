@@ -85,13 +85,13 @@ features for practical use.
 <p>Potentially any platform that can run Rust and JACK are supported.  Please
 make sure that following programs are installed before building.
 <ul>
-    <li><a href="http://rust-lang.org/">Rust</a>
+    <li><a href="http://rust-lang.org/">Rust nightly</a>
     <li><a href="http://crates.io/">Cargo</a>
     <li><a href="http://jackaudio.org/">JACK</a>
 </ul>
 <p>Using <a href="https://www.rustup.rs/">rustup</a> is an easiest way to
-install Rust and Cargo.  Building and installing memol are quite simple thanks
-to Cargo; Just type
+install Rust nightly and Cargo.  Building and installing memol are quite simple
+thanks to Cargo; Just type
 <pre>
 hg clone https://bitbucket.org/ysfujii/memol-rs/
 cd memol-rs
@@ -130,7 +130,7 @@ in lower case, it has lower pitch within a octave.  <code>"&lt;"</code> and
 <code>"&gt;"</code> can be used to make the current octave +1 and -1
 respectively.
 <pre>
-score 'out.0 = { c D E d | < D E > c _ }
+score 'out.0 = { c D E d | &gt; D E &lt; c _ }
 </pre>
 <lilypond relative="1">
     { c d e d d' e c, r }

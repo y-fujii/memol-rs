@@ -50,7 +50,8 @@
 	</head>
 <body>
 
-<h1>memol language Tutorial (under construction)</h1>
+<h1>memol language Tutorial</h1>
+<p>XXX: under construction.
 
 <p>memol is a music markup language which features:
 <dl>
@@ -58,11 +59,10 @@
 	<dd>Essentially, memol describes a score as recursive composition of only
 	two constructs: group <code>"[...]"</code> and chord <code>"(...)"</code>.
     <dt>Orthogonal
-	<dd>Some musical elements like scale, chord, voicing and backing pattern
-	can be described independently and composite them each other.
-	<code>"with"</code> syntax enables (some of) them in a unified form.
-	Separate descriptions of expressions (note velocity, control change, ...)
-	are also planned.
+	<dd>Some musical elements like scale, chord and backing pattern can be
+	described independently and composite them each other.  <code>"with"</code>
+	syntax enables (some of) them in a unified form.  Separate descriptions of
+	expressions (note velocity, control change, ...) are also planned.
     <dt>Focused on musical composition
 	<dd>Language design and implementation help trial-and-error of musical
 	composition well.
@@ -82,12 +82,12 @@ features for practical use.
 
 <h2>Build, install and run</h2>
 
-<p>Current supported platform is Linux only.  Please make sure that following
-programs are installed.
+<p>Potentially any platform that can run Rust and JACK are supported.  Please
+make sure that following programs are installed before building.
 <ul>
     <li><a href="http://rust-lang.org/">Rust</a>
     <li><a href="http://crates.io/">Cargo</a>
-    <li><a href="http://jackaudio.org/">Jack</a>
+    <li><a href="http://jackaudio.org/">JACK</a>
 </ul>
 <p>Using <a href="https://www.rustup.rs/">rustup</a> is an easiest way to
 install Rust and Cargo.  Building and installing memol are quite simple thanks
@@ -99,14 +99,19 @@ cargo install
 </pre>
 <p>and everything should be done.
 <p>Current implementation of memol is a simple command line program which emits
-MIDI messages to Jack.
+MIDI messages to JACK.
 <pre>
 memol [-c JACK_PORT] [-s SEEK_TIME] FILE
 </pre>
-<p>XXX
 <p>memol keeps watching the change of the file and reflects it immediately.
-Since memol supports Jack transport, start/stop/seek operations can be done by
-external programs.
+Since memol supports JACK transport, start/stop/seek operations is synced with
+other JACK clients (Currently Timebase and Session control are not supported).
+Personally I use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage
+JACK connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
+<a href="http://ardour.org/">Ardour</a> can be used, of course.
+<p>JACK_PORT can be specified multiple times and then the memol output port is
+being connected to them. When SEEK_TIME is specified, memol seeks and starts
+JACK transport each time the file has changed.
 
 <h2>Hello, twinkle little star</h2>
 
@@ -143,12 +148,13 @@ score 'out.0 = { c D+ E++ F- }
 </lilypond>
 
 <h2>Group</h2>
-<p>Grouping is one of the charasteristic features of memol.  Unlike other
-language, absolute duration values are never specified in memol.  Group
-notation divides the duration equally into child notes and serializes them.
-Group notation can be nested itself and other notation. Each child note have an
-optional number prefix, which represents a relative ratio. For example,
-<code>"[3e 2c]"</code> gives "e" to the duration 3/5 and "c" to 2/5.
+<p>Grouping is one of the unique features of memol.  Unlike other language,
+absolute duration values are never specified in memol.  Grouping is noted as
+<code>"[...]"</code> and it divides the duration equally into child notes and
+serializes them.  Group notation can be nested oneself and other notation.
+Each child note have an optional number prefix, which represents a relative
+ratio.  For example, <code>"[3e 2c]"</code> gives the duration 3/5 to "e" and
+2/5 to "c".
 <pre>
 score 'out.0 = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </pre>
@@ -157,7 +163,9 @@ score 'out.0 = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </lilypond>
 
 <h2>Chord</h2>
-<p>XXX
+<p>Chord is noted as "(...)" and child notes are located in parallel.  Chord
+can be nested oneself and other notation.  The note pitch used to determine the
+octave of next note is the first child of the chord, not the last child.
 <pre>
 score 'out.0 = { (c E G) | (c E G [B C b]) (c E F A) }
 </pre>
@@ -171,7 +179,9 @@ score 'out.0 = { (c E G) | (c E G [B C b]) (c E F A) }
 </lilypond>
 
 <h2>Tie</h2>
-<p>XXX
+<p>Tie is noted by adding "^" after the note which the tie begins.  Composite
+notes such as group and chord also can be tied.  A tied chord means all child
+notes are tied.  A tied group means the last note is tied.
 <pre>
 score 'out.0 = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
 </pre>
@@ -181,7 +191,9 @@ score 'out.0 = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E
 </lilypond>
 
 <h2>Repeat</h2>
-<p>XXX
+<p><code>"/"</code> is semantically equivalent to the previous note, the most
+recent simple note or chord in postordered depth-first traversal.  The ties are
+also inherited to the repeat note.
 <pre>
 score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
 </pre>
@@ -209,6 +221,9 @@ score 'out.0 = ('part_a 'part_b)
 </pre>
 
 <h2><code>"with"</code> syntax</h2>
+<p><code>"with"</code> syntax is one of the unique feature of memol that
+enables high level music description.
+<p>XXX
 <pre>
 score 'chord   = { (c E G B) (D F G B) | (c E G B) }
 score 'pattern = { [$q0 Q1 Q2 q1] ($q0 Q1 Q2 Q3) }

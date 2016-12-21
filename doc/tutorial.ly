@@ -82,7 +82,7 @@ features for practical use.
 
 <h2>Build, install and run</h2>
 
-<p>Potentially any platform that can run Rust and JACK are supported.  Please
+<p>Potentially any platform that run Rust and JACK are supported.  Please
 make sure that following programs are installed before building.
 <ul>
     <li><a href="http://rust-lang.org/">Rust nightly</a>
@@ -93,7 +93,7 @@ make sure that following programs are installed before building.
 install Rust nightly and Cargo.  Building and installing memol are quite simple
 thanks to Cargo; Just type
 <pre>
-hg clone https://bitbucket.org/ysfujii/memol-rs/
+hg clone <a href="https://bitbucket.org/ysfujii/memol-rs/">https://bitbucket.org/ysfujii/memol-rs/</a>
 cd memol-rs
 cargo install
 </pre>
@@ -115,13 +115,18 @@ JACK transport each time the file has changed.
 
 <h2>Hello, twinkle little star</h2>
 
-<p>XXX
 <pre>
 score 'out.0 = { c c G G | A A g _ | f f e e | d d c _ }
 </pre>
 <lilypond relative="1">
     { c c g' g a a g r f f e e d d c r }
 </lilypond>
+<p>memol language structure is roughly divided into two layers: inside
+<code>{...}</code> and outside.
+<p>XXX
+
+<h2>Token</h2>
+<p>XXX
 
 <h2>Octave</h2>
 <p>memol has a mechanism to avoid annoying octave changing.  If you write a
@@ -192,8 +197,9 @@ score 'out.0 = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E
 
 <h2>Repeat</h2>
 <p><code>"/"</code> is semantically equivalent to the previous note, the most
-recent simple note or chord in postordered depth-first traversal.  The ties are
-also inherited to the repeat note.
+recent simple note or chord in postordered depth-first traversal.  The ties of
+child notes are inherited if a target is composite (the tie attached to itself
+is not inherited).
 <pre>
 score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
 </pre>
@@ -212,8 +218,10 @@ score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
 score 'out.0 = [ { c D E d } ( { E F G A | c c c c } 2 { c D E F } ) ]
 </pre>
 
-<h2>Variable</h2>
-<p>XXX
+<h2>Score variable</h2>
+<p>Score variable probably works as you expected.  It is possible to use
+variable defined after its location.  Defining the same name variable more than
+once causes error.
 <pre>
 score 'part_a = { e F G A }
 score 'part_b = { c D E F }
@@ -238,6 +246,21 @@ score 'out.0   = 2'pattern with q = 'chord
 <pre>
 value 'vel = { ... }
 </pre>
+
+<!--
+<h2>Articulation</h2>
+<p>Some articulation types are supported by fixed functions.
+<pre>
+        ~ : legato
+(default) : non-legato
+        ' : staccato
+</pre>
+-->
+
+<h2>MIDI channels</h2>
+<p>Although this is out of the language specification, current implementation
+maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
+<code>'out.15</code> maps to MIDI channel 1 .. 16.
 
 </body>
 </html>

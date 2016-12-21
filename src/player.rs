@@ -1,6 +1,6 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
 use std::*;
-use cext;
+use jack;
 use misc;
 use ratio;
 use midi;
@@ -14,15 +14,15 @@ struct SharedData {
 // XXX: unmovable mark or 2nd depth indirection.
 pub struct Player {
 	shared: sync::Mutex<SharedData>,
-	jack: *mut cext::jack_client_t,
-	port: *mut cext::jack_port_t,
+	jack: *mut jack::Client,
+	port: *mut jack::Port,
 	name: String,
 }
 
 impl Drop for Player {
 	fn drop( &mut self ) {
 		unsafe {
-			cext::jack_client_close( self.jack );
+			jack::jack_client_close( self.jack );
 		}
 	}
 }
@@ -30,24 +30,24 @@ impl Drop for Player {
 impl Player {
 	pub fn new( name: &str ) -> io::Result<Box<Player>> {
 		unsafe {
-			let jack = cext::jack_client_open(
+			let jack = jack::jack_client_open(
 				ffi::CString::new( name ).unwrap().as_ptr(),
-				cext::JackOptions::JackNullOption,
+				0,
 				ptr::null_mut()
 			);
 			if jack.is_null() {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
-			let port = cext::jack_port_register(
+			let port = jack::jack_port_register(
 				jack,
 				ffi::CString::new( "out" ).unwrap().as_ptr(),
-				cext::JACK_DEFAULT_MIDI_TYPE.as_ptr() as *const i8,
-				cext::JackPortFlags::JackPortIsOutput as u64,
+				ffi::CString::new( "8 bit raw midi" ).unwrap().as_ptr(),
+				jack::PORT_IS_OUTPUT,
 				0
 			);
 			if port.is_null() {
-				cext::jack_client_close( jack );
+				jack::jack_client_close( jack );
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
@@ -61,15 +61,14 @@ impl Player {
 				name: name.into(),
 			} );
 
-			let this_ptr = &mut *this as *mut Player as *mut os::raw::c_void;
-			if cext::jack_set_process_callback( this.jack, Some( Player::process_callback ), this_ptr ) != 0 {
+			if jack::jack_set_process_callback( this.jack, Player::process_callback, &mut *this ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
-			if cext::jack_set_sync_callback( this.jack, Some( Player::sync_callback ), this_ptr ) != 0 {
+			if jack::jack_set_sync_callback( this.jack, Player::sync_callback, &mut *this ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
-			if cext::jack_activate( this.jack ) != 0 {
+			if jack::jack_activate( this.jack ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
@@ -85,7 +84,7 @@ impl Player {
 
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			if cext::jack_connect(
+			if jack::jack_connect(
 				self.jack,
 				ffi::CString::new( format!( "{}:out", self.name ) ).unwrap().as_ptr(),
 				ffi::CString::new( port ).unwrap().as_ptr(),
@@ -98,31 +97,32 @@ impl Player {
 
 	pub fn play( &mut self ) -> io::Result<()> {
 		unsafe {
-			cext::jack_transport_start( self.jack );
+			jack::jack_transport_start( self.jack );
 		}
 		Ok( () )
 	}
 
 	pub fn seek( &mut self, time: ratio::Ratio ) -> io::Result<()> {
 		unsafe {
-			let mut pos: cext::jack_position_t = mem::uninitialized();
-			cext::jack_transport_query( self.jack, &mut pos );
-			cext::jack_transport_locate( self.jack, (time * pos.frame_rate as i64).to_int() as u32 );
+			let mut pos: jack::Position = mem::uninitialized();
+			jack::jack_transport_query( self.jack, &mut pos );
+			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as i64).to_int() as u32 );
 		}
 		Ok( () )
 	}
 
-	extern fn process_callback( size: cext::jack_nframes_t, this_ptr: *mut os::raw::c_void ) -> os::raw::c_int {
+	extern fn process_callback( size: u32, this: *mut any::Any ) -> i32 {
 		unsafe {
-			let this = &mut *(this_ptr as *mut Player);
+			let this = &mut *(this as *mut Player);
 
-			let mut pos: cext::jack_position_t = mem::uninitialized();
-			if cext::jack_transport_query( this.jack, &mut pos ) != cext::JackTransportRolling {
-				return 0;
+			let mut pos: jack::Position = mem::uninitialized();
+			match jack::jack_transport_query( this.jack, &mut pos ) {
+				jack::TransportState::Rolling => (),
+				_ => return 0,
 			}
 
-			let buf = cext::jack_port_get_buffer( this.port, size );
-			cext::jack_midi_clear_buffer( buf );
+			let buf = jack::jack_port_get_buffer( this.port, size );
+			jack::jack_midi_clear_buffer( buf );
 
 			let mut shared = match this.shared.try_lock() {
 				Err( _ ) => return 0,
@@ -132,7 +132,7 @@ impl Player {
 			if shared.changed {
 				for ch in 0 .. 16 {
 					let msg: [u8; 3] = [ 0xb0 + ch, 0x7b, 0x00 ];
-					cext::jack_midi_event_write( buf, 0, &msg as *const u8, msg.len() );
+					jack::jack_midi_event_write( buf, 0, &msg as *const u8, msg.len() );
 				}
 				shared.changed = false;
 			}
@@ -143,13 +143,13 @@ impl Player {
 			let iend = misc::bsearch_boundary( &shared.events, |e| e.time < fend );
 			for ev in shared.events[ibgn .. iend].iter() {
 				let n = (ev.time * pos.frame_rate as i64).to_int() as u32 - pos.frame;
-				cext::jack_midi_event_write( buf, n, &ev.msg as *const u8, ev.len as usize );
+				jack::jack_midi_event_write( buf, n, &ev.msg as *const u8, ev.len as usize );
 			}
 		}
 		0
 	}
 
-	extern fn sync_callback( _: cext::jack_transport_state_t, _: *mut cext::jack_position_t, this_ptr: *mut os::raw::c_void ) -> i32 {
+	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this_ptr: *mut any::Any ) -> i32 {
 		unsafe {
 			let this = &mut *(this_ptr as *mut Player);
 

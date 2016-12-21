@@ -7,13 +7,13 @@ extern crate getopts;
 #[allow( non_upper_case_globals )]
 #[allow( non_camel_case_types )]
 #[allow( improper_ctypes )]
-mod cext;
 mod misc;
 mod ratio;
 mod ast;
 mod parser;
 mod irgen;
 mod midi;
+mod jack;
 mod player;
 mod notify;
 use std::*;

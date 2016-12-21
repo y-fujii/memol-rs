@@ -4,17 +4,23 @@ use std::*;
 
 #[cfg( target_os = "linux" )]
 pub fn notify_wait( path: &str ) -> io::Result<()> {
-	use cext;
+	const IN_CLOEXEC: i32 = 0o2000000;
+	const IN_CLOSE_WRITE: u32 = 0x8;
+	extern "C" {
+		fn inotify_init1( _: i32 ) -> i32;
+		fn inotify_add_watch( _: i32, _: *const i8, _: u32 ) -> i32;
+	}
 	use std::io::prelude::*;
 	use std::os::unix::io::FromRawFd;
+
 	unsafe {
-		let fd = cext::inotify_init1( cext::IN_CLOEXEC as os::raw::c_int );
+		let fd = inotify_init1( IN_CLOEXEC as os::raw::c_int );
 		let mut fs = fs::File::from_raw_fd( fd );
 
-		if cext::inotify_add_watch(
+		if inotify_add_watch(
 			fd,
 			ffi::CString::new( path ).unwrap().as_ptr(),
-			cext::IN_CLOSE_WRITE
+			IN_CLOSE_WRITE
 		) < 0 {
 			return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 		}

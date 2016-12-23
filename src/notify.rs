@@ -14,14 +14,10 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 	use std::os::unix::io::FromRawFd;
 
 	unsafe {
-		let fd = inotify_init1( IN_CLOEXEC as os::raw::c_int );
+		let fd = inotify_init1( IN_CLOEXEC );
 		let mut fs = fs::File::from_raw_fd( fd );
 
-		if inotify_add_watch(
-			fd,
-			ffi::CString::new( path ).unwrap().as_ptr(),
-			IN_CLOSE_WRITE
-		) < 0 {
+		if inotify_add_watch( fd, ffi::CString::new( path ).unwrap().as_ptr(), IN_CLOSE_WRITE ) < 0 {
 			return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 		}
 

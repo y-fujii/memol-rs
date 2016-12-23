@@ -45,7 +45,6 @@ pub struct Position {
 pub type ProcessCallback = extern "C" fn( u32, *mut any::Any ) -> i32;
 pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *mut any::Any ) -> i32;
 
-#[link( name = "jack")]
 extern "C" {
 	pub fn jack_activate( _: *mut Client ) -> i32;
 	pub fn jack_client_close( _: *mut Client ) -> i32;
@@ -54,6 +53,7 @@ extern "C" {
 	pub fn jack_midi_clear_buffer( _: *mut PortBuffer ) -> ();
 	pub fn jack_midi_event_write( _: *mut PortBuffer, _: u32, _: *const u8, _: usize ) -> i32;
 	pub fn jack_port_get_buffer( _: *mut Port, _: u32 ) -> *mut PortBuffer;
+	pub fn jack_port_name( _: *const Port ) -> *const i8;
 	pub fn jack_port_register( _: *mut Client, _: *const i8, _: *const i8, _: c_ulong, _: c_ulong ) -> *mut Port;
 	pub fn jack_set_process_callback( _: *mut Client, _: ProcessCallback, _: *mut any::Any ) -> i32;
 	pub fn jack_set_sync_callback( _: *mut Client, _: SyncCallback, _: *mut any::Any ) -> i32;

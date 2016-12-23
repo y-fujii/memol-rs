@@ -16,7 +16,6 @@ pub struct Player {
 	shared: sync::Mutex<SharedData>,
 	jack: *mut jack::Client,
 	port: *mut jack::Port,
-	name: String,
 }
 
 impl Drop for Player {
@@ -58,7 +57,6 @@ impl Player {
 				} ),
 				jack: jack,
 				port: port,
-				name: name.into(),
 			} );
 
 			if jack::jack_set_process_callback( this.jack, Player::process_callback, &mut *this ) != 0 {
@@ -86,7 +84,7 @@ impl Player {
 		unsafe {
 			if jack::jack_connect(
 				self.jack,
-				ffi::CString::new( format!( "{}:out", self.name ) ).unwrap().as_ptr(),
+				jack::jack_port_name( self.port ),
 				ffi::CString::new( port ).unwrap().as_ptr(),
 			) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
@@ -149,9 +147,9 @@ impl Player {
 		0
 	}
 
-	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this_ptr: *mut any::Any ) -> i32 {
+	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *mut any::Any ) -> i32 {
 		unsafe {
-			let this = &mut *(this_ptr as *mut Player);
+			let this = &mut *(this as *mut Player);
 
 			let mut shared = match this.shared.try_lock() {
 				Err( _ ) => return 0,

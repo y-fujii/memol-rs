@@ -8,7 +8,7 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 	const IN_CLOSE_WRITE: u32 = 0x8;
 	extern "C" {
 		fn inotify_init1( _: i32 ) -> i32;
-		fn inotify_add_watch( _: i32, _: *const i8, _: u32 ) -> i32;
+		fn inotify_add_watch( _: i32, _: *const os::raw::c_char, _: u32 ) -> i32;
 	}
 	use std::io::prelude::*;
 	use std::os::unix::io::FromRawFd;

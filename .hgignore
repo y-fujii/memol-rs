@@ -1,5 +1,4 @@
 syntax: glob
 Cargo.lock
 target/
-src/cext.rs
 src/parser.rs

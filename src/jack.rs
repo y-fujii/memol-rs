@@ -2,7 +2,7 @@
 #![allow( improper_ctypes )]
 
 use std::*;
-use std::os::raw::c_ulong;
+use std::os::raw::{ c_char, c_ulong };
 
 
 pub const PORT_IS_OUTPUT: c_ulong = 2;
@@ -48,13 +48,13 @@ pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *mut an
 extern "C" {
 	pub fn jack_activate( _: *mut Client ) -> i32;
 	pub fn jack_client_close( _: *mut Client ) -> i32;
-	pub fn jack_client_open( _: *const i8, _: u32, _: *mut u32, ... ) -> *mut Client;
-	pub fn jack_connect( _: *mut Client, _: *const i8, _: *const i8 ) -> i32;
+	pub fn jack_client_open( _: *const c_char, _: u32, _: *mut u32, ... ) -> *mut Client;
+	pub fn jack_connect( _: *mut Client, _: *const c_char, _: *const c_char ) -> i32;
 	pub fn jack_midi_clear_buffer( _: *mut PortBuffer ) -> ();
 	pub fn jack_midi_event_write( _: *mut PortBuffer, _: u32, _: *const u8, _: usize ) -> i32;
 	pub fn jack_port_get_buffer( _: *mut Port, _: u32 ) -> *mut PortBuffer;
-	pub fn jack_port_name( _: *const Port ) -> *const i8;
-	pub fn jack_port_register( _: *mut Client, _: *const i8, _: *const i8, _: c_ulong, _: c_ulong ) -> *mut Port;
+	pub fn jack_port_name( _: *const Port ) -> *const c_char;
+	pub fn jack_port_register( _: *mut Client, _: *const c_char, _: *const c_char, _: c_ulong, _: c_ulong ) -> *mut Port;
 	pub fn jack_set_process_callback( _: *mut Client, _: ProcessCallback, _: *mut any::Any ) -> i32;
 	pub fn jack_set_sync_callback( _: *mut Client, _: SyncCallback, _: *mut any::Any ) -> i32;
 	pub fn jack_transport_locate( _: *mut Client, _: u32 ) -> i32;

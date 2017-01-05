@@ -1,13 +1,7 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
-#![feature( untagged_unions )]
-
 extern crate lalrpop_util;
 extern crate regex;
 extern crate getopts;
-#[allow( dead_code )]
-#[allow( non_upper_case_globals )]
-#[allow( non_camel_case_types )]
-#[allow( improper_ctypes )]
 mod misc;
 mod ratio;
 mod ast;

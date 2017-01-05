@@ -32,11 +32,11 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 	let bgn = fs::metadata( path )?.modified()?;
 	let mut mid;
 	loop {
+		thread::sleep( time::Duration::from_millis( 100 ) );
 		mid = fs::metadata( path )?.modified()?;
 		if mid != bgn {
 			break;
 		}
-		thread::sleep( time::Duration::from_millis( 100 ) );
 	}
 	loop {
 		thread::sleep( time::Duration::from_millis( 100 ) );

@@ -2,6 +2,7 @@
 #![feature( untagged_unions )]
 
 extern crate lalrpop_util;
+extern crate regex;
 extern crate getopts;
 #[allow( dead_code )]
 #[allow( non_upper_case_globals )]
@@ -23,7 +24,9 @@ use std::str::FromStr;
 
 fn compile( src: &str, dump: bool ) -> Result<Vec<midi::Event>, misc::Error> {
 	let now = time::SystemTime::now();
-	let tree = match parser::parse_definition( src ) {
+	// XXX
+	let src = regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
+	let tree = match parser::parse_definition( &src ) {
 		Err( e ) => return misc::error( &format!( "{:?}", e ) ),
 		Ok ( v ) => v,
 	};

@@ -128,6 +128,11 @@ score 'out.0 = { c c G G | A A g _ | f f e e | d d c _ }
 <h2>Token</h2>
 <p>XXX
 
+<h2>Comments</h2>
+<pre>
+/* This is a comment */
+</pre>
+
 <h2>Octave</h2>
 <p>memol has a mechanism to avoid annoying octave changing.  If you write a
 note in upper case, it has higher pitch than previous one within a octave.  If
@@ -260,7 +265,7 @@ value 'vel = { ... }
 <h2>MIDI channels</h2>
 <p>Although this is out of the language specification, current implementation
 maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
-<code>'out.15</code> maps to MIDI channel 1 .. 16.
+<code>'out.15</code> are mapped to MIDI channel 1 .. 16.
 
 </body>
 </html>

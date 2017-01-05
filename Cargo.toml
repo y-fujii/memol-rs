@@ -6,6 +6,7 @@ build = "build.rs"
 
 [dependencies]
 lalrpop-util = "*"
+regex = "*"
 getopts = "*"
 
 [build-dependencies]

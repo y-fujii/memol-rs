@@ -1,57 +1,16 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
-extern crate lalrpop_util;
-extern crate regex;
 extern crate getopts;
-mod misc;
-mod ratio;
-mod ast;
-mod parser;
-mod irgen;
-mod midi;
-mod jack;
-mod player;
-mod notify;
+extern crate memol;
 use std::*;
 use std::io::prelude::*;
 use std::str::FromStr;
+use memol::*;
 
-
-fn compile( src: &str, dump: bool ) -> Result<Vec<midi::Event>, misc::Error> {
-	let now = time::SystemTime::now();
-	// XXX
-	let src = regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
-	let tree = match parser::parse_definition( &src ) {
-		Err( e ) => return misc::error( &format!( "{:?}", e ) ),
-		Ok ( v ) => v,
-	};
-
-	let irgen = irgen::Generator::new( &tree );
-	let mut migen = midi::Generator::new();
-	for ch in 0 .. 16 {
-		if let Some( ir ) = irgen.generate( &format!( "out.{}", ch ) )? {
-			if dump {
-				println!( "channel {}:", ch );
-				for f in ir.iter() {
-					if let Some( nnum ) = f.nnum {
-						println!( "\t{}/{} .. {}/{} : {}", f.bgn.y, f.bgn.x, f.end.y, f.end.x, nnum );
-					}
-				}
-			}
-			migen = migen.add_score( ch, &ir );
-		}
-	}
-	if dump {
-		let elapsed = now.elapsed().unwrap();
-		println!( "parsing & generation: {} ms.", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
-	}
-	Ok( migen.generate() )
-}
 
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
 		let mut opts = getopts::Options::new();
 		opts.optmulti( "c", "connect", "", "" );
-		opts.optflag( "d", "dump", "" );
 		opts.optopt( "s", "seek", "", "" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		let seek = match args.opt_str( "s" ) {
@@ -71,7 +30,7 @@ fn main() {
 			let mut buf = String::new();
 			fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 
-			match compile( &buf, args.opt_present( "d" ) ) {
+			match compile( &buf ) {
 				Err( e ) => {
 					println!( "error: {}", e );
 				},

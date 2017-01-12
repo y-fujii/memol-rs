@@ -1,0 +1,11 @@
+[package]
+name = "memol_gui"
+version = "0.1.0"
+authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+
+[dependencies]
+getopts = "*"
+gl = "*"
+glutin = "*"
+rust-imgui = { git = "git://github.com/ExPixel/rust-imgui/" }
+memol = { path = ".." }

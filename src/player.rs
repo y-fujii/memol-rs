@@ -40,8 +40,8 @@ impl Player {
 
 			let port = jack::jack_port_register(
 				jack,
-				ffi::CString::new( "out" ).unwrap().as_ptr(),
-				ffi::CString::new( "8 bit raw midi" ).unwrap().as_ptr(),
+				"out\0".as_ptr() as *const os::raw::c_char,
+				"8 bit raw midi\0".as_ptr() as *const os::raw::c_char,
 				jack::PORT_IS_OUTPUT,
 				0
 			);

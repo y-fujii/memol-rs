@@ -56,8 +56,8 @@
 <p>memol is a music markup language which features:
 <dl>
     <dt>Well-structured
-	<dd>Essentially, memol describes a score as recursive composition of only
-	two constructs: group <code>"[...]"</code> and chord <code>"(...)"</code>.
+	<dd>Essentially, memol describes a score as recursive composition of two
+	constructs only: group <code>"[...]"</code> and chord <code>"(...)"</code>.
     <dt>Orthogonal
 	<dd>Some musical elements like scale, chord and backing pattern can be
 	described independently and composite them each other.  <code>"with"</code>
@@ -65,7 +65,7 @@
 	expressions (note velocity, control change, ...) are also planned.
     <dt>Focused on musical composition
 	<dd>Language design and implementation help trial-and-error of musical
-	composition well.
+	composition well (in the future).
 </dl>
 <p>memol does <strong>not</strong> aim to have:
 <dl>

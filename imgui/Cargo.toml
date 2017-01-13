@@ -1,0 +1,9 @@
+[package]
+name = "imgui"
+version = "0.1.0"
+authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+build = "build.rs"
+
+[build-dependencies]
+gcc = "*"
+libbindgen = "*"

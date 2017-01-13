@@ -1,9 +1,9 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
 use std::*;
-use jack;
 use misc;
 use ratio;
 use midi;
+use jack;
 
 
 struct SharedData {
@@ -38,13 +38,7 @@ impl Player {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 
-			let port = jack::jack_port_register(
-				jack,
-				"out\0".as_ptr() as *const os::raw::c_char,
-				"8 bit raw midi\0".as_ptr() as *const os::raw::c_char,
-				jack::PORT_IS_OUTPUT,
-				0
-			);
+			let port = jack::jack_port_register( jack, c_str!( "out" ), c_str!( "8 bit raw midi" ), jack::PORT_IS_OUTPUT, 0 );
 			if port.is_null() {
 				jack::jack_client_close( jack );
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );

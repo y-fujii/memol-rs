@@ -1,13 +1,11 @@
 extern crate getopts;
 extern crate gl;
 extern crate glutin;
-#[macro_use]
-extern crate rust_imgui;
+extern crate imgui;
 extern crate memol;
 mod renderer;
 use std::*;
 use std::io::prelude::*;
-use rust_imgui as imgui;
 use memol::*;
 
 
@@ -41,7 +39,6 @@ impl Ui {
 	fn draw( &mut self ) -> bool {
 		use imgui::*;
 		let mut redraw = false;
-
 		let time_max = self.irs.iter()
 			.flat_map( |v| v.iter() )
 			.flat_map( |v| v.iter() )
@@ -49,75 +46,75 @@ impl Ui {
 			.max()
 			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
 
-		Self::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
-			let size = Self::get_window_size();
-			let note_size = vec2( (size.y / 8.0).ceil(), size.y / 128.0 );
-			redraw |= self.drag_scroll();
-			self.draw_background( note_size, time_max.to_float() as f32 );
-			self.draw_notes( note_size );
-		Self::end_root();
+		unsafe {
+			Self::begin_root( WindowFlags_HorizontalScrollbar );
+				let size = GetWindowSize();
+				let note_size = ImVec2::new( (size.y / 8.0).ceil(), size.y / 128.0 );
+				redraw |= self.drag_scroll();
+				self.draw_background( note_size, time_max.to_float() as f32 );
+				self.draw_notes( note_size );
+			Self::end_root();
 
-		set_next_window_pos( ImVec2::zero(), ImGuiSetCond::Once );
-		begin( imstr!( "Transport" ), &mut true, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar );
-			button( imstr!( "<<" ), ImVec2::zero() );
-			same_line();
-			button( imstr!( "Play" ), ImVec2::zero() );
-			same_line();
-			button( imstr!( "Stop" ), ImVec2::zero() );
-			same_line();
-			button( imstr!( ">>" ), ImVec2::zero() );
-			same_line();
-			checkbox( imstr!( "Follow" ), &mut self.follow );
-			for i in 0 .. self.show.len() {
-				same_line();
-				checkbox( imstr!( "{}", i ), &mut self.show[i] );
-			}
-		end();
+			SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
+			Begin( c_str!( "Transport" ), &mut true, WindowFlags_NoResize | WindowFlags_NoTitleBar );
+				Button( c_str!( "<<" ), &ImVec2::zero() );
+				SameLine( 0.0, -1.0 );
+				Button( c_str!( "Play" ), &ImVec2::zero() );
+				SameLine( 0.0, -1.0 );
+				Button( c_str!( "Stop" ), &ImVec2::zero() );
+				SameLine( 0.0, -1.0 );
+				Button( c_str!( ">>" ), &ImVec2::zero() );
+				SameLine( 0.0, -1.0 );
+				Checkbox( c_str!( "Follow" ), &mut self.follow );
+				for i in 0 .. self.show.len() {
+					SameLine( 0.0, -1.0 );
+					Checkbox( c_str!( "{}", i ), &mut self.show[i] );
+				}
+			End();
+		}
 		redraw
 	}
 
-	fn drag_scroll( &self ) -> bool {
+	unsafe fn drag_scroll( &self ) -> bool {
 		use imgui::*;
-
-		let mut delta = unsafe { mem::uninitialized() };
-		get_mouse_drag_delta( &mut delta, 0, 1.0 );
-		set_scroll_x( get_scroll_x() + 0.25 * delta.x );
-		set_scroll_y( get_scroll_y() + 0.25 * delta.y );
+		let delta = GetMouseDragDelta( 0, 1.0 );
+		SetScrollX( GetScrollX() + 0.25 * delta.x );
+		SetScrollY( GetScrollY() + 0.25 * delta.y );
 		delta.x != 0.0 || delta.y != 0.0
 	}
 
-	fn draw_background( &self, note_size: imgui::ImVec2, t1: f32 ) {
+	unsafe fn draw_background( &self, note_size: imgui::ImVec2, t1: f32 ) {
 		use imgui::*;
-		let dl = get_window_draw_list().unwrap();
+		let dl = &mut *GetWindowDrawList();
 		let orig = Self::get_origin();
 
-		for i in 0 .. (128 + 11) / 12 {
-			dl.add_line(
-				vec2( orig.x,                    orig.y + (i * 12) as f32 * note_size.y ),
-				vec2( orig.x + t1 * note_size.x, orig.y + (i * 12) as f32 * note_size.y ),
+		for i in 0i32 .. (128 + 11) / 12 {
+			dl.AddLine(
+				&(orig + ImVec2::new( 0.0,              (i * 12) as f32 * note_size.y )),
+				&(orig + ImVec2::new( t1 * note_size.x, (i * 12) as f32 * note_size.y )),
 				self.color_line, 1.0,
 			);
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
-				dl.add_rect_filled_simple(
-					vec2( orig.x,                    orig.y + (i * 12 + j + 0) as f32 * note_size.y ),
-					vec2( orig.x + t1 * note_size.x, orig.y + (i * 12 + j + 1) as f32 * note_size.y ),
-					self.color_chromatic,
+				dl.AddRectFilled(
+					&(orig + ImVec2::new( 0.0,              (i * 12 + j + 0) as f32 * note_size.y )),
+					&(orig + ImVec2::new( t1 * note_size.x, (i * 12 + j + 1) as f32 * note_size.y )),
+					self.color_chromatic, 0.0, !0,
 				);
 			}
 		}
 
 		for i in 0 .. t1.floor() as i32 + 1 {
-			dl.add_line(
-				vec2( orig.x + i as f32 * note_size.x - 1.0, orig.y                       ),
-				vec2( orig.x + i as f32 * note_size.x - 1.0, orig.y + 128.0 * note_size.y ),
+			dl.AddLine(
+				&(orig + ImVec2::new( i as f32 * note_size.x - 1.0, 0.0                 )),
+				&(orig + ImVec2::new( i as f32 * note_size.x - 1.0, 128.0 * note_size.y )),
 				self.color_line, 1.0,
 			);
 		}
 	}
 
-	fn draw_notes( &self, note_size: imgui::ImVec2 ) {
+	unsafe fn draw_notes( &self, note_size: imgui::ImVec2 ) {
 		use imgui::*;
-		let dl = get_window_draw_list().unwrap();
+		let dl = &mut *GetWindowDrawList();
 		let orig = Self::get_origin();
 
 		let mut i = 0;
@@ -127,72 +124,53 @@ impl Ui {
 				None      => continue,
 			};
 
-			let x0 = vec2( note.bgn.to_float() as f32 * note_size.x,       (nnum + 0) as f32 * note_size.y );
-			let x1 = vec2( note.end.to_float() as f32 * note_size.x - 1.0, (nnum + 1) as f32 * note_size.y );
-			dl.add_rect_filled_simple(
-				vec2( orig.x + x0.x, orig.y + x0.y ),
-				vec2( orig.x + x1.x, orig.y + x1.y ),
-				self.color_note,
-			);
+			let x0 = ImVec2::new( note.bgn.to_float() as f32 * note_size.x,       (nnum + 0) as f32 * note_size.y );
+			let x1 = ImVec2::new( note.end.to_float() as f32 * note_size.x - 1.0, (nnum + 1) as f32 * note_size.y );
+			dl.AddRectFilled( &(orig + x0), &(orig + x1), self.color_note, 0.0, !0 );
 
 			let dur = note.end - note.bgn;
-			set_cursor_pos( x0 );
-			invisible_button( imstr!( "note##{}", i ), vec2( dur.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
-			if is_item_hovered() {
-				begin_tooltip();
-				text( imstr!( "note number = {}", nnum ) );
-				text( imstr!( "  gate time = {}/{}", note.bgn.y, note.bgn.x ) );
-				text( imstr!( "   duration = {}/{}", dur.y, dur.x ) );
-				end_tooltip();
+			SetCursorPos( &x0 );
+			InvisibleButton( c_str!( "note##{}", i ), &ImVec2::new( dur.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
+			if IsItemHovered() {
+				BeginTooltip();
+				Text( c_str!( "note number = {}", nnum ) );
+				Text( c_str!( "  gate time = {}/{}", note.bgn.y, note.bgn.x ) );
+				Text( c_str!( "   duration = {}/{}", dur.y, dur.x ) );
+				EndTooltip();
 			}
 
 			i += 1;
 		}
 	}
 
-	fn begin_root( flags: imgui::ImGuiWindowFlags ) {
+	unsafe fn begin_root( flags: imgui::ImGuiWindowFlags ) {
 		use imgui::*;
-
-		let size = get_io().display_size;
-		let rounding = get_style().unwrap().window_rounding;
-		let padding  = get_style().unwrap().window_padding;
-		push_style_var( ImGuiStyleVar::WindowRounding, 0.0 );
-		push_style_var_vec( ImGuiStyleVar::WindowPadding, ImVec2::zero() );
-		set_next_window_pos( ImVec2::zero(), ImGuiSetCond::Always );
-		set_next_window_size( size, ImGuiSetCond::Always );
-		begin2(
-			imstr!( "root" ), &mut true, size, 0.0,
-			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_NoBringToFrontOnFocus |
-			ImGuiWindowFlags_NoTitleBar | flags
+		let size = (*GetIO()).DisplaySize;
+		let rounding = (*GetStyle()).WindowRounding;
+		let padding  = (*GetStyle()).WindowPadding;
+		PushStyleVar( StyleVar::WindowRounding as i32, 0.0 );
+		PushStyleVar1( StyleVar::WindowPadding as i32, &ImVec2::zero() );
+		SetNextWindowPos( &ImVec2::zero(), SetCond_Always );
+		SetNextWindowSize( &size, SetCond_Always );
+		Begin1(
+			c_str!( "root" ), &mut true, &size, 0.0,
+			WindowFlags_NoMove | WindowFlags_NoResize | WindowFlags_NoBringToFrontOnFocus |
+			WindowFlags_NoTitleBar | flags
 		);
-		push_style_var( ImGuiStyleVar::WindowRounding, rounding );
-		push_style_var_vec( ImGuiStyleVar::WindowPadding, padding );
+		PushStyleVar( StyleVar::WindowRounding as i32, rounding );
+		PushStyleVar1( StyleVar::WindowPadding as i32, &padding );
 	}
 
-	fn end_root() {
-		imgui::pop_style_var( 2 );
-		imgui::end();
-		imgui::pop_style_var( 2 );
+	unsafe fn end_root() {
+		use imgui::*;
+		PopStyleVar( 2 );
+		End();
+		PopStyleVar( 2 );
 	}
 
-	fn get_window_pos() -> imgui::ImVec2 {
-		let mut pos = unsafe { mem::uninitialized() };
-		imgui::get_window_pos( &mut pos );
-		pos
-	}
-
-	fn get_window_size() -> imgui::ImVec2 {
-		let mut size = unsafe { mem::uninitialized() };
-		imgui::get_window_size( &mut size );
-		size
-	}
-
-	fn get_origin() -> imgui::ImVec2 {
-		imgui::vec2(
-			Self::get_window_pos().x - imgui::get_scroll_x(),
-			Self::get_window_pos().y - imgui::get_scroll_y(),
-		)
+	unsafe fn get_origin() -> imgui::ImVec2 {
+		use imgui::*;
+		GetWindowPos() - ImVec2::new( GetScrollX(), GetScrollY() )
 	}
 }
 
@@ -271,7 +249,7 @@ fn main() {
 			irs.push( irgen.generate( &format!( "out.{}", ch ) )? );
 		}
 
-		imgui::get_io().ini_filename = ptr::null();
+		unsafe { &mut *imgui::GetIO() }.IniFilename = ptr::null();
 		let mut window = Window::new( Ui::new( irs ) );
 		window.event_loop();
 

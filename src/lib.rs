@@ -1,6 +1,7 @@
 // by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
 extern crate regex;
 extern crate lalrpop_util;
+#[macro_use]
 pub mod misc;
 pub mod ratio;
 pub mod ast;
@@ -14,16 +15,14 @@ use std::*;
 
 
 pub mod parser {
-	use regex;
-	use misc;
 	include!( "parser.rs" );
 
-	pub fn parse( src: &str ) -> Result<Definition, misc::Error> {
+	pub fn parse( src: &str ) -> Result<Definition, ::misc::Error> {
 		// XXX
-		let src = regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
+		let src = ::regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
 		match parse_definition( &src ) {
 			Ok ( v ) => Ok( v ),
-			Err( e ) => misc::error( &format!( "{:?}", e ) ),
+			Err( e ) => ::misc::error( &format!( "{:?}", e ) ),
 		}
 	}
 }

@@ -29,11 +29,7 @@ impl Drop for Player {
 impl Player {
 	pub fn new( name: &str ) -> io::Result<Box<Player>> {
 		unsafe {
-			let jack = jack::jack_client_open(
-				ffi::CString::new( name ).unwrap().as_ptr(),
-				0,
-				ptr::null_mut()
-			);
+			let jack = jack::jack_client_open( c_str!( "{}", name ), 0, ptr::null_mut() );
 			if jack.is_null() {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
@@ -76,11 +72,7 @@ impl Player {
 
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			if jack::jack_connect(
-				self.jack,
-				jack::jack_port_name( self.port ),
-				ffi::CString::new( port ).unwrap().as_ptr(),
-			) != 0 {
+			if jack::jack_connect( self.jack, jack::jack_port_name( self.port ), c_str!( "{}", port ) ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 			}
 		}
@@ -124,7 +116,7 @@ impl Player {
 			if shared.changed {
 				for ch in 0 .. 16 {
 					let msg: [u8; 3] = [ 0xb0 + ch, 0x7b, 0x00 ];
-					jack::jack_midi_event_write( buf, 0, &msg as *const u8, msg.len() );
+					jack::jack_midi_event_write( buf, 0, msg.as_ptr(), msg.len() );
 				}
 				shared.changed = false;
 			}
@@ -135,7 +127,7 @@ impl Player {
 			let iend = misc::bsearch_boundary( &shared.events, |e| e.time < fend );
 			for ev in shared.events[ibgn .. iend].iter() {
 				let n = (ev.time * pos.frame_rate as i64).to_int() as u32 - pos.frame;
-				jack::jack_midi_event_write( buf, n, &ev.msg as *const u8, ev.len as usize );
+				jack::jack_midi_event_write( buf, n, ev.msg.as_ptr(), ev.len as usize );
 			}
 		}
 		0

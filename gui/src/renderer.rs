@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
 use std::os::raw::{ c_void, c_char };
 use gl;

@@ -2,13 +2,17 @@
 name = "memol_gui"
 version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+build = "build.rs"
 
 [dependencies]
 getopts = "*"
 gl = "*"
 glutin = "*"
-imgui = { path = "../imgui" }
 memol = { path = ".." }
+
+[build-dependencies]
+gcc = "*"
+libbindgen = "*"
 
 [profile.release]
 lto = true

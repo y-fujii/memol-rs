@@ -7,8 +7,10 @@ fn main() {
 	let out_dir = env::var( "OUT_DIR" ).unwrap();
 
 	libbindgen::builder()
+		.clang_arg( "-x" )
+		.clang_arg( "c++" )
 		.enable_cxx_namespaces()
-		.header( "src/imgui.hpp" )
+		.header( "imgui/imgui.h" )
 		.hide_type( "ImGuiTextBuffer" )
 		.generate()
 		.unwrap()
@@ -17,6 +19,7 @@ fn main() {
 
 	gcc::Config::new()
 		.cpp( true )
-		.file( "src/imgui.cpp" )
+		.file( "imgui/imgui.cpp" )
+		.file( "imgui/imgui_draw.cpp" )
 		.compile( "libimgui.a" );
 }

@@ -1,4 +1,4 @@
-#![feature( untagged_unions )]
+// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 #![allow( dead_code )]
 #![allow( non_camel_case_types )]
 #![allow( non_snake_case )]
@@ -179,24 +179,6 @@ pub const SetCond_Always       : i32 = 1 << 0;
 pub const SetCond_Once         : i32 = 1 << 1;
 pub const SetCond_FirstUseEver : i32 = 1 << 2;
 pub const SetCond_Appearing    : i32 = 1 << 3;
-
-pub unsafe fn GetWindowPos() -> ImVec2 {
-	let mut out = mem::uninitialized();
-	wrapGetWindowPos( &mut out );
-	out
-}
-
-pub unsafe fn GetWindowSize() -> ImVec2 {
-	let mut out = mem::uninitialized();
-	wrapGetWindowSize( &mut out );
-	out
-}
-
-pub unsafe fn GetMouseDragDelta( b: i32, t: f32 ) -> ImVec2 {
-	let mut out = mem::uninitialized();
-	wrapGetMouseDragDelta( &mut out, b, t );
-	out
-}
 
 impl ImVec2 {
 	pub fn new( x: f32, y: f32 ) -> Self {

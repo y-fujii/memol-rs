@@ -1,4 +1,4 @@
-// by Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under 2-clause BSD license.
+// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
 
 

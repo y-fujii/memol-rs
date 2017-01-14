@@ -1,8 +1,10 @@
+// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+#![feature( untagged_unions )]
 extern crate getopts;
 extern crate gl;
 extern crate glutin;
-extern crate imgui;
 extern crate memol;
+mod imgui;
 mod renderer;
 use std::*;
 use std::io::prelude::*;

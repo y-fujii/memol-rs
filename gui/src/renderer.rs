@@ -60,7 +60,7 @@ const FRAG_SHADER_CODE: &'static str = r#"
 	out vec4 out_color;
 
 	void main() {
-		out_color = frag_color * texture( Texture, frag_uv );
+		out_color = vec4( frag_color.xyz, frag_color.w * texture( Texture, frag_uv ).x );
 	}
 "#;
 
@@ -106,7 +106,7 @@ impl Renderer {
 			let mut w = 0;
 			let mut h = 0;
 			let mut bpp = 0;
-			(*io.Fonts).GetTexDataAsRGBA32( &mut data, &mut w, &mut h, &mut bpp );
+			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, &mut bpp );
 
 			// font texture.
 			let mut tex = 0;
@@ -114,7 +114,7 @@ impl Renderer {
 			gl::BindTexture( gl::TEXTURE_2D, tex );
 			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32 );
 			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32 );
-			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::RGBA as i32, w, h, 0, gl::RGBA, gl::UNSIGNED_BYTE, data as *const c_void );
+			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::R8 as i32, w, h, 0, gl::RED, gl::UNSIGNED_BYTE, data as *const c_void );
 			(*io.Fonts).TexID = mem::transmute( tex as usize );
 
 			// shader program.
@@ -163,13 +163,11 @@ impl Renderer {
 		}
 	}
 
-	pub fn new_frame( &mut self, display_size: (u32, u32), scale: f32 ) {
+	pub fn new_frame( &mut self, display_size: (u32, u32) ) {
 		unsafe {
 			let io = &mut *imgui::GetIO();
-			io.DisplaySize.x = display_size.0 as f32;
-			io.DisplaySize.y = display_size.1 as f32;
-			io.DisplayFramebufferScale.x = scale;
-			io.DisplayFramebufferScale.y = scale;
+			io.DisplaySize.x = display_size.0 as f32 / io.DisplayFramebufferScale.x;
+			io.DisplaySize.y = display_size.1 as f32 / io.DisplayFramebufferScale.y;
 			imgui::NewFrame();
 		}
 	}

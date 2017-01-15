@@ -135,9 +135,28 @@ impl Ui {
 			InvisibleButton( c_str!( "note##{}", i ), &ImVec2::new( dur.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
 			if IsItemHovered() {
 				BeginTooltip();
-				Text( c_str!( "note number = {}", nnum ) );
-				Text( c_str!( "  gate time = {}/{}", note.bgn.y, note.bgn.x ) );
-				Text( c_str!( "   duration = {}/{}", dur.y, dur.x ) );
+				let sym = match nnum % 12 {
+					 0 => "C",
+					 1 => "C+",
+					 2 => "D",
+					 3 => "D+",
+					 4 => "E",
+					 5 => "F",
+					 6 => "F+",
+					 7 => "G",
+					 8 => "G+",
+					 9 => "A",
+					10 => "A+",
+					11 => "B",
+					_  => panic!(),
+				};
+				Text( c_str!( "     note = {}{}", sym, nnum / 12 - 1 ) );
+				Text( c_str!( "gate time = {} + {}/{}",
+					misc::idiv( note.bgn.y, note.bgn.x ),
+					misc::imod( note.bgn.y, note.bgn.x ),
+					note.bgn.x,
+				) );
+				Text( c_str!( " duration = {}/{}", dur.y, dur.x ) );
 				EndTooltip();
 			}
 
@@ -200,7 +219,7 @@ impl Window {
 	// XXX
 	fn event_loop( &mut self ) {
 		for _ in 0 .. 2 {
-			self.renderer.new_frame( self.window.get_inner_size().unwrap(), self.window.hidpi_factor() );
+			self.renderer.new_frame( self.window.get_inner_size().unwrap() );
 			self.ui.draw();
 		}
 		unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
@@ -221,7 +240,7 @@ impl Window {
 					}
 				}
 
-				self.renderer.new_frame( self.window.get_inner_size().unwrap(), self.window.hidpi_factor() );
+				self.renderer.new_frame( self.window.get_inner_size().unwrap() );
 				let redraw = self.ui.draw();
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
@@ -251,7 +270,16 @@ fn main() {
 			irs.push( irgen.generate( &format!( "out.{}", ch ) )? );
 		}
 
-		unsafe { &mut *imgui::GetIO() }.IniFilename = ptr::null();
+		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
+		unsafe {
+			let io = &mut *imgui::GetIO();
+			io.IniFilename = ptr::null();
+			let mut cfg = imgui::ImFontConfig::new();
+			cfg.FontDataOwnedByAtlas = false;
+			(*io.Fonts).AddFontFromMemoryTTF(
+				font.as_ptr() as *mut os::raw::c_void, font.len() as i32, 16.0, &cfg, ptr::null()
+			);
+		}
 		let mut window = Window::new( Ui::new( irs ) );
 		window.event_loop();
 

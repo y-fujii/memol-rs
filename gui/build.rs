@@ -19,6 +19,10 @@ fn main() {
 
 	gcc::Config::new()
 		.cpp( true )
+		.cpp_link_stdlib( None )
+		.flag( "-fno-rtti" )
+		.flag( "-fno-exceptions" )
+		.flag( "-fno-threadsafe-statics" )
 		.file( "imgui/imgui.cpp" )
 		.file( "imgui/imgui_draw.cpp" )
 		.compile( "libimgui.a" );

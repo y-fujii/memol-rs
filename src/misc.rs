@@ -23,12 +23,14 @@ pub fn error<T, U: From<Error>>( text: &str ) -> Result<T, U> {
 	Err( From::from( Error{ text: text.into() } ) )
 }
 
-pub fn idiv( x: i32, y: i32 ) -> i32 {
+#[allow( deprecated )]
+pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + num::One>( x: T, y: T ) -> T {
 	let r = x / y;
-	if r * y <= x { r } else { r - 1 }
+	if r * y <= x { r } else { r - T::one() }
 }
 
-pub fn imod( x: i32, y: i32 ) -> i32 {
+#[allow( deprecated )]
+pub fn imod<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + num::One>( x: T, y: T ) -> T {
 	x - y * idiv( x, y )
 }
 

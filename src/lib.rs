@@ -1,4 +1,5 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+#![feature( zero_one )]
 extern crate regex;
 extern crate lalrpop_util;
 #[macro_use]

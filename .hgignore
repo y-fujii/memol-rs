@@ -1,8 +1,6 @@
 syntax: glob
+src/parser.rs
 Cargo.lock
 target/
-src/parser.rs
-imgui/Cargo.lock
-imgui/target/
 gui/Cargo.lock
 gui/target/

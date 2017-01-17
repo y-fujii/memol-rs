@@ -105,8 +105,7 @@ impl Renderer {
 			let mut data = ptr::null_mut();
 			let mut w = 0;
 			let mut h = 0;
-			let mut bpp = 0;
-			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, &mut bpp );
+			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() );
 
 			// font texture.
 			let mut tex = 0;
@@ -237,23 +236,47 @@ impl Renderer {
 				2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
 			gl::BindVertexArray( self.vao );
 
+			let vtx_size = (0 .. draw_data.CmdListsCount as isize)
+				.map( |i| (**draw_data.CmdLists.offset( i )).VtxBuffer.Size )
+				.max()
+				.unwrap_or( 0 );
+			gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
+			gl::BufferData(
+				gl::ARRAY_BUFFER,
+				vtx_size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
+				ptr::null(),
+				gl::DYNAMIC_DRAW,
+			);
+
+			let idx_size = (0 .. draw_data.CmdListsCount as isize)
+				.map( |i| (**draw_data.CmdLists.offset( i )).IdxBuffer.Size )
+				.max()
+				.unwrap_or( 0 );
+			gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
+			gl::BufferData(
+				gl::ELEMENT_ARRAY_BUFFER,
+				idx_size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
+				ptr::null(),
+				gl::DYNAMIC_DRAW,
+			);
+
 			for i in 0 .. draw_data.CmdListsCount {
 				let cmd_list = &**draw_data.CmdLists.offset( i as isize );
 
 				gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
-				gl::BufferData(
+				gl::BufferSubData(
 					gl::ARRAY_BUFFER,
+					0,
 					cmd_list.VtxBuffer.Size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
 					cmd_list.VtxBuffer.Data as *const c_void,
-					gl::STREAM_DRAW
 				);
 
 				gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
-				gl::BufferData(
+				gl::BufferSubData(
 					gl::ELEMENT_ARRAY_BUFFER,
+					0,
 					cmd_list.IdxBuffer.Size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
 					cmd_list.IdxBuffer.Data as *const c_void,
-					gl::STREAM_DRAW
 				);
 
 				let mut offset = 0;

@@ -258,7 +258,7 @@ fn main() {
 		let opts = getopts::Options::new();
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
-			return misc::error( "" );
+			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
 		let mut buf = String::new();

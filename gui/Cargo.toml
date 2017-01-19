@@ -13,6 +13,3 @@ memol = { path = ".." }
 [build-dependencies]
 gcc = "*"
 libbindgen = "*"
-
-[profile.release]
-lto = true

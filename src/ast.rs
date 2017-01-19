@@ -1,10 +1,18 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
 
-#[derive(Debug)]
+
+#[derive(Clone, Debug)]
+pub struct Ast<T: Clone> {
+	pub ast: T,
+	pub bgn: usize,
+	pub end: usize,
+}
+
+#[derive(Clone, Debug)]
 pub struct Definition {
-	pub scores: collections::HashMap<String, Box<Score>>,
-	pub values: collections::HashMap<String, Box<Value>>,
+	pub scores: collections::HashMap<String, Box<Ast<Score>>>,
+	pub values: collections::HashMap<String, Box<Ast<Value>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -20,21 +28,31 @@ pub enum Note {
 	Rest,
 	Repeat,
 	Octave( i32 ),
-	Chord( Vec<Box<Note>> ),
-	Group( Vec<(Box<Note>, i32)> ),
-	Tie( Box<Note> ),
+	Chord( Vec<Box<Ast<Note>>> ),
+	Group( Vec<(Box<Ast<Note>>, i32)> ),
+	Tie( Box<Ast<Note>> ),
 }
 
 #[derive(Clone, Debug)]
 pub enum Score {
-	Score( Vec<Box<Note>> ),
-	Variable( String ),
-	With( Box<Score>, char, Box<Score> ),
-	Parallel( Vec<Box<Score>> ),
-	Sequence( Vec<Box<Score>> ),
+	Score( Vec<Box<Ast<Note>>> ),
+	Symbol( String ),
+	With( Box<Ast<Score>>, char, Box<Ast<Score>> ),
+	Parallel( Vec<Box<Ast<Score>>> ),
+	Sequence( Vec<Box<Ast<Score>>> ),
 }
 
 #[derive(Clone, Debug)]
 pub enum Value {
 	Rest,
+}
+
+impl<T: Clone> Ast<T> {
+	pub fn new( bgn: usize, end: usize, ast: T ) -> Ast<T> {
+		Ast{ ast: ast, bgn: bgn, end: end }
+	}
+
+	pub fn new_box( bgn: usize, end: usize, ast: T ) -> Box<Ast<T>> {
+		Box::new( Self::new( bgn, end, ast ) )
+	}
 }

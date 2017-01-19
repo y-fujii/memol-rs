@@ -4,23 +4,24 @@ use std::*;
 
 #[derive(Debug)]
 pub struct Error {
-	pub text: String,
+	pub loc: usize,
+	pub msg: String,
 }
 
 impl fmt::Display for Error {
 	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
-		f.write_str( &self.text )
+		write!( f, "loc: {}, msg: {}", self.loc, self.msg )
 	}
 }
 
 impl error::Error for Error {
 	fn description( &self ) -> &str {
-		&self.text
+		&self.msg
 	}
 }
 
-pub fn error<T, U: From<Error>>( text: &str ) -> Result<T, U> {
-	Err( From::from( Error{ text: text.into() } ) )
+pub fn error<T, U: From<Error>>( loc: usize, msg: &str ) -> Result<T, U> {
+	Err( From::from( Error{ loc: loc, msg: msg.into() } ) )
 }
 
 #[allow( deprecated )]
@@ -73,6 +74,25 @@ pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usiz
 		}
 	}
 	lo
+}
+
+pub fn text_row_col( text: &str ) -> (usize, usize) {
+	let mut row = 0;
+	let mut col = 0;
+	for c in text.chars() {
+		match c {
+			'\r' => {
+			},
+			'\n' => {
+				row += 1;
+				col = 0;
+			},
+			_ => {
+				col += 1;
+			},
+		};
+	}
+	return (row, col);
 }
 
 #[macro_export]

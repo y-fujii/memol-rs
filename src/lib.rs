@@ -23,7 +23,19 @@ pub mod parser {
 		let src = ::regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
 		match parse_definition( &src ) {
 			Ok ( v ) => Ok( v ),
-			Err( e ) => ::misc::error( &format!( "{:?}", e ) ),
+			Err( e ) => {
+				use ::lalrpop_util::ParseError;
+				match e {
+					ParseError::InvalidToken{ location: loc } |
+					ParseError::UnrecognizedToken{ token: Some( (loc, _, _) ), .. } |
+					ParseError::ExtraToken{ token: (loc, _, _) } =>
+						::misc::error( loc, "unexpected token." ),
+					ParseError::UnrecognizedToken{ token: None, .. } =>
+						::misc::error( src.len(), "unexpected EOF." ),
+					ParseError::User{ error: (loc, msg) } =>
+						::misc::error( loc, msg ),
+				}
+			}
 		}
 	}
 }

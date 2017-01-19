@@ -6,68 +6,103 @@ use lalrpop_util::ParseError;
 
 grammar;
 
+extern {
+	type Error = (usize, &'static str);
+}
+
 pub definition: Definition = {
-	<a:definition> "score" <b:label> "=" <c:score_with> =>? {
+	<a:definition> <lo:@L> "score" <b:label> "=" <c:score_with> =>? {
 		let mut a = a;
 		match a.scores.insert( b, c ) {
-			Some( _ ) => Err( ParseError::User{ error: () } ),
+			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> "value" <b:label> "=" <c:value> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "=" <c:value> =>? {
 		let mut a = a;
 		match a.values.insert( b, c ) {
-			Some( _ ) => Err( ParseError::User{ error: () } ),
+			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
 			None      => Ok( a ),
 		}
 	},
 	=> Definition{ scores: collections::HashMap::new(), values: collections::HashMap::new() },
 };
 
-score_with: Box<Score> = {
-	<a:score_with> "with" <b:r"[h-z]"> "=" <c:score_repeat> => Box::new( Score::With( a, b.chars().next().unwrap(), c ) ),
-	<a:score_with> "with" "_"          "=" <c:score_repeat> => Box::new( Score::With( a, '_',                       c ) ),
-	<score_repeat>                                          => <>,
+score_with: Box<Ast<Score>> = {
+	<lo:@L> <a:score_with> "with" <b:r"[h-z]"> "=" <c:score_repeat> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::With( a, b.chars().next().unwrap(), c ) ),
+	<lo:@L> <a:score_with> "with" "_" "=" <c:score_repeat> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::With( a, '_', c ) ),
+	<score_repeat>,
 };
 
-score_repeat: Box<Score> = {
-	<a:uint> <b:score_prim> => Box::new( Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
-	<score_prim>            => <>,
+score_repeat: Box<Ast<Score>> = {
+	<lo:@L> <a:uint> <b:score_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+	<score_prim>,
 };
 
-score_prim: Box<Score> = {
-	"_"                     => Box::new( Score::Score( vec![ Box::new( Note::Rest ) ] ) ),
-	<label>                 => Box::new( Score::Variable( <> ) ),
-	"[" <score_list> "]"    => Box::new( Score::Sequence( <> ) ),
-	"(" <score_list> ")"    => Box::new( Score::Parallel( <> ) ),
-	"{" <score_content> "}" => Box::new( Score::Score( <> ) ),
+score_prim: Box<Ast<Score>> = {
+	<lo:@L> "_" <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Score( vec![ Ast::new_box( lo, hi, Note::Rest ) ] ) ),
+	<lo:@L> <a:label> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Symbol( a ) ),
+	<lo:@L> "[" <a:score_list> "]" <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Sequence( a ) ),
+	<lo:@L> "(" <a:score_list> ")" <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Parallel( a ) ),
+	<lo:@L> "{" <a:score_content> "}" <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Score( a ) ),
 };
 
-score_list: Vec<Box<Score>> = {
-	<a:score_list> <b:score_with> => { let mut a = a; a.push( b ); a },
-	                              => Vec::new(),
+score_list: Vec<Box<Ast<Score>>> = {
+	<a:score_list> <b:score_with> => {
+		let mut a = a;
+		a.push( b );
+		a
+	},
+	=> Vec::new(),
 };
 
-score_content: Vec<Box<Note>> = {
-	<a:score_content> "|" <b:group_content> => { let mut a = a;          a.push( Box::new( Note::Group( b ) ) ); a },
-	                      <b:group_content> => { let mut a = Vec::new(); a.push( Box::new( Note::Group( b ) ) ); a },
+score_content: Vec<Box<Ast<Note>>> = {
+	<a:score_content> "|" <lo:@L> <b:group_content> <hi:@R> => {
+		let mut a = a;
+		a.push( Ast::new_box( lo, hi, Note::Group( b ) ) );
+		a
+	},
+	<lo:@L> <b:group_content> <hi:@R> => {
+		let mut a = Vec::new();
+		a.push( Ast::new_box( lo, hi, Note::Group( b ) ) );
+		a
+	},
 };
 
-note: Box<Note> = {
-	"_"                                                     => Box::new( Note::Rest ),
-	"/"                                                     => Box::new( Note::Repeat ),
-	                      <a:pitch_lower> <b:key_signature> => Box::new( Note::Note( Dir::Lower,         a.0, a.1, b ) ),
-	                      <a:pitch_upper> <b:key_signature> => Box::new( Note::Note( Dir::Upper,         a.0, a.1, b ) ),
-	"$" <a:key_signature> <b:pitch_lower> <c:key_signature> => Box::new( Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
-	"$" <a:key_signature> <b:pitch_upper> <c:key_signature> => Box::new( Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
-	"[" <group_content> "]"                                 => Box::new( Note::Group( <> ) ),
-	"(" <chord_content> ")"                                 => Box::new( Note::Chord( <> ) ),
-	<note> "^"                                              => Box::new( Note::Tie( <> ) ),
+note: Box<Ast<Note>> = {
+	<lo:@L> "_" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Rest ),
+	<lo:@L> "/" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Repeat ),
+	<lo:@L> <a:pitch_lower> <b:key_signature> <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Note( Dir::Lower, a.0, a.1, b ) ),
+	<lo:@L> <a:pitch_upper> <b:key_signature> <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Note( Dir::Upper, a.0, a.1, b ) ),
+	<lo:@L> "$" <a:key_signature> <b:pitch_lower> <c:key_signature> <hi:@L> =>
+		Ast::new_box( lo, hi, Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
+	<lo:@L> "$" <a:key_signature> <b:pitch_upper> <c:key_signature> <hi:@L> =>
+		Ast::new_box( lo, hi, Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
+	<lo:@L> "[" <a:group_content> "]" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Group( a ) ),
+	<lo:@L> "(" <a:chord_content> ")" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Chord( a ) ),
+	<lo:@L> <a:note> "^" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Tie( a ) ),
 };
 
-octave: Box<Note> = {
-	"<" => { Box::new( Note::Octave(  1 ) ) },
-	">" => { Box::new( Note::Octave( -1 ) ) },
+octave: Box<Ast<Note>> = {
+	<lo:@L> "<" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Octave(  1 ) ),
+	<lo:@L> ">" <hi:@R> =>
+		Ast::new_box( lo, hi, Note::Octave( -1 ) ),
 };
 
 key_signature: i32 = {
@@ -76,21 +111,41 @@ key_signature: i32 = {
 	                    => 0,
 };
 
-group_content: Vec<(Box<Note>, i32)> = {
-	<a:group_content>          <b:note> => { let mut a = a; a.push( (b, 1) ); a },
-	<a:group_content> <c:uint> <b:note> => { let mut a = a; a.push( (b, c) ); a },
-	<a:group_content> <b:octave>        => { let mut a = a; a.push( (b, 0) ); a },
-	                                    => Vec::new(),
+group_content: Vec<(Box<Ast<Note>>, i32)> = {
+	<a:group_content> <b:note> => {
+		let mut a = a;
+		a.push( (b, 1) );
+		a
+	},
+	<a:group_content> <c:uint> <b:note> => {
+		let mut a = a;
+		a.push( (b, c) );
+		a
+	},
+	<a:group_content> <b:octave> => {
+		let mut a = a;
+		a.push( (b, 0) );
+		a
+	},
+	=> Vec::new(),
 };
 
-chord_content: Vec<Box<Note>> = {
-	<a:chord_content> <b:note>   => { let mut a = a; a.push( b ); a },
-	<a:chord_content> <b:octave> => { let mut a = a; a.push( b ); a },
-	                             => Vec::new(),
+chord_content: Vec<Box<Ast<Note>>> = {
+	<a:chord_content> <b:note> => {
+		let mut a = a;
+		a.push( b );
+		a
+	},
+	<a:chord_content> <b:octave> => {
+		let mut a = a;
+		a.push( b );
+		a
+	},
+	=> Vec::new(),
 };
 
-value: Box<Value> = {
-	=> Box::new( Value::Rest ),
+value: Box<Ast<Value>> = {
+	<lo:@L> <hi:@R> => Ast::new_box( lo, hi, Value::Rest ),
 };
 
 pitch_lower: (char, i32) = {

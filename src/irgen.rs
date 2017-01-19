@@ -23,7 +23,7 @@ struct Span<'a> {
 #[derive(Debug)]
 struct NoteState<'a> {
 	nnum: i32,
-	note: Option<&'a ast::Note>,
+	note: Option<&'a ast::Ast<ast::Note>>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
 }
 
@@ -67,8 +67,8 @@ impl<'a> Generator<'a> {
 		Ok( Some( dst ) )
 	}
 
-	fn generate_score( &self, score: &ast::Score, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
-		let end = match *score {
+	fn generate_score( &self, score: &ast::Ast<ast::Score>, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
+		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = NoteState{
 					nnum: 60,
@@ -85,14 +85,14 @@ impl<'a> Generator<'a> {
 					self.generate_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
-					return misc::error( "" );
+					return misc::error( score.end, "unpaired tie." );
 				}
 				span.bgn + ns.len() as i64
 			}
-			ast::Score::Variable( ref key ) => {
+			ast::Score::Symbol( ref key ) => {
 				let s = match self.defs.scores.get( key ) {
 					Some( v ) => v,
-					None      => return misc::error( "" ),
+					None      => return misc::error( score.bgn, "undefined symbol." ),
 				};
 				self.generate_score( s, &span, dst )?
 			},
@@ -139,16 +139,16 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note<'b>( &self, note: &'b ast::Note, span: &Span, state: &mut NoteState<'b>, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
-		match *note {
+	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut NoteState<'b>, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
+		match note.ast {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
 					Some( v ) => v,
-					None      => return misc::error( "" ),
+					None      => return misc::error( note.bgn, "note does not exist." ),
 				};
 				let f = match fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
 					Some( v ) => v,
-					None      => return misc::error( "" ),
+					None      => return misc::error( note.bgn, "note does not exist." ),
 				};
 				let nnum = match f.nnum {
 					Some( v ) => v,
@@ -199,7 +199,7 @@ impl<'a> Generator<'a> {
 			ast::Note::Repeat => {
 				match state.note {
 					Some( n ) => self.generate_note( n, span, state, dst )?,
-					None      => return misc::error( "" ),
+					None      => return misc::error( note.bgn, "previous note does not exist." ),
 				}
 			},
 			ast::Note::Octave( oct ) => {
@@ -235,12 +235,12 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 				for k in del_ties.iter() {
 					if let None = state.ties.remove( k ) {
-						return misc::error( "" );
+						return misc::error( note.bgn, "unpaired tie." );
 					}
 				}
 				for &(k, v) in new_ties.iter() {
 					if let Some( _ ) = state.ties.insert( k, v ) {
-						return misc::error( "" );
+						return misc::error( note.end, "unpaired tie." );
 					}
 				}
 			},

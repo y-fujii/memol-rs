@@ -18,7 +18,7 @@ fn main() {
 			None          => None,
 		};
 		if args.free.len() != 1 {
-			return misc::error( "" );
+			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
 		let mut player = player::Player::new( "memol" )?;
@@ -32,7 +32,8 @@ fn main() {
 
 			match compile( &buf ) {
 				Err( e ) => {
-					println!( "error: {}", e );
+					let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
+					println!( "error at ({}, {}): {}", row, col, e.msg );
 				},
 				Ok( ev ) => {
 					player.set_data( ev );

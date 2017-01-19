@@ -71,8 +71,8 @@
 <dl>
 	<dt>Complete ability to describe sheet music
 	<dd>Sheet music generation may be implemented in the future, but memol
-	never will be a complete sheet music description language.  <a
-	href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
+	never will be a complete sheet music description language.
+	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
 <p>Although the core idea of the language is considered for many years,

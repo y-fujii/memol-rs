@@ -12,12 +12,13 @@ use memol::*;
 
 
 struct Ui {
-	irs: Vec<Option<Vec<memol::irgen::FlatNote>>>,
+	irs: Vec<Vec<memol::irgen::FlatNote>>,
 	follow: bool,
-	show: Vec<bool>,
+	channel: i32,
 	color_line: u32,
 	color_chromatic: u32,
-	color_note: u32,
+	color_note_top: u32,
+	color_note_sub: u32,
 }
 
 struct Window {
@@ -27,14 +28,15 @@ struct Window {
 }
 
 impl Ui {
-	fn new( irs: Vec<Option<Vec<memol::irgen::FlatNote>>> ) -> Self {
+	fn new( irs: Vec<Vec<memol::irgen::FlatNote>> ) -> Self {
 		Ui {
-			show: vec![true; irs.len()],
 			irs: irs,
 			follow: true,
+			channel: 0,
 			color_line: 0xffe0e0e0,
 			color_chromatic: 0xfff0f0f0,
-			color_note: 0xff90a080,
+			color_note_top: 0xff60a080,
+			color_note_sub: 0xfff8e8d8,
 		}
 	}
 
@@ -43,20 +45,11 @@ impl Ui {
 		let mut redraw = false;
 		let time_max = self.irs.iter()
 			.flat_map( |v| v.iter() )
-			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
 			.max()
 			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
 
 		unsafe {
-			Self::begin_root( WindowFlags_HorizontalScrollbar );
-				let size = GetWindowSize();
-				let note_size = ImVec2::new( (size.y / 8.0).ceil(), size.y / 128.0 );
-				redraw |= self.drag_scroll();
-				self.draw_background( note_size, time_max.to_float() as f32 );
-				self.draw_notes( note_size );
-			Self::end_root();
-
 			SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
 			Begin( c_str!( "Transport" ), &mut true, WindowFlags_NoResize | WindowFlags_NoTitleBar );
 				Button( c_str!( "<<" ), &ImVec2::zero() );
@@ -68,11 +61,24 @@ impl Ui {
 				Button( c_str!( ">>" ), &ImVec2::zero() );
 				SameLine( 0.0, -1.0 );
 				Checkbox( c_str!( "Follow" ), &mut self.follow );
-				for i in 0 .. self.show.len() {
+				for i in 0 .. 16 {
 					SameLine( 0.0, -1.0 );
-					Checkbox( c_str!( "{}", i ), &mut self.show[i] );
+					RadioButton1( c_str!( "{}", i ), &mut self.channel, i );
 				}
 			End();
+
+			Self::begin_root( WindowFlags_HorizontalScrollbar );
+				let size = GetWindowSize();
+				let note_size = ImVec2::new( (size.y / 8.0).ceil(), size.y / 128.0 );
+				redraw |= self.drag_scroll();
+				self.draw_background( note_size, time_max.to_float() as f32 );
+				for (i, ir) in self.irs.iter().enumerate() {
+					if i != self.channel as usize {
+						self.draw_notes( ir, note_size, self.color_note_sub );
+					}
+				}
+				self.draw_notes( &self.irs[self.channel as usize], note_size, self.color_note_top );
+			Self::end_root();
 		}
 		redraw
 	}
@@ -90,16 +96,16 @@ impl Ui {
 		let dl = &mut *GetWindowDrawList();
 		let orig = Self::get_origin();
 
-		for i in 0i32 .. (128 + 11) / 12 {
+		for i in 0 .. (128 + 11) / 12 {
 			dl.AddLine(
-				&(orig + ImVec2::new( 0.0,              (i * 12) as f32 * note_size.y )),
-				&(orig + ImVec2::new( t1 * note_size.x, (i * 12) as f32 * note_size.y )),
+				&(orig + ImVec2::new( 0.0,              (128 - i * 12) as f32 * note_size.y )),
+				&(orig + ImVec2::new( t1 * note_size.x, (128 - i * 12) as f32 * note_size.y )),
 				self.color_line, 1.0,
 			);
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
 				dl.AddRectFilled(
-					&(orig + ImVec2::new( 0.0,              (i * 12 + j + 0) as f32 * note_size.y )),
-					&(orig + ImVec2::new( t1 * note_size.x, (i * 12 + j + 1) as f32 * note_size.y )),
+					&(orig + ImVec2::new( 0.0,              (127 - i * 12 - j) as f32 * note_size.y )),
+					&(orig + ImVec2::new( t1 * note_size.x, (128 - i * 12 - j) as f32 * note_size.y )),
 					self.color_chromatic, 0.0, !0,
 				);
 			}
@@ -114,21 +120,21 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_notes( &self, note_size: imgui::ImVec2 ) {
+	unsafe fn draw_notes( &self, notes: &Vec<irgen::FlatNote>, note_size: imgui::ImVec2, color: u32 ) {
 		use imgui::*;
 		let dl = &mut *GetWindowDrawList();
 		let orig = Self::get_origin();
 
 		let mut i = 0;
-		for note in self.irs.iter().flat_map( |v| v.iter() ).flat_map( |v| v.iter() ) {
+		for note in notes.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
 				None      => continue,
 			};
 
-			let x0 = ImVec2::new( note.bgn.to_float() as f32 * note_size.x,       (nnum + 0) as f32 * note_size.y );
-			let x1 = ImVec2::new( note.end.to_float() as f32 * note_size.x - 1.0, (nnum + 1) as f32 * note_size.y );
-			dl.AddRectFilled( &(orig + x0), &(orig + x1), self.color_note, 0.0, !0 );
+			let x0 = ImVec2::new( note.bgn.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
+			let x1 = ImVec2::new( note.end.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
+			dl.AddRectFilled( &(orig + x0), &(orig + x1), color, 0.0, !0 );
 
 			let dur = note.end - note.bgn;
 			SetCursorPos( &x0 );
@@ -265,10 +271,11 @@ fn main() {
 		fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 		let tree = parser::parse( &buf )?;
 		let irgen = irgen::Generator::new( &tree );
-		let mut irs = Vec::new();
-		for ch in 0 .. 16 {
-			irs.push( irgen.generate( &format!( "out.{}", ch ) )? );
-		}
+		let irs = (0 .. 16).map( |i|
+			irgen.generate( &format!( "out.{}", i ) )
+				.unwrap_or( None )
+				.unwrap_or( Vec::new() )
+		).collect();
 
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
 		unsafe {

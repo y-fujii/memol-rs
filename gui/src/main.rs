@@ -13,6 +13,9 @@ use imgui::ImVec2;
 use memol::*;
 
 
+const JACK_FRAME_WAIT: i32 = 12;
+
+
 struct Ui {
 	irs: Vec<Vec<memol::irgen::FlatNote>>,
 	player: Box<player::Player>,
@@ -26,7 +29,7 @@ struct Ui {
 }
 
 impl imutil::Ui for Ui {
-	fn draw( &mut self ) -> bool {
+	fn draw( &mut self ) -> i32 {
 		unsafe { self.draw_all() }
 	}
 }
@@ -46,10 +49,10 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_all( &mut self ) -> bool {
+	unsafe fn draw_all( &mut self ) -> i32 {
 		use imgui::*;
 
-		let mut redraw = false;
+		let mut count = 0;
 		let mut ch_hovered = None;
 		let loc = (self.player.location() / 2).to_float() as f32;
 		let loc_end = self.irs.iter()
@@ -71,11 +74,12 @@ impl Ui {
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "<<" ), &ImVec2::zero() ) {
 				self.player.seek( ratio::Ratio::new( 0, 1 ) ).unwrap_or( () );
+				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "Play" ), &ImVec2::zero() ) {
 				self.player.play().unwrap_or( () );
-				redraw = true;
+				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "Stop" ), &ImVec2::zero() ) {
@@ -84,6 +88,7 @@ impl Ui {
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( ">>" ), &ImVec2::zero() ) {
 				self.player.seek( loc_end * 2 ).unwrap_or( () );
+				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 
 			SameLine( 0.0, -1.0 );
@@ -105,7 +110,7 @@ impl Ui {
 				SetScrollX( loc * note_size.x - ctx.size.x / 2.0 );
 			}
 			else {
-				redraw |= self.drag_scroll();
+				count = cmp::max( count, self.drag_scroll() );
 			}
 
 			let mut ctx = imutil::DrawContext::new();
@@ -117,18 +122,17 @@ impl Ui {
 				}
 			}
 			self.draw_notes( &mut ctx, &self.irs[ch as usize], note_size, self.color_note_top );
-			self.draw_time_bar( &mut ctx, note_size, loc, loc_end );
+			count = cmp::max( count, self.draw_time_bar( &mut ctx, note_size, loc, loc_end ) );
 		imutil::end_root();
 
-		redraw || self.player.is_playing()
+		cmp::max( count, if self.player.is_playing() { 1 } else { 0 } )
 	}
 
-	unsafe fn drag_scroll( &self ) -> bool {
+	unsafe fn drag_scroll( &self ) -> i32 {
 		use imgui::*;
-
 		let delta = GetMouseDragDelta( 1, -1.0 );
 		SetScrollX( GetScrollX() + 0.25 * delta.x );
-		delta.x != 0.0
+		if delta.x != 0.0 { 1 } else { 0 }
 	}
 
 	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc_end: f32 ) {
@@ -197,20 +201,23 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_time_bar( &mut self, ctx: &mut imutil::DrawContext, note_size: ImVec2, mut loc: f32, loc_end: f32 ) {
+	unsafe fn draw_time_bar( &mut self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc: f32, loc_end: f32 ) -> i32 {
 		use imgui::*;
+		let mut count = 0;
 
 		for i in 0 .. loc_end.floor() as i64 + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {
 				self.player.seek( ratio::Ratio::new( i * 2, 1 ) ).unwrap_or( () );
-				loc = i as f32;
+				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		}
 
 		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0                 );
 		let rb = ImVec2::new( loc * note_size.x - 1.0, 128.0 * note_size.y );
 		ctx.add_line( lt, rb, self.color_time_bar, 1.0 );
+
+		count
 	}
 }
 
@@ -234,12 +241,10 @@ fn main() {
 			irs.push( ir );
 		}
 
+		let io = unsafe { &mut *imgui::GetIO() };
+		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
-		unsafe {
-			let io = &mut *imgui::GetIO();
-			io.IniFilename = ptr::null();
-			imutil::set_scale( 1.5, 1.5, 13.0, font );
-		}
+		imutil::set_scale( 1.5, 1.5, 13.0, font );
 
 		let mut player = player::Player::new( "memol" )?;
 		player.set_data( migen.generate() );

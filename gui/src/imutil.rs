@@ -15,7 +15,7 @@ pub struct DrawContext<'a> {
 }
 
 pub trait Ui {
-	fn draw( &mut self ) -> bool;
+	fn draw( &mut self ) -> i32;
 }
 
 pub struct Window<T: Ui> {
@@ -72,7 +72,6 @@ impl<T: Ui> Window<T> {
 		}
 	}
 
-	// XXX
 	pub fn event_loop( &mut self ) {
 		for _ in 0 .. 2 {
 			self.renderer.new_frame( self.window.get_inner_size().unwrap() );
@@ -88,22 +87,21 @@ impl<T: Ui> Window<T> {
 				return;
 			}
 
-			loop {
+			let mut count = 2;
+			while count > 0 {
 				for ev in self.window.poll_events() {
 					self.renderer.handle_event( &ev );
 					if let glutin::Event::Closed = ev {
 						return;
 					}
+					count = cmp::max( count, 2 );
 				}
 
 				self.renderer.new_frame( self.window.get_inner_size().unwrap() );
-				let redraw = self.ui.draw();
+				count = cmp::max( count - 1, self.ui.draw() );
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
 				self.window.swap_buffers().unwrap();
-				if !redraw {
-					break;
-				}
 			}
 		}
 	}

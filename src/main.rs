@@ -8,7 +8,7 @@ use memol::*;
 
 
 fn main() {
-	|| -> Result<(), Box<error::Error>> {
+	let f = || -> Result<(), Box<error::Error>> {
 		let mut opts = getopts::Options::new();
 		opts.optmulti( "c", "connect", "", "" );
 		opts.optopt( "s", "seek", "", "" );
@@ -46,5 +46,8 @@ fn main() {
 
 			notify::notify_wait( &args.free[0] )?;
 		}
-	}().unwrap();
+	};
+	if let Err( e ) = f() {
+		println!( "error: {}", e.description() );
+	}
 }

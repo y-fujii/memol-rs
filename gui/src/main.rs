@@ -14,6 +14,7 @@ use memol::*;
 struct DrawContext<'a> {
 	draw_list: &'a mut imgui::ImDrawList,
 	origin: imgui::ImVec2,
+	size: imgui::ImVec2,
 	note_size: imgui::ImVec2,
 }
 
@@ -51,6 +52,7 @@ impl<'a> DrawContext<'a> {
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
 				origin: GetWindowPos() - ImVec2::new( GetScrollX(), GetScrollY() ),
+				size: size,
 				note_size: ImVec2::new( (size.y / 8.0).ceil(), size.y / 128.0 ),
 			}
 		}
@@ -145,10 +147,9 @@ impl Ui {
 	unsafe fn drag_scroll( &self ) -> bool {
 		use imgui::*;
 
-		let delta = GetMouseDragDelta( 0, 1.0 );
+		let delta = GetMouseDragDelta( 1, -1.0 );
 		SetScrollX( GetScrollX() + 0.25 * delta.x );
-		SetScrollY( GetScrollY() + 0.25 * delta.y );
-		delta.x != 0.0 || delta.y != 0.0
+		delta.x != 0.0
 	}
 
 	unsafe fn draw_background( &self, ctx: &mut DrawContext, t1: f32 ) {
@@ -166,8 +167,8 @@ impl Ui {
 		}
 
 		for i in 0 .. t1.floor() as i32 + 1 {
-			let lt = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, 0.0                     );
-			let rb = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, 128.0 * ctx.note_size.y );
+			let lt = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, 0.0        );
+			let rb = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, ctx.size.y );
 			ctx.add_line( lt, rb, self.color_line, 1.0 );
 		}
 	}
@@ -175,7 +176,6 @@ impl Ui {
 	unsafe fn draw_notes( &self, ctx: &mut DrawContext, notes: &Vec<irgen::FlatNote>, color: u32 ) {
 		use imgui::*;
 
-		let mut i = 0;
 		for note in notes.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
@@ -188,7 +188,7 @@ impl Ui {
 
 			let dur = note.end - note.bgn;
 			SetCursorPos( &x0 );
-			InvisibleButton( c_str!( "note##{}", i ), &ImVec2::new( dur.to_float() as f32 * ctx.note_size.x - 1.0, ctx.note_size.y ) );
+			Dummy( &ImVec2::new( dur.to_float() as f32 * ctx.note_size.x - 1.0, ctx.note_size.y ) );
 			if IsItemHovered() {
 				BeginTooltip();
 					let sym = match nnum % 12 {
@@ -215,8 +215,6 @@ impl Ui {
 					Text( c_str!( " duration = {}/{}", dur.y, dur.x ) );
 				EndTooltip();
 			}
-
-			i += 1;
 		}
 	}
 
@@ -225,7 +223,7 @@ impl Ui {
 
 		for i in 0 .. t1.floor() as i64 + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * ctx.note_size.x, 0.0 ) );
-			if InvisibleButton( c_str!( "timeline##{}", i ), &ImVec2::new( ctx.note_size.x, 128.0 * ctx.note_size.y ) ) {
+			if InvisibleButton( c_str!( "timeline##{}", i ), &ImVec2::new( ctx.note_size.x, ctx.size.y ) ) {
 				self.time = ratio::Ratio::new( i, 1 );
 			}
 		}

@@ -245,7 +245,7 @@ impl Renderer {
 				gl::ARRAY_BUFFER,
 				vtx_size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
 				ptr::null(),
-				gl::DYNAMIC_DRAW,
+				gl::STREAM_DRAW,
 			);
 
 			let idx_size = (0 .. draw_data.CmdListsCount as isize)
@@ -257,7 +257,7 @@ impl Renderer {
 				gl::ELEMENT_ARRAY_BUFFER,
 				idx_size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
 				ptr::null(),
-				gl::DYNAMIC_DRAW,
+				gl::STREAM_DRAW,
 			);
 
 			for i in 0 .. draw_data.CmdListsCount {

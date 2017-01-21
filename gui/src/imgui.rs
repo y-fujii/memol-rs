@@ -221,3 +221,20 @@ impl ops::Mul<f32> for ImVec2 {
 		ImVec2::new( self.x * other, self.y * other )
 	}
 }
+
+impl ops::MulAssign<f32> for ImVec2 {
+	fn mul_assign( &mut self, other: f32 ) {
+		self.x *= other;
+		self.y *= other;
+	}
+}
+
+impl ImVec4 {
+	pub fn new( x: f32, y: f32, z: f32, w: f32 ) -> Self {
+		ImVec4{ x: x, y: y, z: z, w: w }
+	}
+
+	pub fn zero() -> Self {
+		ImVec4{ x: 0.0, y: 0.0, z: 0.0, w: 0.0 }
+	}
+}

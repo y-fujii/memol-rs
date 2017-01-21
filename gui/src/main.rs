@@ -27,22 +27,31 @@ struct Window {
 	ui: Ui,
 }
 
+// XXX
+fn srgb_gamma( r: f32, g: f32, b: f32, a: f32 ) -> u32 {
+	(((r.powf( 1.0 / 2.2 ) * 255.0) as u32) <<  0) |
+	(((g.powf( 1.0 / 2.2 ) * 255.0) as u32) <<  8) |
+	(((b.powf( 1.0 / 2.2 ) * 255.0) as u32) << 16) |
+	(((a                   * 255.0) as u32) << 24)
+}
+
 impl Ui {
 	fn new( irs: Vec<Vec<memol::irgen::FlatNote>> ) -> Self {
 		Ui {
 			irs: irs,
 			follow: true,
 			channel: 0,
-			color_line: 0xffe0e0e0,
-			color_chromatic: 0xfff0f0f0,
-			color_note_top: 0xff60a080,
-			color_note_sub: 0xfff8e8d8,
+			color_line:      srgb_gamma( 0.5, 0.5, 0.5, 1.0 ),
+			color_chromatic: srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
+			color_note_top:  srgb_gamma( 0.1, 0.3, 0.4, 1.0 ),
+			color_note_sub:  srgb_gamma( 0.7, 0.9, 1.0, 1.0 ),
 		}
 	}
 
 	fn draw( &mut self ) -> bool {
 		use imgui::*;
 		let mut redraw = false;
+		let mut ch_hovered = None;
 		let time_max = self.irs.iter()
 			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
@@ -53,19 +62,25 @@ impl Ui {
 			SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
 			Begin( c_str!( "Transport" ), &mut true, WindowFlags_NoResize | WindowFlags_NoTitleBar );
 				Button( c_str!( "<<" ), &ImVec2::zero() );
-				SameLine( 0.0, -1.0 );
+				SameLine( 0.0, 1.0 );
 				Button( c_str!( "Play" ), &ImVec2::zero() );
-				SameLine( 0.0, -1.0 );
+				SameLine( 0.0, 1.0 );
 				Button( c_str!( "Stop" ), &ImVec2::zero() );
-				SameLine( 0.0, -1.0 );
+				SameLine( 0.0, 1.0 );
 				Button( c_str!( ">>" ), &ImVec2::zero() );
 				SameLine( 0.0, -1.0 );
 				Checkbox( c_str!( "Follow" ), &mut self.follow );
-				for i in 0 .. 16 {
-					SameLine( 0.0, -1.0 );
-					RadioButton1( c_str!( "{}", i ), &mut self.channel, i );
+				SameLine( 0.0, -1.0 );
+				for i in 0 .. self.irs.len() as i32 {
+					RadioButton1( c_str!( "##{}", i ), &mut self.channel, i );
+					if IsItemHovered() {
+						ch_hovered = Some( i );
+					}
+					SameLine( 0.0, 0.0 );
 				}
 			End();
+
+			let ch = ch_hovered.unwrap_or( self.channel );
 
 			Self::begin_root( WindowFlags_HorizontalScrollbar );
 				let size = GetWindowSize();
@@ -73,11 +88,11 @@ impl Ui {
 				redraw |= self.drag_scroll();
 				self.draw_background( note_size, time_max.to_float() as f32 );
 				for (i, ir) in self.irs.iter().enumerate() {
-					if i != self.channel as usize {
+					if i != ch as usize {
 						self.draw_notes( ir, note_size, self.color_note_sub );
 					}
 				}
-				self.draw_notes( &self.irs[self.channel as usize], note_size, self.color_note_top );
+				self.draw_notes( &self.irs[ch as usize], note_size, self.color_note_top );
 			Self::end_root();
 		}
 		redraw
@@ -257,10 +272,42 @@ impl Window {
 			}
 		}
 	}
+
+	unsafe fn set_scale( s: f32, font_size: f32, font: &[u8] ) {
+		let io = &mut *imgui::GetIO();
+		let mut cfg = imgui::ImFontConfig::new();
+		cfg.FontDataOwnedByAtlas = false;
+		(*io.Fonts).AddFontFromMemoryTTF(
+			font.as_ptr() as *mut os::raw::c_void,
+			font.len() as i32, font_size * s, &cfg, ptr::null()
+		);
+
+		let style = &mut *imgui::GetStyle();
+		style.WindowPadding *= s;
+		style.WindowMinSize *= s;
+		style.WindowRounding *= s;
+		style.WindowTitleAlign *= s;
+		style.ChildWindowRounding *= s;
+		style.FramePadding *= s;
+		style.FrameRounding *= s;
+		style.ItemSpacing *= s;
+		style.ItemInnerSpacing *= s;
+		style.TouchExtraPadding *= s;
+		style.IndentSpacing *= s;
+		style.ColumnsMinSpacing *= s;
+		style.ScrollbarSize *= s;
+		style.ScrollbarRounding *= s;
+		style.GrabMinSize *= s;
+		style.GrabRounding *= s;
+		style.ButtonTextAlign *= s;
+		style.DisplayWindowPadding *= s;
+		style.DisplaySafeAreaPadding *= s;
+		style.CurveTessellationTol *= s;
+	}
 }
 
 fn main() {
-	|| -> Result<(), Box<error::Error>> {
+	let f = || -> Result<(), Box<error::Error>> {
 		let opts = getopts::Options::new();
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
@@ -271,25 +318,25 @@ fn main() {
 		fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 		let tree = parser::parse( &buf )?;
 		let irgen = irgen::Generator::new( &tree );
-		let irs = (0 .. 16).map( |i|
-			irgen.generate( &format!( "out.{}", i ) )
-				.unwrap_or( None )
-				.unwrap_or( Vec::new() )
-		).collect();
+		let mut irs = Vec::new();
+		for i in 0 .. 16 {
+			let ir = irgen.generate( &format!( "out.{}", i ) )?.unwrap_or( Vec::new() );
+			irs.push( ir );
+		}
 
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
 		unsafe {
 			let io = &mut *imgui::GetIO();
 			io.IniFilename = ptr::null();
-			let mut cfg = imgui::ImFontConfig::new();
-			cfg.FontDataOwnedByAtlas = false;
-			(*io.Fonts).AddFontFromMemoryTTF(
-				font.as_ptr() as *mut os::raw::c_void, font.len() as i32, 16.0, &cfg, ptr::null()
-			);
+			Window::set_scale( 1.5, 13.0, font );
 		}
+
 		let mut window = Window::new( Ui::new( irs ) );
 		window.event_loop();
 
 		Ok( () )
-	}().unwrap();
+	};
+	if let Err( e ) = f() {
+		println!( "error: {}", e.description() );
+	}
 }

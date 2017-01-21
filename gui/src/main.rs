@@ -20,10 +20,10 @@ struct DrawContext<'a> {
 
 struct Ui {
 	irs: Vec<Vec<memol::irgen::FlatNote>>,
-	time: ratio::Ratio,
+	player: Box<player::Player>,
 	channel: i32,
 	color_line: u32,
-	color_timeline: u32,
+	color_time_bar: u32,
 	color_chromatic: u32,
 	color_note_top: u32,
 	color_note_sub: u32,
@@ -72,13 +72,13 @@ impl<'a> DrawContext<'a> {
 }
 
 impl Ui {
-	fn new( irs: Vec<Vec<memol::irgen::FlatNote>> ) -> Self {
+	fn new( player: Box<player::Player>, irs: Vec<Vec<memol::irgen::FlatNote>> ) -> Self {
 		Ui {
 			irs: irs,
-			time: ratio::Ratio::new( 0, 1 ),
+			player: player,
 			channel: 0,
 			color_line:      srgb_gamma( 0.5, 0.5, 0.5, 1.0 ),
-			color_timeline:  srgb_gamma( 0.0, 0.0, 0.0, 1.0 ),
+			color_time_bar:  srgb_gamma( 0.0, 0.0, 0.0, 1.0 ),
 			color_chromatic: srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
 			color_note_top:  srgb_gamma( 0.1, 0.3, 0.4, 1.0 ),
 			color_note_sub:  srgb_gamma( 0.7, 0.9, 1.0, 1.0 ),
@@ -90,7 +90,8 @@ impl Ui {
 
 		let mut redraw = false;
 		let mut ch_hovered = None;
-		let time_max = self.irs.iter()
+		let loc = self.player.location() / 2;
+		let loc_end = self.irs.iter()
 			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
 			.max()
@@ -108,13 +109,22 @@ impl Ui {
 				}
 
 				SameLine( 0.0, -1.0 );
-				Button( c_str!( "<<" ), &ImVec2::zero() );
+				if Button( c_str!( "<<" ), &ImVec2::zero() ) {
+					self.player.seek( ratio::Ratio::new( 0, 1 ) ).unwrap_or( () );
+				}
 				SameLine( 0.0, 1.0 );
-				Button( c_str!( "Play" ), &ImVec2::zero() );
+				if Button( c_str!( "Play" ), &ImVec2::zero() ) {
+					self.player.play().unwrap_or( () );
+					redraw = true;
+				}
 				SameLine( 0.0, 1.0 );
-				Button( c_str!( "Stop" ), &ImVec2::zero() );
+				if Button( c_str!( "Stop" ), &ImVec2::zero() ) {
+					self.player.stop().unwrap_or( () );
+				}
 				SameLine( 0.0, 1.0 );
-				Button( c_str!( ">>" ), &ImVec2::zero() );
+				if Button( c_str!( ">>" ), &ImVec2::zero() ) {
+					self.player.seek( loc_end ).unwrap_or( () );
+				}
 
 				SameLine( 0.0, -1.0 );
 				for i in 0 .. self.irs.len() as i32 {
@@ -131,17 +141,17 @@ impl Ui {
 			Self::begin_root( WindowFlags_HorizontalScrollbar );
 				let mut ctx = DrawContext::new();
 				redraw |= self.drag_scroll();
-				self.draw_background( &mut ctx, time_max.to_float() as f32 );
+				self.draw_background( &mut ctx, loc_end.to_float() as f32 );
 				for (i, ir) in self.irs.iter().enumerate() {
 					if i != ch as usize {
 						self.draw_notes( &mut ctx, ir, self.color_note_sub );
 					}
 				}
 				self.draw_notes( &mut ctx, &self.irs[ch as usize], self.color_note_top );
-				self.draw_timeline( &mut ctx, time_max.to_float() as f32 );
+				self.draw_time_bar( &mut ctx, loc.to_float() as f32, loc_end.to_float() as f32 );
 			Self::end_root();
 		}
-		redraw
+		redraw || self.player.is_playing()
 	}
 
 	unsafe fn drag_scroll( &self ) -> bool {
@@ -152,21 +162,21 @@ impl Ui {
 		delta.x != 0.0
 	}
 
-	unsafe fn draw_background( &self, ctx: &mut DrawContext, t1: f32 ) {
+	unsafe fn draw_background( &self, ctx: &mut DrawContext, loc_end: f32 ) {
 		use imgui::*;
 
 		for i in 0 .. (128 + 11) / 12 {
-			let lt = ImVec2::new( 0.0,                  (128 - i * 12) as f32 * ctx.note_size.y );
-			let rb = ImVec2::new( t1 * ctx.note_size.x, (128 - i * 12) as f32 * ctx.note_size.y );
+			let lt = ImVec2::new( 0.0,                       (128 - i * 12) as f32 * ctx.note_size.y );
+			let rb = ImVec2::new( loc_end * ctx.note_size.x, (128 - i * 12) as f32 * ctx.note_size.y );
 			ctx.add_line( lt, rb, self.color_line, 1.0 );
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
-				let lt = ImVec2::new( 0.0,                  (127 - i * 12 - j) as f32 * ctx.note_size.y );
-				let rb = ImVec2::new( t1 * ctx.note_size.x, (128 - i * 12 - j) as f32 * ctx.note_size.y );
+				let lt = ImVec2::new( 0.0,                       (127 - i * 12 - j) as f32 * ctx.note_size.y );
+				let rb = ImVec2::new( loc_end * ctx.note_size.x, (128 - i * 12 - j) as f32 * ctx.note_size.y );
 				ctx.add_rect_filled( lt, rb, self.color_chromatic, 0.0, !0 );
 			}
 		}
 
-		for i in 0 .. t1.floor() as i32 + 1 {
+		for i in 0 .. loc_end.floor() as i32 + 1 {
 			let lt = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, 0.0        );
 			let rb = ImVec2::new( i as f32 * ctx.note_size.x - 1.0, ctx.size.y );
 			ctx.add_line( lt, rb, self.color_line, 1.0 );
@@ -218,19 +228,20 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_timeline( &mut self, ctx: &mut DrawContext, t1: f32 ) {
+	unsafe fn draw_time_bar( &mut self, ctx: &mut DrawContext, mut loc: f32, loc_end: f32 ) {
 		use imgui::*;
 
-		for i in 0 .. t1.floor() as i64 + 1 {
+		for i in 0 .. loc_end.floor() as i64 + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * ctx.note_size.x, 0.0 ) );
-			if InvisibleButton( c_str!( "timeline##{}", i ), &ImVec2::new( ctx.note_size.x, ctx.size.y ) ) {
-				self.time = ratio::Ratio::new( i, 1 );
+			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( ctx.note_size.x, ctx.size.y ) ) {
+				self.player.seek( ratio::Ratio::new( i, 1 ) ).unwrap_or( () );
+				loc = i as f32;
 			}
 		}
 
-		let lt = ImVec2::new( self.time.to_float() as f32 * ctx.note_size.x - 1.0, 0.0                     );
-		let rb = ImVec2::new( self.time.to_float() as f32 * ctx.note_size.x - 1.0, 128.0 * ctx.note_size.y );
-		ctx.add_line( lt, rb, self.color_timeline, 1.0 );
+		let lt = ImVec2::new( loc * ctx.note_size.x - 1.0, 0.0                     );
+		let rb = ImVec2::new( loc * ctx.note_size.x - 1.0, 128.0 * ctx.note_size.y );
+		ctx.add_line( lt, rb, self.color_time_bar, 1.0 );
 	}
 
 	unsafe fn begin_root( flags: imgui::ImGuiWindowFlags ) {
@@ -361,9 +372,11 @@ fn main() {
 		fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 		let tree = parser::parse( &buf )?;
 		let irgen = irgen::Generator::new( &tree );
+		let mut migen = midi::Generator::new();
 		let mut irs = Vec::new();
 		for i in 0 .. 16 {
 			let ir = irgen.generate( &format!( "out.{}", i ) )?.unwrap_or( Vec::new() );
+			migen = migen.add_score( i, &ir );
 			irs.push( ir );
 		}
 
@@ -374,7 +387,9 @@ fn main() {
 			Window::set_scale( 1.5, 1.5, 13.0, font );
 		}
 
-		let mut window = Window::new( Ui::new( irs ) );
+		let mut player = player::Player::new( "memol" )?;
+		player.set_data( migen.generate() );
+		let mut window = Window::new( Ui::new( player, irs ) );
 		window.event_loop();
 
 		Ok( () )

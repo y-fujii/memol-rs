@@ -60,4 +60,5 @@ extern "C" {
 	pub fn jack_transport_locate( _: *mut Client, _: u32 ) -> i32;
 	pub fn jack_transport_query( _: *const Client, _: *mut Position ) -> TransportState;
 	pub fn jack_transport_start( _: *mut Client ) -> ();
+	pub fn jack_transport_stop( _: *mut Client ) -> ();
 }

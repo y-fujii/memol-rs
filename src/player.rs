@@ -86,6 +86,15 @@ impl Player {
 		Ok( () )
 	}
 
+	pub fn stop( &mut self ) -> io::Result<()> {
+		unsafe {
+			jack::jack_transport_stop( self.jack );
+		}
+		let mut shared = self.shared.lock().unwrap();
+		shared.changed = true;
+		Ok( () )
+	}
+
 	pub fn seek( &mut self, time: ratio::Ratio ) -> io::Result<()> {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
@@ -95,15 +104,27 @@ impl Player {
 		Ok( () )
 	}
 
+	pub fn location( &self ) -> ratio::Ratio {
+		unsafe {
+			let mut pos: jack::Position = mem::uninitialized();
+			jack::jack_transport_query( self.jack, &mut pos );
+			ratio::Ratio::new( pos.frame as i64, pos.frame_rate as i64 )
+		}
+	}
+
+	pub fn is_playing( &self ) -> bool {
+		unsafe {
+			let mut pos: jack::Position = mem::uninitialized();
+			match jack::jack_transport_query( self.jack, &mut pos ) {
+				jack::TransportState::Stopped => false,
+				_                             => true,
+			}
+		}
+	}
+
 	extern fn process_callback( size: u32, this: *mut any::Any ) -> i32 {
 		unsafe {
 			let this = &mut *(this as *mut Player);
-
-			let mut pos: jack::Position = mem::uninitialized();
-			match jack::jack_transport_query( this.jack, &mut pos ) {
-				jack::TransportState::Rolling => (),
-				_ => return 0,
-			}
 
 			let buf = jack::jack_port_get_buffer( this.port, size );
 			jack::jack_midi_clear_buffer( buf );
@@ -119,6 +140,12 @@ impl Player {
 					jack::jack_midi_event_write( buf, 0, msg.as_ptr(), msg.len() );
 				}
 				shared.changed = false;
+			}
+
+			let mut pos: jack::Position = mem::uninitialized();
+			match jack::jack_transport_query( this.jack, &mut pos ) {
+				jack::TransportState::Rolling => (),
+				_ => return 0,
 			}
 
 			let fbgn = ratio::Ratio::new( (pos.frame       ) as i64, pos.frame_rate as i64 );

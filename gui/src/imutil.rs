@@ -116,64 +116,64 @@ pub fn srgb_gamma( r: f32, g: f32, b: f32, a: f32 ) -> u32 {
 }
 
 pub fn set_scale( s: f32, r: f32, font_size: f32, font: &[u8] ) {
-    unsafe {
-        let io = &mut *imgui::GetIO();
-        let mut cfg = imgui::ImFontConfig::new();
-        cfg.FontDataOwnedByAtlas = false;
-        (*io.Fonts).AddFontFromMemoryTTF(
-            font.as_ptr() as *mut os::raw::c_void,
-            font.len() as i32, font_size * s, &cfg, ptr::null()
-        );
+	unsafe {
+		let io = imgui::get_io();
+		let mut cfg = imgui::ImFontConfig::new();
+		cfg.FontDataOwnedByAtlas = false;
+		(*io.Fonts).AddFontFromMemoryTTF(
+			font.as_ptr() as *mut os::raw::c_void,
+			font.len() as i32, font_size * s, &cfg, ptr::null(),
+		);
 
-        let style = &mut *imgui::GetStyle();
-        style.WindowPadding *= s;
-        style.WindowMinSize *= s;
-        style.WindowRounding *= r;
-        style.WindowTitleAlign *= s;
-        style.ChildWindowRounding *= r;
-        style.FramePadding *= s;
-        style.FrameRounding *= r;
-        style.ItemSpacing *= s;
-        style.ItemInnerSpacing *= s;
-        style.TouchExtraPadding *= s;
-        style.IndentSpacing *= s;
-        style.ColumnsMinSpacing *= s;
-        style.ScrollbarSize *= s;
-        style.ScrollbarRounding *= r;
-        style.GrabMinSize *= s;
-        style.GrabRounding *= r;
-        style.ButtonTextAlign *= s;
-        style.DisplayWindowPadding *= s;
-        style.DisplaySafeAreaPadding *= s;
-        style.CurveTessellationTol *= s;
-    }
+		let style = imgui::get_style();
+		style.WindowPadding *= s;
+		style.WindowMinSize *= s;
+		style.WindowRounding *= r;
+		style.WindowTitleAlign *= s;
+		style.ChildWindowRounding *= r;
+		style.FramePadding *= s;
+		style.FrameRounding *= r;
+		style.ItemSpacing *= s;
+		style.ItemInnerSpacing *= s;
+		style.TouchExtraPadding *= s;
+		style.IndentSpacing *= s;
+		style.ColumnsMinSpacing *= s;
+		style.ScrollbarSize *= s;
+		style.ScrollbarRounding *= r;
+		style.GrabMinSize *= s;
+		style.GrabRounding *= r;
+		style.ButtonTextAlign *= s;
+		style.DisplayWindowPadding *= s;
+		style.DisplaySafeAreaPadding *= s;
+		style.CurveTessellationTol *= s;
+	}
 }
 
 pub fn begin_root( flags: imgui::ImGuiWindowFlags ) {
-    use imgui::*;
-    unsafe {
-        let size = (*GetIO()).DisplaySize;
-        let rounding = (*GetStyle()).WindowRounding;
-        let padding  = (*GetStyle()).WindowPadding;
-        PushStyleVar( StyleVar::WindowRounding as i32, 0.0 );
-        PushStyleVar1( StyleVar::WindowPadding as i32, &ImVec2::zero() );
-        SetNextWindowPos( &ImVec2::zero(), SetCond_Always );
-        SetNextWindowSize( &size, SetCond_Always );
-        Begin1(
-            c_str!( "root" ), &mut true, &size, 0.0,
-            WindowFlags_NoMove | WindowFlags_NoResize | WindowFlags_NoBringToFrontOnFocus |
-            WindowFlags_NoTitleBar | flags
-        );
-        PushStyleVar( StyleVar::WindowRounding as i32, rounding );
-        PushStyleVar1( StyleVar::WindowPadding as i32, &padding );
-    }
+	use imgui::*;
+	unsafe {
+		let size = get_io().DisplaySize;
+		let rounding = get_style().WindowRounding;
+		let padding  = get_style().WindowPadding;
+		PushStyleVar( StyleVar::WindowRounding as i32, 0.0 );
+		PushStyleVar1( StyleVar::WindowPadding as i32, &ImVec2::zero() );
+		SetNextWindowPos( &ImVec2::zero(), SetCond_Always );
+		SetNextWindowSize( &size, SetCond_Always );
+		Begin1(
+			c_str!( "root" ), &mut true, &size, 0.0,
+			WindowFlags_NoMove | WindowFlags_NoResize |
+			WindowFlags_NoBringToFrontOnFocus | WindowFlags_NoTitleBar | flags
+		);
+		PushStyleVar( StyleVar::WindowRounding as i32, rounding );
+		PushStyleVar1( StyleVar::WindowPadding as i32, &padding );
+	}
 }
 
 pub fn end_root() {
-    use imgui::*;
-    unsafe {
-        PopStyleVar( 2 );
-        End();
-        PopStyleVar( 2 );
-    }
+	use imgui::*;
+	unsafe {
+		PopStyleVar( 2 );
+		End();
+		PopStyleVar( 2 );
+	}
 }

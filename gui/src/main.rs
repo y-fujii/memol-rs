@@ -241,7 +241,7 @@ fn main() {
 			irs.push( ir );
 		}
 
-		let io = unsafe { &mut *imgui::GetIO() };
+		let io = imgui::get_io();
 		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
 		imutil::set_scale( 1.5, 1.5, 13.0, font );

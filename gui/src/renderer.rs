@@ -30,7 +30,7 @@ impl Drop for Renderer {
 
 			gl::DeleteTextures( 1, &self.font_texture );
 
-			(*(*imgui::GetIO()).Fonts).TexID = ptr::null_mut();
+			(*imgui::get_io().Fonts).TexID = ptr::null_mut();
 			imgui::Shutdown();
 		}
 	}
@@ -79,7 +79,7 @@ unsafe fn compile_shader( ty: u32, code: &str ) -> u32 {
 impl Renderer {
 	pub fn new() -> Self {
 		unsafe {
-			let io = &mut *imgui::GetIO();
+			let io = imgui::get_io();
 
 			// key mapping.
 			io.KeyMap[imgui::Key::Tab        as usize] = glutin::VirtualKeyCode::Tab as i32;
@@ -164,7 +164,7 @@ impl Renderer {
 
 	pub fn new_frame( &mut self, display_size: (u32, u32) ) {
 		unsafe {
-			let io = &mut *imgui::GetIO();
+			let io = imgui::get_io();
 			io.DisplaySize.x = display_size.0 as f32 / io.DisplayFramebufferScale.x;
 			io.DisplaySize.y = display_size.1 as f32 / io.DisplayFramebufferScale.y;
 			imgui::NewFrame();
@@ -174,7 +174,7 @@ impl Renderer {
 	pub fn handle_event( &mut self, ev: &glutin::Event ) {
 		use glutin::*;
 		unsafe {
-			let io = &mut *imgui::GetIO();
+			let io = imgui::get_io();
 			match *ev {
 				Event::KeyboardInput( s, _, Some( code ) ) => {
 					let pressed = s == ElementState::Pressed;
@@ -215,8 +215,8 @@ impl Renderer {
 	pub fn render( &self ) {
 		unsafe {
 			imgui::Render();
-			let io = &*imgui::GetIO();
-			let draw_data = &*imgui::GetDrawData();
+			let io = imgui::get_io();
+			let draw_data = imgui::get_draw_data();
 
 			gl::Enable( gl::BLEND );
 			gl::BlendEquation( gl::FUNC_ADD );

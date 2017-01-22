@@ -238,3 +238,15 @@ impl ImVec4 {
 		ImVec4{ x: 0.0, y: 0.0, z: 0.0, w: 0.0 }
 	}
 }
+
+pub fn get_io() -> &'static mut ImGuiIO {
+	unsafe { &mut *GetIO() }
+}
+
+pub fn get_style() -> &'static mut ImGuiStyle {
+	unsafe { &mut *GetStyle() }
+}
+
+pub fn get_draw_data() -> &'static mut ImDrawData {
+	unsafe { &mut *GetDrawData() }
+}

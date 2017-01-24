@@ -110,7 +110,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 					n = cmp::max( n, 2 );
 				}
 
-				self.renderer.new_frame( self.window.get_inner_size().unwrap() );
+				unsafe { imgui::NewFrame() };
 				n = cmp::max( n - 1, self.ui.on_draw() );
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();

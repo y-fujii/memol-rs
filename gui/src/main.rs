@@ -60,7 +60,7 @@ impl Ui {
 		let player = player::Player::new( name )?;
 		Ok( Ui {
 			data: Vec::new(),
-			text: Some( "no data.".into() ),
+			text: None,
 			player: player,
 			channel: 0,
 			follow: false,

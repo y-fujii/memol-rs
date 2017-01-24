@@ -162,13 +162,6 @@ impl Renderer {
 		}
 	}
 
-	pub fn new_frame( &mut self, display_size: (u32, u32) ) {
-		let io = imgui::get_io();
-		io.DisplaySize.x = display_size.0 as f32 / io.DisplayFramebufferScale.x;
-		io.DisplaySize.y = display_size.1 as f32 / io.DisplayFramebufferScale.y;
-		unsafe { imgui::NewFrame() };
-	}
-
 	pub fn handle_event( &mut self, ev: &glutin::Event ) {
 		use glutin::*;
 		let io = imgui::get_io();
@@ -203,6 +196,10 @@ impl Renderer {
 					x as f32 / io.DisplayFramebufferScale.x,
 					y as f32 / io.DisplayFramebufferScale.y
 				);
+			},
+			Event::Resized( x, y ) => {
+				io.DisplaySize.x = x as f32 / io.DisplayFramebufferScale.x;
+				io.DisplaySize.y = y as f32 / io.DisplayFramebufferScale.y;
 			},
 			_ => (),
 		}

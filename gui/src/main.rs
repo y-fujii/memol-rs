@@ -16,8 +16,14 @@ use memol::*;
 const JACK_FRAME_WAIT: i32 = 12;
 
 
+enum UiMessage {
+	Data( Vec<Vec<irgen::FlatNote>>, Vec<midi::Event> ),
+	Text( String ),
+}
+
 struct Ui {
-	irs: Vec<Vec<memol::irgen::FlatNote>>,
+	data: Vec<Vec<irgen::FlatNote>>,
+	text: Option<String>,
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
@@ -28,16 +34,33 @@ struct Ui {
 	color_note_sub: u32,
 }
 
-impl imutil::Ui for Ui {
-	fn draw( &mut self ) -> i32 {
+impl imutil::Ui<UiMessage> for Ui {
+	fn on_draw( &mut self ) -> i32 {
 		unsafe { self.draw_all() }
+	}
+
+	fn on_message( &mut self, msg: UiMessage ) {
+		match msg {
+			UiMessage::Data( irs, evs ) => {
+				self.data = irs;
+				self.player.set_data( evs );
+				self.text = None;
+			},
+			UiMessage::Text( text ) => {
+				self.data = Vec::new();
+				self.player.set_data( Vec::new() );
+				self.text = Some( text );
+			},
+		}
 	}
 }
 
 impl Ui {
-	fn new( player: Box<player::Player>, irs: Vec<Vec<memol::irgen::FlatNote>> ) -> Self {
-		Ui {
-			irs: irs,
+	fn new( name: &str ) -> io::Result<Self> {
+		let player = player::Player::new( name )?;
+		Ok( Ui {
+			data: Vec::new(),
+			text: Some( "no data.".into() ),
 			player: player,
 			channel: 0,
 			follow: false,
@@ -46,23 +69,30 @@ impl Ui {
 			color_chromatic: imutil::srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
 			color_note_top:  imutil::srgb_gamma( 0.1, 0.3, 0.4, 1.0 ),
 			color_note_sub:  imutil::srgb_gamma( 0.7, 0.9, 1.0, 1.0 ),
-		}
+		} )
 	}
 
 	unsafe fn draw_all( &mut self ) -> i32 {
 		use imgui::*;
 
 		let mut count = 0;
-		let mut ch_hovered = None;
 		let loc = (self.player.location() / 2).to_float() as f32;
-		let loc_end = self.irs.iter()
+		let loc_end = self.data.iter()
 			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
 			.max()
 			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
 
+		if let Some( ref text ) = self.text {
+			Begin( c_str!( "Message" ), &mut true, WindowFlags_AlwaysAutoResize );
+				Text( c_str!( "{}", text ) );
+			End();
+		}
+
 		SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
-		Begin( c_str!( "Transport" ), &mut true, WindowFlags_NoResize | WindowFlags_NoTitleBar );
+		Begin( c_str!( "Transport" ), &mut true,
+			WindowFlags_AlwaysAutoResize | WindowFlags_NoResize | WindowFlags_NoTitleBar
+		);
 			Button( c_str!( "Menu" ), &ImVec2::zero() );
 			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
 				Checkbox( c_str!( "Follow" ), &mut self.follow );
@@ -92,16 +122,11 @@ impl Ui {
 			}
 
 			SameLine( 0.0, -1.0 );
-			for i in 0 .. self.irs.len() as i32 {
+			for i in 0 .. self.data.len() as i32 {
 				RadioButton1( c_str!( "##{}", i ), &mut self.channel, i );
-				if IsItemHovered() {
-					ch_hovered = Some( i );
-				}
-				SameLine( 0.0, 0.0 );
+				SameLine( 0.0, 1.0 );
 			}
 		End();
-
-		let ch = ch_hovered.unwrap_or( self.channel );
 
 		imutil::begin_root( WindowFlags_HorizontalScrollbar );
 			let ctx = imutil::DrawContext::new();
@@ -116,12 +141,14 @@ impl Ui {
 			let mut ctx = imutil::DrawContext::new();
 			let loc_end = loc_end.to_float() as f32;
 			self.draw_background( &mut ctx, note_size, loc_end );
-			for (i, ir) in self.irs.iter().enumerate() {
-				if i != ch as usize {
+			for (i, ir) in self.data.iter().enumerate() {
+				if i != self.channel as usize {
 					self.draw_notes( &mut ctx, ir, note_size, self.color_note_sub );
 				}
 			}
-			self.draw_notes( &mut ctx, &self.irs[ch as usize], note_size, self.color_note_top );
+			if (self.channel as usize) < self.data.len() {
+				self.draw_notes( &mut ctx, &self.data[self.channel as usize], note_size, self.color_note_top );
+			}
 			count = cmp::max( count, self.draw_time_bar( &mut ctx, note_size, loc, loc_end ) );
 		imutil::end_root();
 
@@ -221,6 +248,39 @@ impl Ui {
 	}
 }
 
+fn compile_task( file: &str, tx: imutil::MessageSender<UiMessage> ) -> Result<(), Box<error::Error>> {
+	loop {
+		let mut buf = String::new();
+		fs::File::open( file )?.read_to_string( &mut buf )?;
+
+		let compile = || -> Result<_, misc::Error> {
+			let tree = parser::parse( &buf )?;
+			let irgen = irgen::Generator::new( &tree );
+			let mut migen = midi::Generator::new();
+			let mut irs = Vec::new();
+			for i in 0 .. 16 {
+				let ir = irgen.generate( &format!( "out.{}", i ) )?.unwrap_or( Vec::new() );
+				migen = migen.add_score( i, &ir );
+				irs.push( ir );
+			}
+			let evs = migen.generate();
+			Ok( (irs, evs) )
+		};
+		let msg = match compile() {
+			Ok ( (irs, evs) ) => {
+				UiMessage::Data( irs, evs )
+			},
+			Err( e ) => {
+				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
+				UiMessage::Text( format!( "error at ({}, {}): {}", row, col, e.msg ) )
+			},
+		};
+		tx.send( msg )?;
+
+		notify::notify_wait( file )?;
+	}
+}
+
 fn main() {
 	let f = || -> Result<(), Box<error::Error>> {
 		let opts = getopts::Options::new();
@@ -229,26 +289,14 @@ fn main() {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
-		let mut buf = String::new();
-		fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
-		let tree = parser::parse( &buf )?;
-		let irgen = irgen::Generator::new( &tree );
-		let mut migen = midi::Generator::new();
-		let mut irs = Vec::new();
-		for i in 0 .. 16 {
-			let ir = irgen.generate( &format!( "out.{}", i ) )?.unwrap_or( Vec::new() );
-			migen = migen.add_score( i, &ir );
-			irs.push( ir );
-		}
-
 		let io = imgui::get_io();
 		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
-		imutil::set_scale( 1.5, 1.5, 13.0, font );
+		imutil::set_scale( 1.5, 1.0, 13.0, font );
 
-		let mut player = player::Player::new( "memol" )?;
-		player.set_data( migen.generate() );
-		let mut window = imutil::Window::new( Ui::new( player, irs ) );
+		let mut window = imutil::Window::new( Ui::new( "memol" )? );
+		let tx = window.create_sender();
+		thread::spawn( move || compile_task( &args.free[0], tx ).unwrap() );
 		window.event_loop();
 
 		Ok( () )

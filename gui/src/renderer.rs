@@ -163,52 +163,48 @@ impl Renderer {
 	}
 
 	pub fn new_frame( &mut self, display_size: (u32, u32) ) {
-		unsafe {
-			let io = imgui::get_io();
-			io.DisplaySize.x = display_size.0 as f32 / io.DisplayFramebufferScale.x;
-			io.DisplaySize.y = display_size.1 as f32 / io.DisplayFramebufferScale.y;
-			imgui::NewFrame();
-		}
+		let io = imgui::get_io();
+		io.DisplaySize.x = display_size.0 as f32 / io.DisplayFramebufferScale.x;
+		io.DisplaySize.y = display_size.1 as f32 / io.DisplayFramebufferScale.y;
+		unsafe { imgui::NewFrame() };
 	}
 
 	pub fn handle_event( &mut self, ev: &glutin::Event ) {
 		use glutin::*;
-		unsafe {
-			let io = imgui::get_io();
-			match *ev {
-				Event::KeyboardInput( s, _, Some( code ) ) => {
-					let pressed = s == ElementState::Pressed;
-					match code {
-						VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl  = pressed,
-						VirtualKeyCode::LShift   | VirtualKeyCode::RShift   => io.KeyShift = pressed,
-						VirtualKeyCode::LAlt     | VirtualKeyCode::RAlt     => io.KeyAlt   = pressed,
-						c => io.KeysDown[c as usize] = pressed,
-					}
-				},
-				Event::MouseInput( s, k ) => {
-					let pressed = s == ElementState::Pressed;
-					match k {
-						MouseButton::Left   => io.MouseDown[0] = pressed,
-						MouseButton::Right  => io.MouseDown[1] = pressed,
-						MouseButton::Middle => io.MouseDown[2] = pressed,
-						_ => (),
-					}
+		let io = imgui::get_io();
+		match *ev {
+			Event::KeyboardInput( s, _, Some( code ) ) => {
+				let pressed = s == ElementState::Pressed;
+				match code {
+					VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl  = pressed,
+					VirtualKeyCode::LShift   | VirtualKeyCode::RShift   => io.KeyShift = pressed,
+					VirtualKeyCode::LAlt     | VirtualKeyCode::RAlt     => io.KeyAlt   = pressed,
+					c => io.KeysDown[c as usize] = pressed,
 				}
-				Event::ReceivedCharacter( c ) => {
-					io.AddInputCharacter( c as u16 );
-				},
-				Event::MouseWheel( MouseScrollDelta::LineDelta ( _, y ), TouchPhase::Moved ) |
-				Event::MouseWheel( MouseScrollDelta::PixelDelta( _, y ), TouchPhase::Moved ) => {
-					io.MouseWheel = y;
-				},
-				Event::MouseMoved( x, y ) => {
-					io.MousePos = imgui::ImVec2::new(
-						x as f32 / io.DisplayFramebufferScale.x,
-						y as f32 / io.DisplayFramebufferScale.y
-					);
-				},
-				_ => (),
+			},
+			Event::MouseInput( s, k ) => {
+				let pressed = s == ElementState::Pressed;
+				match k {
+					MouseButton::Left   => io.MouseDown[0] = pressed,
+					MouseButton::Right  => io.MouseDown[1] = pressed,
+					MouseButton::Middle => io.MouseDown[2] = pressed,
+					_ => (),
+				}
 			}
+			Event::ReceivedCharacter( c ) => {
+				unsafe { io.AddInputCharacter( c as u16 ) };
+			},
+			Event::MouseWheel( MouseScrollDelta::LineDelta ( _, y ), TouchPhase::Moved ) |
+			Event::MouseWheel( MouseScrollDelta::PixelDelta( _, y ), TouchPhase::Moved ) => {
+				io.MouseWheel = y;
+			},
+			Event::MouseMoved( x, y ) => {
+				io.MousePos = imgui::ImVec2::new(
+					x as f32 / io.DisplayFramebufferScale.x,
+					y as f32 / io.DisplayFramebufferScale.y
+				);
+			},
+			_ => (),
 		}
 	}
 

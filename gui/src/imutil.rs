@@ -14,14 +14,30 @@ pub struct DrawContext<'a> {
 	pub size: imgui::ImVec2,
 }
 
-pub trait Ui {
-	fn draw( &mut self ) -> i32;
+pub struct MessageSender<T> {
+	tx: sync::mpsc::Sender<T>,
+	proxy: glutin::WindowProxy,
 }
 
-pub struct Window<T: Ui> {
+impl<T> MessageSender<T> {
+	pub fn send( &self, msg: T ) -> Result<(), sync::mpsc::SendError<T>> {
+		self.tx.send( msg )?;
+		self.proxy.wakeup_event_loop();
+		Ok( () )
+	}
+}
+
+pub trait Ui<T> {
+	fn on_draw( &mut self ) -> i32;
+	fn on_message( &mut self, T );
+}
+
+pub struct Window<T, U: Ui<T>> {
 	window: glutin::Window,
 	renderer: renderer::Renderer,
-	ui: T,
+	ui: U,
+	tx: sync::mpsc::Sender<T>,
+	rx: sync::mpsc::Receiver<T>,
 }
 
 impl<'a> DrawContext<'a> {
@@ -51,8 +67,8 @@ impl<'a> DrawContext<'a> {
 	}
 }
 
-impl<T: Ui> Window<T> {
-	pub fn new( ui: T ) -> Self {
+impl<T, U: Ui<T>> Window<T, U> {
+	pub fn new( ui: U ) -> Self {
 		let window = glutin::WindowBuilder::new()
 			.with_gl_profile( glutin::GlProfile::Core )
 			.with_vsync()
@@ -65,43 +81,62 @@ impl<T: Ui> Window<T> {
 			gl::ClearColor( 1.0, 1.0, 1.0, 1.0 );
 		}
 
+		let (tx, rx) = sync::mpsc::channel();
 		Window {
 			window: window,
 			renderer: renderer::Renderer::new(),
 			ui: ui,
+			tx: tx,
+			rx: rx,
+		}
+	}
+
+	pub fn create_sender( &self ) -> MessageSender<T> {
+		MessageSender{
+			tx: self.tx.clone(),
+			proxy: self.window.create_window_proxy(),
 		}
 	}
 
 	pub fn event_loop( &mut self ) {
-		for _ in 0 .. 2 {
-			self.renderer.new_frame( self.window.get_inner_size().unwrap() );
-			self.ui.draw();
-		}
-		unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
-		self.renderer.render();
-		self.window.swap_buffers().unwrap();
-
-		for ev in self.window.wait_events() {
-			self.renderer.handle_event( &ev );
-			if let glutin::Event::Closed = ev {
-				return;
-			}
-
-			let mut count = 2;
-			while count > 0 {
-				for ev in self.window.poll_events() {
-					self.renderer.handle_event( &ev );
-					if let glutin::Event::Closed = ev {
+		loop {
+			let mut n = 2;
+			while n > 0 {
+				//for ev in self.window.poll_events() {
+				while let Some( ev ) = self.window.poll_events().next() {
+					if self.handle_event( &ev ) {
 						return;
 					}
-					count = cmp::max( count, 2 );
+					n = cmp::max( n, 2 );
 				}
 
 				self.renderer.new_frame( self.window.get_inner_size().unwrap() );
-				count = cmp::max( count - 1, self.ui.draw() );
+				n = cmp::max( n - 1, self.ui.on_draw() );
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
 				self.window.swap_buffers().unwrap();
+			}
+
+			let ev = self.window.wait_events().next().unwrap();
+			if self.handle_event( &ev ) {
+				return;
+			}
+		}
+	}
+
+	fn handle_event( &mut self, ev: &glutin::Event ) -> bool {
+		match *ev {
+			glutin::Event::Closed => true,
+			glutin::Event::Awakened => {
+				match self.rx.try_recv() {
+					Err( _ ) => (),
+					Ok ( v ) => self.ui.on_message( v ),
+				};
+				false
+			},
+			_ => {
+				self.renderer.handle_event( ev );
+				false
 			}
 		}
 	}

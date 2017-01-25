@@ -12,7 +12,6 @@ fn main() {
 		.clang_arg( "c++" )
 		.enable_cxx_namespaces()
 		.header( "imgui/imgui.h" )
-		.hide_type( "ImGuiTextBuffer" )
 		.generate()
 		.unwrap()
 		.write_to_file( &file )

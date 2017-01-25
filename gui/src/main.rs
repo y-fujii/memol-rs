@@ -26,6 +26,7 @@ enum UiMessage {
 struct Ui {
 	data: Vec<Vec<irgen::FlatNote>>,
 	text: Option<String>,
+	loc_end: ratio::Ratio,
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
@@ -54,6 +55,12 @@ impl window::Ui<UiMessage> for Ui {
 				self.text = Some( text );
 			},
 		}
+
+		self.loc_end = self.data.iter()
+			.flat_map( |v| v.iter() )
+			.map( |v| v.end )
+			.max()
+			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
 	}
 }
 
@@ -63,6 +70,7 @@ impl Ui {
 		Ok( Ui {
 			data: Vec::new(),
 			text: None,
+			loc_end: ratio::Ratio::new( 0, 1 ),
 			player: player,
 			channel: 0,
 			follow: false,
@@ -78,12 +86,8 @@ impl Ui {
 		use imgui::*;
 
 		let mut count = 0;
+		let is_playing = self.player.is_playing();
 		let loc = (self.player.location() / 2).to_float() as f32;
-		let loc_end = self.data.iter()
-			.flat_map( |v| v.iter() )
-			.map( |v| v.end )
-			.max()
-			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
 
 		if let Some( ref text ) = self.text {
 			Begin( c_str!( "Message" ), &mut true, WindowFlags_AlwaysAutoResize );
@@ -92,8 +96,10 @@ impl Ui {
 		}
 
 		SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
-		Begin( c_str!( "Transport" ), &mut true,
-			WindowFlags_AlwaysAutoResize | WindowFlags_NoResize | WindowFlags_NoTitleBar
+		Begin(
+			c_str!( "Transport" ), &mut true,
+			WindowFlags_AlwaysAutoResize | WindowFlags_NoMove |
+			WindowFlags_NoResize | WindowFlags_NoTitleBar
 		);
 			Button( c_str!( "Menu" ), &ImVec2::zero() );
 			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
@@ -119,7 +125,7 @@ impl Ui {
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( ">>" ), &ImVec2::zero() ) {
-				self.player.seek( loc_end * 2 ).unwrap_or( () );
+				self.player.seek( self.loc_end * 2 ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 
@@ -133,7 +139,7 @@ impl Ui {
 		imutil::begin_root( WindowFlags_HorizontalScrollbar );
 			let ctx = imutil::DrawContext::new();
 			let note_size = ImVec2::new( (ctx.size.y / 8.0).ceil(), ctx.size.y / 128.0 );
-			if self.follow {
+			if self.follow && is_playing {
 				SetScrollX( loc * note_size.x - ctx.size.x / 2.0 );
 			}
 			else {
@@ -141,8 +147,7 @@ impl Ui {
 			}
 
 			let mut ctx = imutil::DrawContext::new();
-			let loc_end = loc_end.to_float() as f32;
-			self.draw_background( &mut ctx, note_size, loc_end );
+			self.draw_background( &mut ctx, note_size );
 			for (i, ir) in self.data.iter().enumerate() {
 				if i != self.channel as usize {
 					self.draw_notes( &mut ctx, ir, note_size, self.color_note_sub );
@@ -151,10 +156,10 @@ impl Ui {
 			if (self.channel as usize) < self.data.len() {
 				self.draw_notes( &mut ctx, &self.data[self.channel as usize], note_size, self.color_note_top );
 			}
-			count = cmp::max( count, self.draw_time_bar( &mut ctx, note_size, loc, loc_end ) );
+			count = cmp::max( count, self.draw_time_bar( &mut ctx, note_size, loc ) );
 		imutil::end_root();
 
-		cmp::max( count, if self.player.is_playing() { 1 } else { 0 } )
+		cmp::max( count, if is_playing { 1 } else { 0 } )
 	}
 
 	unsafe fn drag_scroll( &self ) -> i32 {
@@ -164,9 +169,10 @@ impl Ui {
 		if delta.x != 0.0 { 1 } else { 0 }
 	}
 
-	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc_end: f32 ) {
+	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2 ) {
 		use imgui::*;
 
+		let loc_end = self.loc_end.to_float() as f32;
 		for i in 0 .. (128 + 11) / 12 {
 			let lt = ImVec2::new( 0.0,                   (128 - i * 12) as f32 * note_size.y );
 			let rb = ImVec2::new( loc_end * note_size.x, (128 - i * 12) as f32 * note_size.y );
@@ -178,7 +184,7 @@ impl Ui {
 			}
 		}
 
-		for i in 0 .. loc_end.floor() as i32 + 1 {
+		for i in 0 .. self.loc_end.to_int() + 1 {
 			let lt = ImVec2::new( i as f32 * note_size.x - 1.0, 0.0        );
 			let rb = ImVec2::new( i as f32 * note_size.x - 1.0, ctx.size.y );
 			ctx.add_line( lt, rb, self.color_line, 1.0 );
@@ -204,17 +210,12 @@ impl Ui {
 			if IsItemHovered() {
 				BeginTooltip();
 					let sym = match nnum % 12 {
-						 0 => "C",
-						 1 => "C+",
-						 2 => "D",
-						 3 => "D+",
+						 0 => "C",  1 => "C+",
+						 2 => "D",  3 => "D+",
 						 4 => "E",
-						 5 => "F",
-						 6 => "F+",
-						 7 => "G",
-						 8 => "G+",
-						 9 => "A",
-						10 => "A+",
+						 5 => "F",  6 => "F+",
+						 7 => "G",  8 => "G+",
+						 9 => "A", 10 => "A+",
 						11 => "B",
 						 _ => panic!(),
 					};
@@ -230,11 +231,11 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_time_bar( &mut self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc: f32, loc_end: f32 ) -> i32 {
+	unsafe fn draw_time_bar( &mut self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc: f32 ) -> i32 {
 		use imgui::*;
 		let mut count = 0;
 
-		for i in 0 .. loc_end.floor() as i64 + 1 {
+		for i in 0 .. self.loc_end.to_int() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {
 				self.player.seek( ratio::Ratio::new( i * 2, 1 ) ).unwrap_or( () );

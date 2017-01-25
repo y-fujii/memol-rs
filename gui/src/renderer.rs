@@ -2,7 +2,6 @@
 use std::*;
 use std::os::raw::{ c_void, c_char };
 use gl;
-use glutin;
 use imgui;
 
 
@@ -81,27 +80,6 @@ impl Renderer {
 		unsafe {
 			let io = imgui::get_io();
 
-			// key mapping.
-			io.KeyMap[imgui::Key::Tab        as usize] = glutin::VirtualKeyCode::Tab as i32;
-			io.KeyMap[imgui::Key::LeftArrow  as usize] = glutin::VirtualKeyCode::Left as i32;
-			io.KeyMap[imgui::Key::RightArrow as usize] = glutin::VirtualKeyCode::Right as i32;
-			io.KeyMap[imgui::Key::UpArrow    as usize] = glutin::VirtualKeyCode::Up as i32;
-			io.KeyMap[imgui::Key::DownArrow  as usize] = glutin::VirtualKeyCode::Down as i32;
-			io.KeyMap[imgui::Key::PageUp     as usize] = glutin::VirtualKeyCode::PageUp as i32;
-			io.KeyMap[imgui::Key::PageDown   as usize] = glutin::VirtualKeyCode::PageDown as i32;
-			io.KeyMap[imgui::Key::Home       as usize] = glutin::VirtualKeyCode::Home as i32;
-			io.KeyMap[imgui::Key::End        as usize] = glutin::VirtualKeyCode::End as i32;
-			io.KeyMap[imgui::Key::Delete     as usize] = glutin::VirtualKeyCode::Delete as i32;
-			io.KeyMap[imgui::Key::Backspace  as usize] = glutin::VirtualKeyCode::Back as i32;
-			io.KeyMap[imgui::Key::Enter      as usize] = glutin::VirtualKeyCode::Return as i32;
-			io.KeyMap[imgui::Key::Escape     as usize] = glutin::VirtualKeyCode::Escape as i32;
-			io.KeyMap[imgui::Key::A          as usize] = glutin::VirtualKeyCode::A as i32;
-			io.KeyMap[imgui::Key::C          as usize] = glutin::VirtualKeyCode::C as i32;
-			io.KeyMap[imgui::Key::V          as usize] = glutin::VirtualKeyCode::V as i32;
-			io.KeyMap[imgui::Key::X          as usize] = glutin::VirtualKeyCode::X as i32;
-			io.KeyMap[imgui::Key::Y          as usize] = glutin::VirtualKeyCode::Y as i32;
-			io.KeyMap[imgui::Key::Z          as usize] = glutin::VirtualKeyCode::Z as i32;
-
 			let mut data = ptr::null_mut();
 			let mut w = 0;
 			let mut h = 0;
@@ -159,49 +137,6 @@ impl Renderer {
 				vbo: vbo,
 				ebo: ebo,
 			}
-		}
-	}
-
-	pub fn handle_event( &mut self, ev: &glutin::Event ) {
-		use glutin::*;
-		let io = imgui::get_io();
-		match *ev {
-			Event::KeyboardInput( s, _, Some( code ) ) => {
-				let pressed = s == ElementState::Pressed;
-				match code {
-					VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl  = pressed,
-					VirtualKeyCode::LShift   | VirtualKeyCode::RShift   => io.KeyShift = pressed,
-					VirtualKeyCode::LAlt     | VirtualKeyCode::RAlt     => io.KeyAlt   = pressed,
-					c => io.KeysDown[c as usize] = pressed,
-				}
-			},
-			Event::MouseInput( s, k ) => {
-				let pressed = s == ElementState::Pressed;
-				match k {
-					MouseButton::Left   => io.MouseDown[0] = pressed,
-					MouseButton::Right  => io.MouseDown[1] = pressed,
-					MouseButton::Middle => io.MouseDown[2] = pressed,
-					_ => (),
-				}
-			}
-			Event::ReceivedCharacter( c ) => {
-				unsafe { io.AddInputCharacter( c as u16 ) };
-			},
-			Event::MouseWheel( MouseScrollDelta::LineDelta ( _, y ), TouchPhase::Moved ) |
-			Event::MouseWheel( MouseScrollDelta::PixelDelta( _, y ), TouchPhase::Moved ) => {
-				io.MouseWheel = y;
-			},
-			Event::MouseMoved( x, y ) => {
-				io.MousePos = imgui::ImVec2::new(
-					x as f32 / io.DisplayFramebufferScale.x,
-					y as f32 / io.DisplayFramebufferScale.y
-				);
-			},
-			Event::Resized( x, y ) => {
-				io.DisplaySize.x = x as f32 / io.DisplayFramebufferScale.x;
-				io.DisplaySize.y = y as f32 / io.DisplayFramebufferScale.y;
-			},
-			_ => (),
 		}
 	}
 
@@ -276,7 +211,7 @@ impl Renderer {
 				for i in 0 .. cmd_list.CmdBuffer.Size {
 					let cmd = &*cmd_list.CmdBuffer.Data.offset( i as isize );
 					if let Some( cb ) = cmd.UserCallback {
-						cb();
+						cb( cmd_list, cmd );
 					}
 					else {
 						gl::BindTexture( gl::TEXTURE_2D, cmd.TextureId as u32 );

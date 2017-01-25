@@ -1,5 +1,5 @@
 extern crate gcc;
-extern crate libbindgen;
+extern crate bindgen;
 use std::*;
 
 
@@ -7,7 +7,7 @@ fn main() {
 	let out_dir = env::var( "OUT_DIR" ).unwrap();
 
 	let file = path::Path::new( &out_dir ).join( "imgui_gen.rs" );
-	libbindgen::builder()
+	bindgen::builder()
 		.clang_arg( "-x" )
 		.clang_arg( "c++" )
 		.enable_cxx_namespaces()

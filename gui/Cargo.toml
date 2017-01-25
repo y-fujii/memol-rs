@@ -12,4 +12,4 @@ memol = { path = ".." }
 
 [build-dependencies]
 gcc = "*"
-libbindgen = "*"
+bindgen = "*"

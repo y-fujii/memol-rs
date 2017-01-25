@@ -3,10 +3,12 @@
 extern crate getopts;
 extern crate gl;
 extern crate glutin;
+#[macro_use]
 extern crate memol;
 mod imgui;
-mod imutil;
 mod renderer;
+mod window;
+mod imutil;
 use std::*;
 use std::io::prelude::*;
 use imgui::ImVec2;
@@ -34,7 +36,7 @@ struct Ui {
 	color_note_sub: u32,
 }
 
-impl imutil::Ui<UiMessage> for Ui {
+impl window::Ui<UiMessage> for Ui {
 	fn on_draw( &mut self ) -> i32 {
 		unsafe { self.draw_all() }
 	}
@@ -248,7 +250,7 @@ impl Ui {
 	}
 }
 
-fn compile_task( file: &str, tx: imutil::MessageSender<UiMessage> ) -> Result<(), Box<error::Error>> {
+fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<(), Box<error::Error>> {
 	loop {
 		let mut buf = String::new();
 		fs::File::open( file )?.read_to_string( &mut buf )?;
@@ -294,7 +296,7 @@ fn main() {
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
 		imutil::set_scale( 1.5, 1.0, 13.0, font );
 
-		let mut window = imutil::Window::new( Ui::new( "memol" )? );
+		let mut window = window::Window::new( Ui::new( "memol" )? );
 		let tx = window.create_sender();
 		thread::spawn( move || compile_task( &args.free[0], tx ).unwrap() );
 		window.event_loop();

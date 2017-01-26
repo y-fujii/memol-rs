@@ -90,6 +90,7 @@ impl Ui {
 		let loc = (self.player.location() / 2).to_float() as f32;
 
 		if let Some( ref text ) = self.text {
+			SetNextWindowPosCenter( SetCond_Always );
 			Begin( c_str!( "Message" ), &mut true, WindowFlags_AlwaysAutoResize );
 				Text( c_str!( "{}", text ) );
 			End();

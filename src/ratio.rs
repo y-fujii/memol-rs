@@ -124,6 +124,14 @@ impl Ratio {
 		}
 	}
 
+	pub fn zero() -> Ratio {
+		Ratio{ y: 0, x: 1 }
+	}
+
+	pub fn one() -> Ratio {
+		Ratio{ y: 1, x: 1 }
+	}
+
 	pub fn max( self, other: Ratio ) -> Ratio {
 		if self < other { other } else { self }
 	}

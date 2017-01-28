@@ -30,6 +30,7 @@ struct Ui {
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
+	play_on_changed: bool,
 	color_line: u32,
 	color_time_bar: u32,
 	color_chromatic: u32,
@@ -42,7 +43,7 @@ impl window::Ui<UiMessage> for Ui {
 		unsafe { self.draw_all() }
 	}
 
-	fn on_message( &mut self, msg: UiMessage ) {
+	fn on_message( &mut self, msg: UiMessage ) -> i32 {
 		match msg {
 			UiMessage::Data( irs, evs ) => {
 				self.data = irs;
@@ -60,7 +61,16 @@ impl window::Ui<UiMessage> for Ui {
 			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
 			.max()
-			.unwrap_or( ratio::Ratio::new( 0, 1 ) );
+			.unwrap_or( ratio::Ratio::zero() );
+
+		if self.play_on_changed {
+			self.player.seek( ratio::Ratio::zero() ).unwrap_or( () );
+			self.player.play().unwrap_or( () );
+			JACK_FRAME_WAIT
+		}
+		else {
+			0
+		}
 	}
 }
 
@@ -70,10 +80,11 @@ impl Ui {
 		Ok( Ui {
 			data: Vec::new(),
 			text: None,
-			loc_end: ratio::Ratio::new( 0, 1 ),
+			loc_end: ratio::Ratio::zero(),
 			player: player,
 			channel: 0,
-			follow: false,
+			follow: true,
+			play_on_changed: true,
 			color_line:      imutil::srgb_gamma( 0.5, 0.5, 0.5, 1.0 ),
 			color_time_bar:  imutil::srgb_gamma( 0.0, 0.0, 0.0, 1.0 ),
 			color_chromatic: imutil::srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
@@ -106,13 +117,13 @@ impl Ui {
 			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
 				Checkbox( c_str!( "Follow" ), &mut self.follow );
 				Checkbox( c_str!( "Repeat" ), &mut false );
-				Checkbox( c_str!( "Play on Save" ), &mut true );
+				Checkbox( c_str!( "Play on changed" ), &mut self.play_on_changed );
 				EndPopup();
 			}
 
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "<<" ), &ImVec2::zero() ) {
-				self.player.seek( ratio::Ratio::new( 0, 1 ) ).unwrap_or( () );
+				self.player.seek( ratio::Ratio::zero() ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
@@ -236,6 +247,7 @@ impl Ui {
 		use imgui::*;
 		let mut count = 0;
 
+		PushStyleVar1( StyleVar::ItemSpacing as i32, &ImVec2::zero() );
 		for i in 0 .. self.loc_end.to_int() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {
@@ -243,6 +255,7 @@ impl Ui {
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		}
+		PopStyleVar( 1 );
 
 		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0                 );
 		let rb = ImVec2::new( loc * note_size.x - 1.0, 128.0 * note_size.y );

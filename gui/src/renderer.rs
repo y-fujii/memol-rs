@@ -142,7 +142,6 @@ impl Renderer {
 
 	pub fn render( &self ) {
 		unsafe {
-			imgui::Render();
 			let io = imgui::get_io();
 			let draw_data = imgui::get_draw_data();
 

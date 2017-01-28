@@ -13,11 +13,10 @@ impl<'a> DrawContext<'a> {
 	pub fn new() -> DrawContext<'static> {
 		use imgui::*;
 		unsafe {
-			let size = GetWindowSize();
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				origin: GetWindowPos() - ImVec2::new( GetScrollX(), GetScrollY() ),
-				size: size,
+				origin: GetWindowContentRegionMin(),
+				size: GetWindowContentRegionMax() - GetWindowContentRegionMin(),
 			}
 		}
 	}

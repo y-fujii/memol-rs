@@ -53,8 +53,8 @@ impl<'a> Generator<'a> {
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Vec<FlatNote>>, misc::Error> {
 		let span = Span{
-			bgn: ratio::Ratio::new( 0, 1 ),
-			end: ratio::Ratio::new( 0, 1 ),
+			bgn: ratio::Ratio::zero(),
+			end: ratio::Ratio::zero(),
 			tied: false,
 			syms: &self.syms,
 		};

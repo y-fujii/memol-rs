@@ -8,7 +8,7 @@ use std::*;
 
 pub trait Ui<T> {
 	fn on_draw( &mut self ) -> i32;
-	fn on_message( &mut self, T );
+	fn on_message( &mut self, T ) -> i32;
 }
 
 pub struct MessageSender<T> {
@@ -67,17 +67,13 @@ impl<T, U: Ui<T>> Window<T, U> {
 		}
 
 		let (tx, rx) = sync::mpsc::channel();
-		let mut this = Window {
+		Window {
 			window: window,
 			renderer: renderer::Renderer::new(),
 			ui: ui,
 			tx: tx,
 			rx: rx,
-		};
-
-		let (x, y) = this.window.get_inner_size().unwrap_or( (640, 480) );
-		this.handle_event( &glutin::Event::Resized( x, y ) );
-		this
+		}
 	}
 
 	pub fn create_sender( &self ) -> MessageSender<T> {
@@ -88,34 +84,37 @@ impl<T, U: Ui<T>> Window<T, U> {
 	}
 
 	pub fn event_loop( &mut self ) {
+		let (x, y) = self.window.get_inner_size().unwrap_or( (640, 480) );
+		let mut n = 1 + self.handle_event( &glutin::Event::Resized( x, y ) );
 		loop {
-			let mut n = 2;
 			while n > 0 {
 				//for ev in self.window.poll_events() {
 				while let Some( ev ) = self.window.poll_events().next() {
 					if let glutin::Event::Closed = ev {
 						return;
 					}
-					self.handle_event( &ev );
-					n = cmp::max( n, 2 );
+					n = cmp::max( n, 1 + self.handle_event( &ev ) );
 				}
 
 				unsafe { imgui::NewFrame() };
-				n = cmp::max( n - 1, self.ui.on_draw() );
+				n = cmp::max( n, 1 + self.ui.on_draw() );
+				unsafe { imgui::Render() };
+
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
 				self.window.swap_buffers().unwrap();
+				n -= 1;
 			}
 
 			let ev = self.window.wait_events().next().unwrap();
 			if let glutin::Event::Closed = ev {
 				return;
 			}
-			self.handle_event( &ev );
+			n = cmp::max( n, 1 + self.handle_event( &ev ) );
 		}
 	}
 
-	fn handle_event( &mut self, ev: &glutin::Event ) {
+	fn handle_event( &mut self, ev: &glutin::Event ) -> i32 {
 		use glutin::*;
 		let io = imgui::get_io();
 		match *ev {
@@ -157,8 +156,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 			_ => (),
 		}
 
+		let mut n = 1;
 		while let Ok( v ) = self.rx.try_recv() {
-			self.ui.on_message( v );
+			n = cmp::max( n, self.ui.on_message( v ) );
 		}
+		n
 	}
 }

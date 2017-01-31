@@ -8,6 +8,7 @@ use imgui;
 pub struct Renderer {
 	pub font_texture: u32,
 	pub program: u32,
+	pub loc_scale: i32,
 	pub vao: u32,
 	pub vbo: u32,
 	pub ebo: u32,
@@ -102,6 +103,9 @@ impl Renderer {
 			gl::AttachShader( prog, frag );
 			gl::LinkProgram( prog );
 
+			gl::Uniform1i( gl::GetUniformLocation( prog, "Texture\0".as_ptr() as *const c_char ), 0 );
+			let loc_scale = gl::GetUniformLocation( prog, "Scale\0".as_ptr() as *const c_char );
+
 			// vertex objects.
 			let mut vao = 0;
 			gl::GenVertexArrays( 1, &mut vao );
@@ -133,6 +137,7 @@ impl Renderer {
 			Renderer {
 				font_texture: tex,
 				program: prog,
+				loc_scale: loc_scale,
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
@@ -158,9 +163,7 @@ impl Renderer {
 				(io.DisplaySize.y * io.DisplayFramebufferScale.y) as i32,
 			);
 			gl::UseProgram( self.program );
-			gl::Uniform1i( gl::GetUniformLocation( self.program, "Texture\0".as_ptr() as *const c_char ), 0 );
-			gl::Uniform2f( gl::GetUniformLocation( self.program,   "Scale\0".as_ptr() as *const c_char ),
-				2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
+			gl::Uniform2f( self.loc_scale, 2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
 			gl::BindVertexArray( self.vao );
 
 			let vtx_size = (0 .. draw_data.CmdListsCount as isize)

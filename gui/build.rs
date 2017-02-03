@@ -12,20 +12,13 @@ fn main() {
 		.clang_arg( "c++" )
 		.enable_cxx_namespaces()
 		.header( "imgui/imgui.h" )
+		.whitelisted_function( "Im.*" )
+		.whitelisted_type( "Im.*" )
+		.whitelisted_var( "Im.*" )
 		.generate()
 		.unwrap()
 		.write_to_file( &file )
 		.unwrap();
-
-	if cfg!( target_family = "windows" ) {
-		// "#define _ 1" in "_mingw_mac.h" causes a compile error.
-		use std::*;
-		use std::io::prelude::*;
-		let mut src = String::new();
-		fs::File::open( &file ).unwrap().read_to_string( &mut src ).unwrap();
-		let dst = src.replace( "pub const _:", "pub const __an_underscore__:" );
-		fs::File::create( &file ).unwrap().write_all( dst.as_bytes() ).unwrap();
-	}
 
 	gcc::Config::new()
 		.cpp( true )

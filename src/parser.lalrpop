@@ -4,6 +4,7 @@ use std::str::FromStr;
 use ast::*;
 use lalrpop_util::ParseError;
 
+#[LALR]
 grammar;
 
 extern {

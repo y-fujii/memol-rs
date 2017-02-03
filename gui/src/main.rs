@@ -1,5 +1,7 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 #![feature( untagged_unions )]
+#![feature( windows_subsystem )]
+#![windows_subsystem = "windows"]
 extern crate getopts;
 extern crate gl;
 extern crate glutin;

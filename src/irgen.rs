@@ -13,6 +13,12 @@ pub struct FlatNote {
 }
 
 #[derive(Debug)]
+pub struct Ir {
+	pub notes: Vec<FlatNote>,
+	pub marks: Vec<ratio::Ratio>,
+}
+
+#[derive(Debug)]
 struct Span<'a> {
 	bgn: ratio::Ratio,
 	end: ratio::Ratio,
@@ -35,23 +41,21 @@ pub struct Generator<'a> {
 
 impl<'a> Generator<'a> {
 	pub fn new( defs: &ast::Definition ) -> Generator {
-		let ninf = ratio::Ratio::new( -1, 0 );
-		let pinf = ratio::Ratio::new(  1, 0 );
 		let mut syms = collections::HashMap::new();
 		syms.insert( '_', vec![
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 69 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 71 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 60 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 62 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 64 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 65 ) },
-			FlatNote{ bgn: ninf, end: pinf, nnum: Some( 67 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 69 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 71 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 60 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 62 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 64 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 65 ) },
+			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 67 ) },
 		] );
 
 		Generator{ defs: defs, syms: syms }
 	}
 
-	pub fn generate( &self, key: &str ) -> Result<Option<Vec<FlatNote>>, misc::Error> {
+	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
 		let span = Span{
 			bgn: ratio::Ratio::zero(),
 			end: ratio::Ratio::zero(),
@@ -62,12 +66,15 @@ impl<'a> Generator<'a> {
 			Some( v ) => v,
 			None      => return Ok( None ),
 		};
-		let mut dst = Vec::new();
+		let mut dst = Ir{
+			notes: Vec::new(),
+			marks: Vec::new(),
+		};
 		self.generate_score( s, &span, &mut dst )?;
 		Ok( Some( dst ) )
 	}
 
-	fn generate_score( &self, score: &ast::Ast<ast::Score>, span: &Span, dst: &mut Vec<FlatNote> ) -> Result<ratio::Ratio, misc::Error> {
+	fn generate_score( &self, score: &ast::Ast<ast::Score>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = NoteState{
@@ -97,10 +104,14 @@ impl<'a> Generator<'a> {
 				self.generate_score( s, &span, dst )?
 			},
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
-				let mut dst_rhs = Vec::new();
+				let mut dst_rhs = Ir{
+					notes: Vec::new(),
+					marks: Vec::new(),
+				};
 				self.generate_score( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone(); // XXX
-				syms.insert( *key, dst_rhs );
+				syms.insert( *key, dst_rhs.notes );
+				dst.marks.extend( dst_rhs.marks );
 				let span = Span{
 					bgn: span.bgn,
 					end: span.end,
@@ -139,7 +150,7 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut NoteState<'b>, dst: &mut Vec<FlatNote> ) -> Result<(), misc::Error> {
+	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut NoteState<'b>, dst: &mut Ir ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
@@ -153,7 +164,7 @@ impl<'a> Generator<'a> {
 				let nnum = match f.nnum {
 					Some( v ) => v,
 					None => {
-						dst.push( FlatNote{
+						dst.notes.push( FlatNote{
 							bgn: span.bgn,
 							end: span.end,
 							nnum: None,
@@ -180,7 +191,7 @@ impl<'a> Generator<'a> {
 					state.ties.insert( nnum, bgn );
 				}
 				else {
-					dst.push( FlatNote{
+					dst.notes.push( FlatNote{
 						bgn: bgn,
 						end: span.end,
 						nnum: Some( nnum ),
@@ -190,7 +201,7 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 			},
 			ast::Note::Rest => {
-				dst.push( FlatNote{
+				dst.notes.push( FlatNote{
 					bgn: span.bgn,
 					end: span.end,
 					nnum: None,
@@ -202,8 +213,11 @@ impl<'a> Generator<'a> {
 					None      => return misc::error( note.bgn, "previous note does not exist." ),
 				}
 			},
+			ast::Note::Mark => {
+				dst.marks.push( span.bgn );
+			},
 			ast::Note::Octave( oct ) => {
-				state.nnum += oct * 12
+				state.nnum += oct * 12;
 			},
 			ast::Note::Chord( ref ns ) => {
 				let mut del_ties = Vec::new();

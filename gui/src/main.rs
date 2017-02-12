@@ -21,7 +21,7 @@ const JACK_FRAME_WAIT: i32 = 12;
 
 
 enum UiMessage {
-	Data( Vec<Vec<irgen::FlatNote>>, Vec<midi::Event> ),
+	Data( Vec<Vec<irgen::FlatNote>>, Vec<midi::Event>, Vec<ratio::Ratio> ),
 	Text( String ),
 }
 
@@ -32,7 +32,6 @@ struct Ui {
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
-	play_on_changed: bool,
 	color_line: u32,
 	color_time_bar: u32,
 	color_chromatic: u32,
@@ -46,33 +45,35 @@ impl window::Ui<UiMessage> for Ui {
 	}
 
 	fn on_message( &mut self, msg: UiMessage ) -> i32 {
-		match msg {
-			UiMessage::Data( irs, evs ) => {
+		let n = match msg {
+			UiMessage::Data( irs, evs, mks ) => {
 				self.data = irs;
-				self.player.set_data( evs );
 				self.text = None;
+				if mks.len() >= 2 {
+					self.player.set_data_with_range( evs, mks[0], mks[1] );
+					self.player.seek( mks[0] ).unwrap_or( () );
+					self.player.play().unwrap_or( () );
+					JACK_FRAME_WAIT
+				}
+				else {
+					self.player.set_data( evs );
+					0
+				}
 			},
 			UiMessage::Text( text ) => {
 				self.data = Vec::new();
 				self.player.set_data( Vec::new() );
 				self.text = Some( text );
+				0
 			},
-		}
+		};
 
 		self.loc_end = self.data.iter()
 			.flat_map( |v| v.iter() )
 			.map( |v| v.end )
 			.max()
 			.unwrap_or( ratio::Ratio::zero() );
-
-		if self.play_on_changed {
-			self.player.seek( ratio::Ratio::zero() ).unwrap_or( () );
-			self.player.play().unwrap_or( () );
-			JACK_FRAME_WAIT
-		}
-		else {
-			0
-		}
+		n
 	}
 }
 
@@ -86,7 +87,6 @@ impl Ui {
 			player: player,
 			channel: 0,
 			follow: true,
-			play_on_changed: true,
 			color_line:      imutil::srgb_gamma( 0.5, 0.5, 0.5, 1.0 ),
 			color_time_bar:  imutil::srgb_gamma( 0.0, 0.0, 0.0, 1.0 ),
 			color_chromatic: imutil::srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
@@ -119,7 +119,6 @@ impl Ui {
 			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
 				Checkbox( c_str!( "Follow" ), &mut self.follow );
 				Checkbox( c_str!( "Repeat" ), &mut false );
-				Checkbox( c_str!( "Play on changed" ), &mut self.play_on_changed );
 				EndPopup();
 			}
 
@@ -278,16 +277,22 @@ fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<()
 			let mut migen = midi::Generator::new();
 			let mut irs = Vec::new();
 			for i in 0 .. 16 {
-				let ir = irgen.generate( &format!( "out.{}", i ) )?.unwrap_or( Vec::new() );
-				migen = migen.add_score( i, &ir );
-				irs.push( ir );
+				match irgen.generate( &format!( "out.{}", i ) )? {
+					Some( ir ) => {
+						migen = migen.add_score( i, &ir );
+						irs.push( ir.notes );
+					},
+					None => {
+						irs.push( Vec::new() );
+					},
+				}
 			}
-			let evs = migen.generate();
-			Ok( (irs, evs) )
+			let (evs, mks) = migen.generate();
+			Ok( (irs, evs, mks) )
 		};
 		let msg = match compile() {
-			Ok ( (irs, evs) ) => {
-				UiMessage::Data( irs, evs )
+			Ok ( (irs, evs, mks) ) => {
+				UiMessage::Data( irs, evs, mks )
 			},
 			Err( e ) => {
 				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );

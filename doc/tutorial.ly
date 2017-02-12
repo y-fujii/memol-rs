@@ -101,17 +101,18 @@ cargo install
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK.
 <pre>
-memol [-c JACK_PORT] [-s SEEK_TIME] FILE
+memol [-c JACK_PORT] FILE
 </pre>
-<p>memol keeps watching the change of the file and reflects it immediately.
-Since memol supports JACK transport, start/stop/seek operations is synced with
-other JACK clients (Currently Timebase and Session control are not supported).
-Personally I use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage
-JACK connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
+<p>memol keeps watching the change of the file and reflects it immediately.  If
+markers (see below) exist in the code, memol automatically seeks and starts
+playing each time the file has changed.
+<p>Since memol supports JACK transport, start/stop/seek operations are synced
+with other JACK clients (Currently Timebase is not supported).  Personally I
+use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage JACK
+connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
 <a href="http://ardour.org/">Ardour</a> can be used, of course.
 <p>JACK_PORT can be specified multiple times and then the memol output port is
-being connected to them. When SEEK_TIME is specified, memol seeks and starts
-JACK transport each time the file has changed.
+being connected to them.
 
 <h2>Hello, twinkle little star</h2>
 
@@ -246,10 +247,18 @@ score 'out.0   = 2'pattern with q = 'chord
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
 </lilypond>
 
-<h2>Value</h2>
-<p>XXX
+<h2>Value track</h2>
+<p>XXX: Not yet implemented.
+<p>cc#, velocity, offset, arpeggio, random, duration_abs, duration_rel, ...
 <pre>
-value 'vel = { ... }
+value 'out.0.velocity = { ... }
+</pre>
+
+<h2>Symbol track</h2>
+<p>XXX: Not yet implemented.
+<p>drum, pedal, up/down bow, ...
+<pre>
+symbol 'drum = { ... }
 </pre>
 
 <!--
@@ -266,6 +275,14 @@ value 'vel = { ... }
 <p>Although this is out of the language specification, current implementation
 maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
 <code>'out.15</code> are mapped to MIDI channel 1 .. 16.
+
+<h2>Markers</h2>
+<p><code>@</code> adds a marker at the current position.  The current
+implementation uses the first marker as a start position and second one as an
+end position.
+<pre>
+score 'out.0 = { c D E F | @ f e d c | c D @ E F }
+</pre>
 
 </body>
 </html>

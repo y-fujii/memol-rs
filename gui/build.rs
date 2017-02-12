@@ -29,4 +29,6 @@ fn main() {
 		.file( "imgui/imgui.cpp" )
 		.file( "imgui/imgui_draw.cpp" )
 		.compile( "libimgui.a" );
+
+	println!( "cargo:rerun-if-changed=imgui/" );
 }

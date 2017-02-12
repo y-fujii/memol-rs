@@ -3,6 +3,39 @@ use std::*;
 
 
 #[derive(Debug)]
+pub struct UniqueIterator<T: Iterator> {
+	prev: Option<T::Item>,
+	iter: T,
+}
+
+impl<T: Iterator> Iterator for UniqueIterator<T> where T::Item: PartialEq {
+	type Item = T::Item;
+
+	fn next( &mut self ) -> Option<Self::Item> {
+		if let None = self.prev {
+			return None;
+		}
+		loop {
+			let next = self.iter.next();
+			if next != self.prev {
+				return mem::replace( &mut self.prev, next );
+			}
+		}
+	}
+}
+
+pub trait IteratorEx<T: Iterator> {
+	fn unique( self ) -> UniqueIterator<T>;
+}
+
+impl<T: Iterator> IteratorEx<T> for T {
+	fn unique( mut self ) -> UniqueIterator<T> {
+		let prev = self.next();
+		UniqueIterator{ prev: prev, iter: self }
+	}
+}
+
+#[derive(Debug)]
 pub struct Error {
 	pub loc: usize,
 	pub msg: String,

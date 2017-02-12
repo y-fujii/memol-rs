@@ -40,7 +40,7 @@ pub mod parser {
 	}
 }
 
-pub fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
+pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Vec<ratio::Ratio>), misc::Error> {
 	let tree = parser::parse( &src )?;
 	let irgen = irgen::Generator::new( &tree );
 	let mut migen = midi::Generator::new();

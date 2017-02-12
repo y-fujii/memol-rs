@@ -38,6 +38,14 @@ impl cmp::Ord for Ratio {
     }
 }
 
+impl ops::Neg for Ratio {
+	type Output = Ratio;
+
+	fn neg( self ) -> Ratio {
+		Ratio{ y: -self.y, x: self.x }
+	}
+}
+
 impl ops::Add for Ratio {
 	type Output = Ratio;
 
@@ -130,6 +138,10 @@ impl Ratio {
 
 	pub fn one() -> Ratio {
 		Ratio{ y: 1, x: 1 }
+	}
+
+	pub fn inf() -> Ratio {
+		Ratio{ y: 1, x: 0 }
 	}
 
 	pub fn max( self, other: Ratio ) -> Ratio {

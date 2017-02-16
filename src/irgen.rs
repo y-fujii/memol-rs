@@ -5,7 +5,7 @@ use ratio;
 use ast;
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FlatNote {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
@@ -23,7 +23,7 @@ struct Span<'a> {
 	bgn: ratio::Ratio,
 	end: ratio::Ratio,
 	tied: bool,
-	syms: &'a collections::HashMap<char, Vec<FlatNote>>,
+	syms: &'a collections::HashMap<char, &'a [FlatNote]>,
 }
 
 #[derive(Debug)]
@@ -36,13 +36,12 @@ struct NoteState<'a> {
 #[derive(Debug)]
 pub struct Generator<'a> {
 	defs: &'a ast::Definition,
-	syms: collections::HashMap<char, Vec<FlatNote>>,
+	syms: Vec<(char, Vec<FlatNote>)>,
 }
 
 impl<'a> Generator<'a> {
 	pub fn new( defs: &ast::Definition ) -> Generator {
-		let mut syms = collections::HashMap::new();
-		syms.insert( '_', vec![
+		let syms = vec![ ('_', vec![
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 69 ) },
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 71 ) },
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 60 ) },
@@ -50,17 +49,18 @@ impl<'a> Generator<'a> {
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 64 ) },
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 65 ) },
 			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 67 ) },
-		] );
+		] ) ];
 
 		Generator{ defs: defs, syms: syms }
 	}
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
+		let syms = self.syms.iter().map( |&(s, ref ns)| (s, &ns[..]) ).collect();
 		let span = Span{
 			bgn: ratio::Ratio::zero(),
 			end: ratio::Ratio::zero(),
 			tied: false,
-			syms: &self.syms,
+			syms: &syms,
 		};
 		let s = match self.defs.scores.get( key ) {
 			Some( v ) => v,
@@ -109,8 +109,8 @@ impl<'a> Generator<'a> {
 					marks: Vec::new(),
 				};
 				self.generate_score( rhs, &span, &mut dst_rhs )?;
-				let mut syms = span.syms.clone(); // XXX
-				syms.insert( *key, dst_rhs.notes );
+				let mut syms = span.syms.clone();
+				syms.insert( *key, &dst_rhs.notes[..] );
 				dst.marks.extend( dst_rhs.marks );
 				let span = Span{
 					bgn: span.bgn,

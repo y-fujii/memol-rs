@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
-use misc::IteratorEx;
 use ratio;
 use scoregen;
 use valuegen;
@@ -30,14 +29,12 @@ impl Event {
 #[derive(Debug)]
 pub struct Generator {
 	events: Vec<Event>,
-	marks: Vec<ratio::Ratio>,
 }
 
 impl Generator {
 	pub fn new() -> Generator {
 		Generator{
 			events: Vec::new(),
-			marks: Vec::new(),
 		}
 	}
 
@@ -50,18 +47,17 @@ impl Generator {
 				self.events.push( Event::new( n.end * 2, 0, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}
 		}
-		self.marks.extend( score.marks.iter() );
 		self
 	}
 
+	/*
 	pub fn add_cc( mut self, ch: i32, cc: i32, value: &valuegen::Ir ) -> Generator {
 		self
 	}
+	*/
 
-	pub fn generate( mut self ) -> (Vec<Event>, Vec<ratio::Ratio>) {
+	pub fn generate( mut self ) -> Vec<Event> {
 		self.events.sort_by_key( |e| (e.time, e.prio) );
-		self.marks.sort();
-		let marks = self.marks.into_iter().unique().map( |e| e * 2 ).collect();
-		(self.events, marks)
+		self.events
 	}
 }

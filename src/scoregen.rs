@@ -15,7 +15,6 @@ pub struct FlatNote {
 #[derive(Debug)]
 pub struct Ir {
 	pub notes: Vec<FlatNote>,
-	pub marks: Vec<ratio::Ratio>,
 }
 
 #[derive(Debug)]
@@ -68,7 +67,6 @@ impl<'a> Generator<'a> {
 		};
 		let mut dst = Ir{
 			notes: Vec::new(),
-			marks: Vec::new(),
 		};
 		self.generate_score( s, &span, &mut dst )?;
 		Ok( Some( dst ) )
@@ -106,12 +104,10 @@ impl<'a> Generator<'a> {
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
 				let mut dst_rhs = Ir{
 					notes: Vec::new(),
-					marks: Vec::new(),
 				};
 				self.generate_score( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone();
 				syms.insert( *key, &dst_rhs.notes[..] );
-				dst.marks.extend( dst_rhs.marks );
 				let span = Span{
 					bgn: span.bgn,
 					end: span.end,
@@ -212,9 +208,6 @@ impl<'a> Generator<'a> {
 					Some( n ) => self.generate_note( n, span, state, dst )?,
 					None      => return misc::error( note.bgn, "previous note does not exist." ),
 				}
-			},
-			ast::Note::Mark => {
-				dst.marks.push( span.bgn );
 			},
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12;

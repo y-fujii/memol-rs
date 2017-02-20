@@ -129,12 +129,6 @@ group_content: Vec<(Box<Ast<Note>>, i32)> = {
 		a.push( (b, 0) );
 		a
 	},
-	<a:group_content> <lo:@L> "@" <hi:@R> => {
-		let b = Ast::new_box( lo, hi, Note::Mark );
-		let mut a = a;
-		a.push( (b, 0) );
-		a
-	},
 	=> Vec::new(),
 };
 

@@ -28,7 +28,6 @@ pub enum Note {
 	Note( Dir, char, i32, i32 ),
 	Rest,
 	Repeat,
-	Mark,
 	Octave( i32 ),
 	Chord( Vec<Box<Ast<Note>>> ),
 	Group( Vec<(Box<Ast<Note>>, i32)> ),

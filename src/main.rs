@@ -29,14 +29,16 @@ fn main() {
 					let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
 					println!( "error at ({}, {}): {}", row, col, e.msg );
 				},
-				Ok( (events, marks) ) => {
-					if marks.len() >= 2 {
-						player.set_data_with_range( events, marks[0], marks[1] );
-						player.seek( marks[0] )?;
-						player.play()?;
-					}
-					else {
-						player.set_data( events );
+				Ok( (events, range) ) => {
+					match range {
+						Some( (bgn, end) ) => {
+							player.set_data_with_range( events, bgn, end );
+							player.seek( bgn )?;
+							player.play()?;
+						},
+						None => {
+							player.set_data( events );
+						}
 					}
 				},
 			}

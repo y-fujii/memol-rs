@@ -53,7 +53,7 @@
 <h1>memol language Tutorial</h1>
 <p>XXX: under construction.
 
-<p>memol is a music markup language which features:
+<p>memol is a music description language which features:
 <dl>
     <dt>Well-structured
 	<dd>Essentially, memol describes a score as recursive composition of two
@@ -104,8 +104,8 @@ MIDI messages to JACK.
 memol [-c JACK_PORT] FILE
 </pre>
 <p>memol keeps watching the change of the file and reflects it immediately.  If
-markers (see below) exist in the code, memol automatically seeks and starts
-playing each time the file has changed.
+<code>'out.begin</code>, <code>'out.end</code> are specified, memol
+automatically seeks and starts playing each time the file has changed.
 <p>Since memol supports JACK transport, start/stop/seek operations are synced
 with other JACK clients (Currently Timebase is not supported).  Personally I
 use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage JACK
@@ -275,14 +275,6 @@ symbol 'drum = { ... }
 <p>Although this is out of the language specification, current implementation
 maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
 <code>'out.15</code> are mapped to MIDI channel 1 .. 16.
-
-<h2>Markers</h2>
-<p><code>@</code> adds a marker at the current position.  The current
-implementation uses the first marker as a start position and second one as an
-end position.
-<pre>
-score 'out.0 = { c D E F | @ f e d c | c D @ E F }
-</pre>
 
 </body>
 </html>

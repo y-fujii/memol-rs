@@ -41,10 +41,21 @@ pub mod parser {
 	}
 }
 
-pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Vec<ratio::Ratio>), misc::Error> {
+pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, ratio::Ratio)>), misc::Error> {
 	let tree = parser::parse( &src )?;
 	let score_gen = scoregen::Generator::new( &tree );
 	let value_gen = valuegen::Generator::new( &tree );
+
+	let bgn_ir = value_gen.generate( "out.begin" )?;
+	let end_ir = value_gen.generate( "out.end"   )?;
+	let range = match (bgn_ir, end_ir) {
+		(Some( bgn ), Some( end )) => Some( (
+			bgn.get_value( ratio::Ratio::zero() ),
+			end.get_value( ratio::Ratio::zero() )
+		) ),
+		_ => None,
+	};
+
 	let mut migen = midi::Generator::new();
 	for ch in 0 .. 16 {
 		if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
@@ -61,5 +72,5 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Vec<ratio::Ratio>), mis
 			migen = migen.add_score( ch, &score_ir, &value_ir );
 		}
 	}
-	Ok( migen.generate() )
+	Ok( (migen.generate(), range) )
 }

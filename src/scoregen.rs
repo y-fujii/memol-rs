@@ -27,7 +27,7 @@ struct Span<'a> {
 }
 
 #[derive(Debug)]
-struct NoteState<'a> {
+struct State<'a> {
 	nnum: i32,
 	note: Option<&'a ast::Ast<ast::Note>>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
@@ -77,7 +77,7 @@ impl<'a> Generator<'a> {
 	fn generate_score( &self, score: &ast::Ast<ast::Score>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
-				let mut state = NoteState{
+				let mut state = State{
 					nnum: 60,
 					note: None,
 					ties: collections::HashMap::new(),
@@ -150,7 +150,7 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut NoteState<'b>, dst: &mut Ir ) -> Result<(), misc::Error> {
+	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut State<'b>, dst: &mut Ir ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
@@ -222,7 +222,7 @@ impl<'a> Generator<'a> {
 			ast::Note::Chord( ref ns ) => {
 				let mut del_ties = Vec::new();
 				let mut new_ties = Vec::new();
-				let mut s = NoteState{
+				let mut s = State{
 					nnum: state.nnum,
 					note: state.note,
 					ties: collections::HashMap::new(),

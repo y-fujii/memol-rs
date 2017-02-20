@@ -19,7 +19,7 @@ pub definition: Definition = {
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "=" <c:value> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "=" <c:value_track> =>? {
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
@@ -151,8 +151,51 @@ chord_content: Vec<Box<Ast<Note>>> = {
 	=> Vec::new(),
 };
 
+value_track: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:label> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::Symbol( a ) ),
+	<lo:@L> "[" <a:value_track_list> "]" <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::Sequence( a ) ),
+	<lo:@L> "{" <a:value_track_content> "}" <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::ValueTrack( a ) ),
+};
+
+value_track_list: Vec<Box<Ast<ValueTrack>>> = {
+	<a:value_track_list> <b:value_track> => {
+		let mut a = a;
+		a.push( b );
+		a
+	},
+	=> Vec::new(),
+};
+
+value_track_content: Vec<Box<Ast<Value>>> = {
+	<a:value_track_content> "|" <lo:@L> <b:value_group_content> <hi:@R> => {
+		let mut a = a;
+		a.push( Ast::new_box( lo, hi, Value::Group( b ) ) );
+		a
+	},
+	<lo:@L> <b:value_group_content> <hi:@R> => {
+		let mut a = Vec::new();
+		a.push( Ast::new_box( lo, hi, Value::Group( b ) ) );
+		a
+	},
+};
+
 value: Box<Ast<Value>> = {
-	<lo:@L> <hi:@R> => Ast::new_box( lo, hi, Value::Rest ),
+	<lo:@L> <a:sint> <hi:@R> =>
+		Ast::new_box( lo, hi, Value::Value( a, a ) ),
+	<lo:@L> "[" <a:value_group_content> "]" <hi:@R> =>
+		Ast::new_box( lo, hi, Value::Group( a ) ),
+};
+
+value_group_content: Vec<(Box<Ast<Value>>, i32)> = {
+	<a:value_group_content> <b:value> => {
+		let mut a = a;
+		a.push( (b, 1) );
+		a
+	},
+	=> Vec::new(),
 };
 
 pitch_lower: (char, i32) = {

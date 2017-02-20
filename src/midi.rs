@@ -2,7 +2,8 @@
 use std::*;
 use misc::IteratorEx;
 use ratio;
-use irgen;
+use scoregen;
+use valuegen;
 
 
 #[derive(Debug)]
@@ -40,15 +41,20 @@ impl Generator {
 		}
 	}
 
-	pub fn add_score( mut self, ch: i32, src: &irgen::Ir ) -> Generator {
-		let vel = 79;
-		for n in src.notes.iter() {
+	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir ) -> Generator {
+		for n in score.notes.iter() {
 			if let Some( nnum ) = n.nnum {
+				let vel = (vels.get_value( n.bgn ) * 127).to_int() as u8;
+				println!( "{}", vel );
 				self.events.push( Event::new( n.bgn * 2, 1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
 				self.events.push( Event::new( n.end * 2, 0, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}
 		}
-		self.marks.extend( src.marks.iter() );
+		self.marks.extend( score.marks.iter() );
+		self
+	}
+
+	pub fn add_cc( mut self, ch: i32, cc: i32, value: &valuegen::Ir ) -> Generator {
 		self
 	}
 

@@ -7,7 +7,8 @@ pub mod misc;
 pub mod ratio;
 pub mod ast;
 //pub mod parser;
-pub mod irgen;
+pub mod scoregen;
+pub mod valuegen;
 pub mod midi;
 pub mod jack;
 pub mod player;
@@ -42,11 +43,22 @@ pub mod parser {
 
 pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Vec<ratio::Ratio>), misc::Error> {
 	let tree = parser::parse( &src )?;
-	let irgen = irgen::Generator::new( &tree );
+	let score_gen = scoregen::Generator::new( &tree );
+	let value_gen = valuegen::Generator::new( &tree );
 	let mut migen = midi::Generator::new();
 	for ch in 0 .. 16 {
-		if let Some( ir ) = irgen.generate( &format!( "out.{}", ch ) )? {
-			migen = migen.add_score( ch, &ir );
+		if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
+			let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
+				Some( v ) => v,
+				None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
+					bgn: -ratio::Ratio::inf(),
+					end:  ratio::Ratio::inf(),
+					value_bgn: 79,
+					value_end: 79,
+				} ] },
+			};
+
+			migen = migen.add_score( ch, &score_ir, &value_ir );
 		}
 	}
 	Ok( migen.generate() )

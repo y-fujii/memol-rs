@@ -12,7 +12,7 @@ pub struct Ast<T: Clone> {
 #[derive(Clone, Debug)]
 pub struct Definition {
 	pub scores: collections::HashMap<String, Box<Ast<Score>>>,
-	pub values: collections::HashMap<String, Box<Ast<Value>>>,
+	pub values: collections::HashMap<String, Box<Ast<ValueTrack>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -45,7 +45,15 @@ pub enum Score {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-	Rest,
+	Value( i32, i32 ),
+	Group( Vec<(Box<Ast<Value>>, i32)> ),
+}
+
+#[derive(Clone, Debug)]
+pub enum ValueTrack {
+	ValueTrack( Vec<Box<Ast<Value>>> ),
+	Symbol( String ),
+	Sequence( Vec<Box<Ast<ValueTrack>>> ),
 }
 
 impl<T: Clone> Ast<T> {

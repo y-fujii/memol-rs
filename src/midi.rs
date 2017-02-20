@@ -44,8 +44,8 @@ impl Generator {
 	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir ) -> Generator {
 		for n in score.notes.iter() {
 			if let Some( nnum ) = n.nnum {
-				let vel = (vels.get_value( n.bgn ) * 127).to_int() as u8;
-				println!( "{}", vel );
+				// XXX
+				let vel = (vels.get_value( n.bgn ) * ratio::Ratio::new( 127, 9 )).to_int() as u8;
 				self.events.push( Event::new( n.bgn * 2, 1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
 				self.events.push( Event::new( n.end * 2, 0, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}

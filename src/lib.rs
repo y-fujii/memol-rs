@@ -53,8 +53,8 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Vec<ratio::Ratio>), mis
 				None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
 					bgn: -ratio::Ratio::inf(),
 					end:  ratio::Ratio::inf(),
-					value_bgn: 79,
-					value_end: 79,
+					value_bgn: ratio::Ratio::new( 6, 127 ), // XXX
+					value_end: ratio::Ratio::new( 6, 127 ), // XXX
 				} ] },
 			};
 

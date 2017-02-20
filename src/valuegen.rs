@@ -9,8 +9,8 @@ use ast;
 pub struct FlatValue {
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
-	pub value_bgn: i32,
-	pub value_end: i32,
+	pub value_bgn: ratio::Ratio,
+	pub value_end: ratio::Ratio,
 }
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ struct State {
 impl Ir {
 	pub fn get_value( &self, t: ratio::Ratio ) -> ratio::Ratio {
 		let v = self.values.iter().filter( |v| v.bgn <= t && t < v.end ).next().unwrap();
-		ratio::Ratio::new( v.value_bgn as i64, 1 )
+		v.value_bgn + (v.value_end - v.value_bgn) * (t - v.bgn) / (v.end - v.bgn)
 	}
 }
 

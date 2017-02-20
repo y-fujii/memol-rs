@@ -112,6 +112,17 @@ impl ops::Mul<i64> for Ratio {
 	}
 }
 
+impl ops::Div for Ratio {
+	type Output = Ratio;
+
+	fn div( self, other: Ratio ) -> Ratio {
+		Ratio::new(
+			self.y * other.x,
+			self.x * other.y,
+		)
+	}
+}
+
 impl ops::Div<i64> for Ratio {
 	type Output = Ratio;
 

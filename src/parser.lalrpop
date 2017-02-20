@@ -1,8 +1,9 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
 use std::str::FromStr;
-use ast::*;
 use lalrpop_util::ParseError;
+use ratio;
+use ast::*;
 
 #[LALR]
 grammar;
@@ -184,7 +185,9 @@ value_track_content: Vec<Box<Ast<Value>>> = {
 
 value: Box<Ast<Value>> = {
 	<lo:@L> <a:sint> <hi:@R> =>
-		Ast::new_box( lo, hi, Value::Value( a, a ) ),
+		Ast::new_box( lo, hi, Value::Value( ratio::Ratio::new( a as i64, 1 ), ratio::Ratio::new( a as i64, 1 ) ) ),
+	<lo:@L> <a:sint> ".." <b:sint> <hi:@R> =>
+		Ast::new_box( lo, hi, Value::Value( ratio::Ratio::new( a as i64, 1 ), ratio::Ratio::new( b as i64, 1 ) ) ),
 	<lo:@L> "[" <a:value_group_content> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, Value::Group( a ) ),
 };

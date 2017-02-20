@@ -1,5 +1,6 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
+use ratio;
 
 
 #[derive(Clone, Debug)]
@@ -45,7 +46,7 @@ pub enum Score {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-	Value( i32, i32 ),
+	Value( ratio::Ratio, ratio::Ratio ),
 	Group( Vec<(Box<Ast<Value>>, i32)> ),
 }
 

@@ -109,7 +109,7 @@ impl Player {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			jack::jack_transport_query( self.jack, &mut pos );
-			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as i64).to_int() as u32 );
+			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as i64).floor() as u32 );
 		}
 		Ok( () )
 	}
@@ -163,7 +163,7 @@ impl Player {
 				let ibgn = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rbgn );
 				let iend = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rend );
 				for ev in shared.events[ibgn .. iend].iter() {
-					let n = (ev.time * pos.frame_rate as i64).to_int() as u32 - pos.frame;
+					let n = (ev.time * pos.frame_rate as i64).round() as u32 - pos.frame;
 					jack::jack_midi_event_write( buf, n, ev.msg.as_ptr(), ev.len as usize );
 				}
 			}

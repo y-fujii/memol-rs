@@ -7,8 +7,8 @@ use ast;
 
 #[derive(Debug)]
 pub struct FlatNote {
-	pub bgn: ratio::Ratio,
-	pub end: ratio::Ratio,
+	pub t0: ratio::Ratio,
+	pub t1: ratio::Ratio,
 	pub nnum: Option<i32>,
 }
 
@@ -19,8 +19,8 @@ pub struct Ir {
 
 #[derive(Debug)]
 struct Span<'a> {
-	bgn: ratio::Ratio,
-	end: ratio::Ratio,
+	t0: ratio::Ratio,
+	t1: ratio::Ratio,
 	tied: bool,
 	syms: &'a collections::HashMap<char, &'a [FlatNote]>,
 }
@@ -41,13 +41,13 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
 	pub fn new( defs: &ast::Definition ) -> Generator {
 		let syms = vec![ ('_', vec![
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 69 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 71 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 60 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 62 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 64 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 65 ) },
-			FlatNote{ bgn: -ratio::Ratio::inf(), end: ratio::Ratio::inf(), nnum: Some( 67 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
 		] ) ];
 
 		Generator{ defs: defs, syms: syms }
@@ -56,8 +56,8 @@ impl<'a> Generator<'a> {
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
 		let syms = self.syms.iter().map( |&(s, ref ns)| (s, &ns[..]) ).collect();
 		let span = Span{
-			bgn: ratio::Ratio::zero(),
-			end: ratio::Ratio::zero(),
+			t0: ratio::Ratio::zero(),
+			t1: ratio::Ratio::zero(),
 			tied: false,
 			syms: &syms,
 		};
@@ -82,8 +82,8 @@ impl<'a> Generator<'a> {
 				};
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{
-						bgn: span.bgn + i as i64,
-						end: span.bgn + i as i64 + 1,
+						t0: span.t0 + i as i64,
+						t1: span.t0 + i as i64 + 1,
 						tied: false,
 						syms: span.syms,
 					};
@@ -92,7 +92,7 @@ impl<'a> Generator<'a> {
 				if !state.ties.is_empty() {
 					return misc::error( score.end, "unpaired tie." );
 				}
-				span.bgn + ns.len() as i64
+				span.t0 + ns.len() as i64
 			}
 			ast::Score::Symbol( ref key ) => {
 				let s = match self.defs.scores.get( key ) {
@@ -109,19 +109,19 @@ impl<'a> Generator<'a> {
 				let mut syms = span.syms.clone();
 				syms.insert( *key, &dst_rhs.notes[..] );
 				let span = Span{
-					bgn: span.bgn,
-					end: span.end,
+					t0: span.t0,
+					t1: span.t1,
 					tied: false,
 					syms: &syms,
 				};
 				self.generate_score( lhs, &span, dst )?
 			},
 			ast::Score::Parallel( ref ss ) => {
-				let mut t = span.bgn;
+				let mut t = span.t0;
 				for s in ss.iter() {
 					let span = Span{
-						bgn: span.bgn,
-						end: span.end,
+						t0: span.t0,
+						t1: span.t1,
 						tied: false,
 						syms: span.syms,
 					};
@@ -130,11 +130,11 @@ impl<'a> Generator<'a> {
 				t
 			},
 			ast::Score::Sequence( ref ss ) => {
-				let mut t = span.bgn;
+				let mut t = span.t0;
 				for s in ss.iter() {
 					let span = Span{
-						bgn: t,
-						end: t,
+						t0: t,
+						t1: t,
 						tied: false,
 						syms: span.syms,
 					};
@@ -153,7 +153,7 @@ impl<'a> Generator<'a> {
 					Some( v ) => v,
 					None      => return misc::error( note.bgn, "note does not exist." ),
 				};
-				let f = match fs.iter().filter( |n| n.bgn <= span.bgn && span.bgn < n.end ).nth( ord as usize ) {
+				let f = match fs.iter().filter( |n| n.t0 <= span.t0 && span.t0 < n.t1 ).nth( ord as usize ) {
 					Some( v ) => v,
 					None      => return misc::error( note.bgn, "note does not exist." ),
 				};
@@ -161,8 +161,8 @@ impl<'a> Generator<'a> {
 					Some( v ) => v,
 					None => {
 						dst.notes.push( FlatNote{
-							bgn: span.bgn,
-							end: span.end,
+							t0: span.t0,
+							t1: span.t1,
 							nnum: None,
 						} );
 						return Ok( () );
@@ -179,17 +179,17 @@ impl<'a> Generator<'a> {
 						nnum + if nnum >= state.nnum { 0 } else { 12 }
 					},
 				};
-				let bgn = match state.ties.remove( &nnum ) {
+				let t0 = match state.ties.remove( &nnum ) {
 					Some( v ) => v,
-					None      => span.bgn,
+					None      => span.t0,
 				};
 				if span.tied {
-					state.ties.insert( nnum, bgn );
+					state.ties.insert( nnum, t0 );
 				}
 				else {
 					dst.notes.push( FlatNote{
-						bgn: bgn,
-						end: span.end,
+						t0: t0,
+						t1: span.t1,
 						nnum: Some( nnum ),
 					} );
 				}
@@ -198,8 +198,8 @@ impl<'a> Generator<'a> {
 			},
 			ast::Note::Rest => {
 				dst.notes.push( FlatNote{
-					bgn: span.bgn,
-					end: span.end,
+					t0: span.t0,
+					t1: span.t1,
 					nnum: None,
 				} );
 			},
@@ -225,13 +225,13 @@ impl<'a> Generator<'a> {
 					self.generate_note( n, span, &mut s, dst )?;
 					for k in state.ties.keys() {
 						match s.ties.get( k ) {
-							Some( v ) if *v < span.bgn => (),
+							Some( v ) if *v < span.t0 => (),
 							_ => del_ties.push( *k ),
 						}
 					}
 					for (k, v) in s.ties.iter() {
 						match state.ties.get( k ) {
-							Some( v ) if *v < span.bgn => (),
+							Some( v ) if *v < span.t0 => (),
 							_ => new_ties.push( (*k, *v) ),
 						}
 					}
@@ -256,8 +256,8 @@ impl<'a> Generator<'a> {
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
-						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
-						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
+						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
+						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
 						tied: acc + i == tot && span.tied, // only apply to the last note.
 						syms: span.syms,
 					};
@@ -267,8 +267,8 @@ impl<'a> Generator<'a> {
 			},
 			ast::Note::Tie( ref n ) => {
 				let span = Span{
-					bgn: span.bgn,
-					end: span.end,
+					t0: span.t0,
+					t1: span.t1,
 					tied: true,
 					syms: span.syms,
 				};

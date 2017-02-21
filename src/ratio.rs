@@ -90,6 +90,17 @@ impl ops::Sub<i64> for Ratio {
 	}
 }
 
+impl ops::Sub<Ratio> for i64 {
+	type Output = Ratio;
+
+	fn sub( self, other: Ratio ) -> Ratio {
+		Ratio::new(
+			self * other.x - other.y,
+			other.x,
+		)
+	}
+}
+
 impl ops::Mul for Ratio {
 	type Output = Ratio;
 
@@ -159,8 +170,19 @@ impl Ratio {
 		if self < other { other } else { self }
 	}
 
-	pub fn to_int( self ) -> i64 {
+	// XXX
+	pub fn floor( self ) -> i64 {
 		self.y / self.x
+	}
+
+	// XXX
+	pub fn ceil( self ) -> i64 {
+		(self.y + self.x - 1) / self.x
+	}
+
+	// XXX
+	pub fn round( self ) -> i64 {
+		(self.y * 2 + self.x) / (self.x * 2)
 	}
 
 	pub fn to_float( self ) -> f64 {

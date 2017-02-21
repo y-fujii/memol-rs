@@ -7,10 +7,10 @@ use ast;
 
 #[derive(Debug)]
 pub struct FlatValue {
-	pub bgn: ratio::Ratio,
-	pub end: ratio::Ratio,
-	pub value_bgn: ratio::Ratio,
-	pub value_end: ratio::Ratio,
+	pub t0: ratio::Ratio,
+	pub t1: ratio::Ratio,
+	pub v0: ratio::Ratio,
+	pub v1: ratio::Ratio,
 }
 
 #[derive(Debug)]
@@ -20,8 +20,8 @@ pub struct Ir {
 
 #[derive(Debug)]
 struct Span {
-	bgn: ratio::Ratio,
-	end: ratio::Ratio,
+	t0: ratio::Ratio,
+	t1: ratio::Ratio,
 }
 
 #[derive(Debug)]
@@ -30,8 +30,8 @@ struct State {
 
 impl Ir {
 	pub fn get_value( &self, t: ratio::Ratio ) -> ratio::Ratio {
-		let v = self.values.iter().filter( |v| v.bgn <= t && t < v.end ).next().unwrap();
-		v.value_bgn + (v.value_end - v.value_bgn) * (t - v.bgn) / (v.end - v.bgn)
+		let f = self.values.iter().filter( |f| f.t0 <= t && t < f.t1 ).next().unwrap();
+		f.v0 + (f.v1 - f.v0) * (t - f.t0) / (f.t1 - f.t0)
 	}
 }
 
@@ -47,8 +47,8 @@ impl<'a> Generator<'a> {
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
 		let span = Span{
-			bgn: ratio::Ratio::zero(),
-			end: ratio::Ratio::zero(),
+			t0: ratio::Ratio::zero(),
+			t1: ratio::Ratio::zero(),
 		};
 		let s = match self.defs.values.get( key ) {
 			Some( v ) => v,
@@ -67,12 +67,12 @@ impl<'a> Generator<'a> {
 				let mut state = State{};
 				for (i, v) in vs.iter().enumerate() {
 					let span = Span{
-						bgn: span.bgn + i as i64,
-						end: span.bgn + i as i64 + 1,
+						t0: span.t0 + i as i64,
+						t1: span.t0 + i as i64 + 1,
 					};
 					self.generate_value( v, &span, &mut state, dst )?;
 				}
-				span.bgn + vs.len() as i64
+				span.t0 + vs.len() as i64
 			}
 			ast::ValueTrack::Symbol( ref key ) => {
 				let s = match self.defs.values.get( key ) {
@@ -82,11 +82,11 @@ impl<'a> Generator<'a> {
 				self.generate_value_track( s, &span, dst )?
 			},
 			ast::ValueTrack::Sequence( ref ss ) => {
-				let mut t = span.bgn;
+				let mut t = span.t0;
 				for s in ss.iter() {
 					let span = Span{
-						bgn: t,
-						end: t,
+						t0: t,
+						t1: t,
 					};
 					t = self.generate_value_track( s, &span, dst )?;
 				}
@@ -96,14 +96,14 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_value<'b>( &self, value: &'b ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Ir ) -> Result<(), misc::Error> {
+	fn generate_value( &self, value: &ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Ir ) -> Result<(), misc::Error> {
 		match value.ast {
-			ast::Value::Value( v_bgn, v_end ) => {
+			ast::Value::Value( v0, v1 ) => {
 				dst.values.push( FlatValue{
-					bgn: span.bgn,
-					end: span.end,
-					value_bgn: v_bgn,
-					value_end: v_end,
+					t0: span.t0,
+					t1: span.t1,
+					v0: v0,
+					v1: v1,
 				} );
 			},
 			ast::Value::Group( ref vs ) => {
@@ -111,8 +111,8 @@ impl<'a> Generator<'a> {
 				let mut acc = 0;
 				for &(ref v, i) in vs.iter() {
 					let span = Span{
-						bgn: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
-						end: span.bgn + (span.end - span.bgn) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
+						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
+						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
 					};
 					self.generate_value( v, &span, state, dst )?;
 					acc += i;

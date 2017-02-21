@@ -51,7 +51,7 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 	let range = match (bgn_ir, end_ir) {
 		(Some( bgn ), Some( end )) => Some( (
 			bgn.get_value( ratio::Ratio::zero() ),
-			end.get_value( ratio::Ratio::zero() )
+			end.get_value( ratio::Ratio::zero() ),
 		) ),
 		_ => None,
 	};
@@ -62,14 +62,20 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 			let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
 				Some( v ) => v,
 				None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
-					bgn: -ratio::Ratio::inf(),
-					end:  ratio::Ratio::inf(),
-					value_bgn: ratio::Ratio::new( 6, 127 ), // XXX
-					value_end: ratio::Ratio::new( 6, 127 ), // XXX
+					t0: -ratio::Ratio::inf(),
+					t1:  ratio::Ratio::inf(),
+					v0: ratio::Ratio::new( 6, 127 ), // XXX
+					v1: ratio::Ratio::new( 6, 127 ), // XXX
 				} ] },
 			};
-
 			migen = migen.add_score( ch, &score_ir, &value_ir );
+		}
+		for cc in 0 .. 127 {
+			let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
+				Some( v ) => v,
+				None      => continue,
+			};
+			migen = migen.add_cc( ch, cc, &value_ir );
 		}
 	}
 	Ok( (migen.generate(), range) )

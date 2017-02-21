@@ -39,22 +39,30 @@ impl Generator {
 	}
 
 	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir ) -> Generator {
-		for n in score.notes.iter() {
-			if let Some( nnum ) = n.nnum {
+		for f in score.notes.iter() {
+			if let Some( nnum ) = f.nnum {
 				// XXX
-				let vel = (vels.get_value( n.bgn ) * ratio::Ratio::new( 127, 9 )).to_int() as u8;
-				self.events.push( Event::new( n.bgn * 2, 1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
-				self.events.push( Event::new( n.end * 2, 0, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
+				let vel = (vels.get_value( f.t0 ) * ratio::Ratio::new( 127, 8 )).round() as u8;
+				self.events.push( Event::new( f.t0 * 2,  1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
+				self.events.push( Event::new( f.t1 * 2, -1, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}
 		}
 		self
 	}
 
-	/*
 	pub fn add_cc( mut self, ch: i32, cc: i32, value: &valuegen::Ir ) -> Generator {
+		for f in value.values.iter() {
+			// XXX
+			let v0 = (f.v0 * ratio::Ratio::new( 127, 8 )).floor();
+			let v1 = (f.v1 * ratio::Ratio::new( 127, 8 )).ceil();
+			for v in v0 .. v1 {
+				let t = f.t0 + (f.t1 - f.t0) * (v - f.v0) / (f.v1 - f.v0);
+				let t = cmp::min( t, f.t0 );
+				self.events.push( Event::new( t * 2, 0, &[ (0xb0 + ch) as u8, cc as u8, v as u8 ] ) );
+			}
+		}
 		self
 	}
-	*/
 
 	pub fn generate( mut self ) -> Vec<Event> {
 		self.events.sort_by_key( |e| (e.time, e.prio) );

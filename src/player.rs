@@ -157,8 +157,8 @@ impl Player {
 
 			let fbgn = ratio::Ratio::new( (pos.frame       ) as i64, pos.frame_rate as i64 );
 			let fend = ratio::Ratio::new( (pos.frame + size) as i64, pos.frame_rate as i64 );
-			let rbgn = cmp::max( (fbgn, 0), (shared.bgn, 1) );
-			let rend = cmp::min( (fend, 0), (shared.end, 1) );
+			let rbgn = cmp::max( (fbgn, i32::MIN), (shared.bgn, 0) );
+			let rend = cmp::min( (fend, i32::MIN), (shared.end, 0) );
 			if rbgn < rend {
 				let ibgn = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rbgn );
 				let iend = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rend );

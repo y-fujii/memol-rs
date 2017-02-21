@@ -41,6 +41,7 @@ pub enum Score {
 	With( Box<Ast<Score>>, char, Box<Ast<Score>> ),
 	Parallel( Vec<Box<Ast<Score>>> ),
 	Sequence( Vec<Box<Ast<Score>>> ),
+	Stretch( Box<Ast<Score>>, ratio::Ratio ),
 }
 
 #[derive(Clone, Debug)]
@@ -54,6 +55,7 @@ pub enum ValueTrack {
 	ValueTrack( Vec<Box<Ast<Value>>> ),
 	Symbol( String ),
 	Sequence( Vec<Box<Ast<ValueTrack>>> ),
+	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
 }
 
 impl<T: Clone> Ast<T> {

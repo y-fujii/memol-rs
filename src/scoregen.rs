@@ -41,13 +41,13 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
 	pub fn new( defs: &ast::Definition ) -> Generator {
 		let syms = vec![ ('_', vec![
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
-			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
+			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
 		] ) ];
 
 		Generator{ defs: defs, syms: syms }
@@ -57,7 +57,7 @@ impl<'a> Generator<'a> {
 		let syms = self.syms.iter().map( |&(s, ref ns)| (s, &ns[..]) ).collect();
 		let span = Span{
 			t0: ratio::Ratio::zero(),
-			t1: ratio::Ratio::zero(),
+			t1: ratio::Ratio::one(),
 			tied: false,
 			syms: &syms,
 		};
@@ -82,17 +82,16 @@ impl<'a> Generator<'a> {
 				};
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{
-						t0: span.t0 + i as i64,
-						t1: span.t0 + i as i64 + 1,
-						tied: false,
-						syms: span.syms,
+						t0: span.t0 + (span.t1 - span.t0) * i as i64,
+						t1: span.t1 + (span.t1 - span.t0) * i as i64,
+						.. *span
 					};
 					self.generate_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
 					return misc::error( score.end, "unpaired tie." );
 				}
-				span.t0 + ns.len() as i64
+				span.t0 + (span.t1 - span.t0) * ns.len() as i64
 			}
 			ast::Score::Symbol( ref key ) => {
 				let s = match self.defs.scores.get( key ) {
@@ -109,22 +108,14 @@ impl<'a> Generator<'a> {
 				let mut syms = span.syms.clone();
 				syms.insert( *key, &dst_rhs.notes[..] );
 				let span = Span{
-					t0: span.t0,
-					t1: span.t1,
-					tied: false,
 					syms: &syms,
+					.. *span
 				};
 				self.generate_score( lhs, &span, dst )?
 			},
 			ast::Score::Parallel( ref ss ) => {
 				let mut t = span.t0;
 				for s in ss.iter() {
-					let span = Span{
-						t0: span.t0,
-						t1: span.t1,
-						tied: false,
-						syms: span.syms,
-					};
 					t = t.max( self.generate_score( s, &span, dst )? );
 				}
 				t
@@ -134,13 +125,19 @@ impl<'a> Generator<'a> {
 				for s in ss.iter() {
 					let span = Span{
 						t0: t,
-						t1: t,
-						tied: false,
-						syms: span.syms,
+						t1: t + (span.t1 - span.t0),
+						.. *span
 					};
 					t = self.generate_score( s, &span, dst )?;
 				}
 				t
+			},
+			ast::Score::Stretch( ref s, r ) => {
+				let span = Span{
+					t1: span.t0 + r * (span.t1 - span.t0),
+					.. *span
+				};
+				self.generate_score( s, &span, dst )?
 			},
 		};
 		Ok( end )
@@ -259,7 +256,7 @@ impl<'a> Generator<'a> {
 						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
 						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
 						tied: acc + i == tot && span.tied, // only apply to the last note.
-						syms: span.syms,
+						.. *span
 					};
 					self.generate_note( n, &span, state, dst )?;
 					acc += i;
@@ -267,10 +264,8 @@ impl<'a> Generator<'a> {
 			},
 			ast::Note::Tie( ref n ) => {
 				let span = Span{
-					t0: span.t0,
-					t1: span.t1,
 					tied: true,
-					syms: span.syms,
+					.. *span
 				};
 				self.generate_note( n, &span, state, dst )?
 			},

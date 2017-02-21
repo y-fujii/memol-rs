@@ -43,8 +43,8 @@ impl Generator {
 			if let Some( nnum ) = f.nnum {
 				// XXX
 				let vel = (vels.get_value( f.t0 ) * ratio::Ratio::new( 127, 8 )).round() as u8;
-				self.events.push( Event::new( f.t0 * 2,  1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
-				self.events.push( Event::new( f.t1 * 2, -1, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
+				self.events.push( Event::new( f.t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel ] ) );
+				self.events.push( Event::new( f.t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel ] ) );
 			}
 		}
 		self
@@ -58,7 +58,7 @@ impl Generator {
 			for v in v0 .. v1 {
 				let t = f.t0 + (f.t1 - f.t0) * (v - f.v0) / (f.v1 - f.v0);
 				let t = cmp::min( t, f.t0 );
-				self.events.push( Event::new( t * 2, 0, &[ (0xb0 + ch) as u8, cc as u8, v as u8 ] ) );
+				self.events.push( Event::new( t, 0, &[ (0xb0 + ch) as u8, cc as u8, v as u8 ] ) );
 			}
 		}
 		self

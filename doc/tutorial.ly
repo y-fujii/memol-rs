@@ -219,7 +219,7 @@ score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
 </lilypond>
 
 <h2>Score level composition</h2>
-<p>XXX
+<p>XXX: parallel, sequence, stretch, repeat, ...
 <pre>
 score 'out.0 = [ { c D E d } ( { E F G A | c c c c } 2 { c D E F } ) ]
 </pre>
@@ -248,15 +248,16 @@ score 'out.0   = 2'pattern with q = 'chord
 </lilypond>
 
 <h2>Value track</h2>
-<p>XXX: Not yet implemented.
-<p>cc#, velocity, offset, arpeggio, random, duration_abs, duration_rel, ...
+<p>XXX
 <pre>
-value 'out.0.velocity = { ... }
+value 'out.0.velocity = { [3 4] 3 2 | 2..4 3 }
+value 'out.0.cc11 = { 3..4 | 3..1 }
 </pre>
+<p>XXX: Not yet implemented: offset, arpeggio, random, duration_abs, duration_rel, ...
 
 <h2>Symbol track</h2>
 <p>XXX: Not yet implemented.
-<p>drum, pedal, up/down bow, ...
+<p>drum, damper pedal, up/down bow/stroke, ...
 <pre>
 symbol 'drum = { ... }
 </pre>

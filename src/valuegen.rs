@@ -48,7 +48,7 @@ impl<'a> Generator<'a> {
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
 		let span = Span{
 			t0: ratio::Ratio::zero(),
-			t1: ratio::Ratio::zero(),
+			t1: ratio::Ratio::one(),
 		};
 		let s = match self.defs.values.get( key ) {
 			Some( v ) => v,
@@ -67,12 +67,13 @@ impl<'a> Generator<'a> {
 				let mut state = State{};
 				for (i, v) in vs.iter().enumerate() {
 					let span = Span{
-						t0: span.t0 + i as i64,
-						t1: span.t0 + i as i64 + 1,
+						t0: span.t0 + (span.t1 - span.t0) * i as i64,
+						t1: span.t1 + (span.t1 - span.t0) * i as i64,
+						.. *span
 					};
 					self.generate_value( v, &span, &mut state, dst )?;
 				}
-				span.t0 + vs.len() as i64
+				span.t0 + (span.t1 - span.t0) * vs.len() as i64
 			}
 			ast::ValueTrack::Symbol( ref key ) => {
 				let s = match self.defs.values.get( key ) {
@@ -86,11 +87,19 @@ impl<'a> Generator<'a> {
 				for s in ss.iter() {
 					let span = Span{
 						t0: t,
-						t1: t,
+						t1: t + (span.t1 - span.t0),
+						.. *span
 					};
 					t = self.generate_value_track( s, &span, dst )?;
 				}
 				t
+			},
+			ast::ValueTrack::Stretch( ref s, r ) => {
+				let span = Span{
+					t1: span.t0 + r * (span.t1 - span.t0),
+					.. *span
+				};
+				self.generate_value_track( s, &span, dst )?
 			},
 		};
 		Ok( end )

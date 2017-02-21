@@ -31,16 +31,10 @@ pub definition: Definition = {
 };
 
 score_with: Box<Ast<Score>> = {
-	<lo:@L> <a:score_with> "with" <b:r"[h-z]"> "=" <c:score_repeat> <hi:@R> =>
+	<lo:@L> <a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::With( a, b.chars().next().unwrap(), c ) ),
-	<lo:@L> <a:score_with> "with" "_" "=" <c:score_repeat> <hi:@R> =>
+	<lo:@L> <a:score_with> "with" "_" "=" <c:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::With( a, '_', c ) ),
-	<score_repeat>,
-};
-
-score_repeat: Box<Ast<Score>> = {
-	<lo:@L> <a:uint> <b:score_prim> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
 	<score_prim>,
 };
 
@@ -55,6 +49,10 @@ score_prim: Box<Ast<Score>> = {
 		Ast::new_box( lo, hi, Score::Parallel( a ) ),
 	<lo:@L> "{" <a:score_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( a ) ),
+	<lo:@L> <a:uint> ":" <b:score_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+	<lo:@L> <a:uratio> <b:score_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 };
 
 score_list: Vec<Box<Ast<Score>>> = {
@@ -153,6 +151,8 @@ value_track: Box<Ast<ValueTrack>> = {
 		Ast::new_box( lo, hi, ValueTrack::Sequence( a ) ),
 	<lo:@L> "{" <a:value_track_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::ValueTrack( a ) ),
+	<lo:@L> <a:uratio> <b:value_track> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
 };
 
 value_track_list: Vec<Box<Ast<ValueTrack>>> = {
@@ -203,6 +203,13 @@ pitch_lower: (char, i32) = {
 pitch_upper: (char, i32) = {
 	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i32 - 'A' as i32),
 	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
+};
+
+uratio: ratio::Ratio = {
+	<a:uint> "/" <b:uint> =>
+		ratio::Ratio::new( a as i64, b as i64 ),
+	<a:uint> =>
+		ratio::Ratio::new( a as i64, 1 ),
 };
 
 sint: i32 = {

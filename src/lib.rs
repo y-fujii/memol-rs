@@ -62,10 +62,10 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 			let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
 				Some( v ) => v,
 				None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
-					t0: -ratio::Ratio::inf(),
-					t1:  ratio::Ratio::inf(),
-					v0: ratio::Ratio::new( 6, 127 ), // XXX
-					v1: ratio::Ratio::new( 6, 127 ), // XXX
+					t0: ratio::Ratio::zero(),
+					t1: ratio::Ratio::inf(),
+					v0: ratio::Ratio::new( 5, 1 ), // XXX
+					v1: ratio::Ratio::new( 5, 1 ), // XXX
 				} ] },
 			};
 			migen = migen.add_score( ch, &score_ir, &value_ir );

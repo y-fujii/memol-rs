@@ -21,12 +21,12 @@ const JACK_FRAME_WAIT: i32 = 12;
 
 
 enum UiMessage {
-	Data( Vec<Vec<irgen::FlatNote>>, Vec<midi::Event>, Vec<ratio::Ratio> ),
+	Data( Vec<Vec<scoregen::FlatNote>>, Vec<midi::Event>, Option<(ratio::Ratio, ratio::Ratio)> ),
 	Text( String ),
 }
 
 struct Ui {
-	data: Vec<Vec<irgen::FlatNote>>,
+	data: Vec<Vec<scoregen::FlatNote>>,
 	text: Option<String>,
 	loc_end: ratio::Ratio,
 	player: Box<player::Player>,
@@ -46,18 +46,20 @@ impl window::Ui<UiMessage> for Ui {
 
 	fn on_message( &mut self, msg: UiMessage ) -> i32 {
 		let n = match msg {
-			UiMessage::Data( irs, evs, mks ) => {
+			UiMessage::Data( irs, evs, range ) => {
 				self.data = irs;
 				self.text = None;
-				if mks.len() >= 2 {
-					self.player.set_data_with_range( evs, mks[0], mks[1] );
-					self.player.seek( mks[0] ).unwrap_or( () );
-					self.player.play().unwrap_or( () );
-					JACK_FRAME_WAIT
-				}
-				else {
-					self.player.set_data( evs );
-					0
+				match range {
+					Some( (t0, t1) ) => {
+						self.player.set_data_with_range( evs, t0, t1 );
+						self.player.seek( t0 ).unwrap_or( () );
+						self.player.play().unwrap_or( () );
+						JACK_FRAME_WAIT
+					},
+					None => {
+						self.player.set_data( evs );
+						0
+					},
 				}
 			},
 			UiMessage::Text( text ) => {
@@ -70,7 +72,7 @@ impl window::Ui<UiMessage> for Ui {
 
 		self.loc_end = self.data.iter()
 			.flat_map( |v| v.iter() )
-			.map( |v| v.end )
+			.map( |v| v.t1 )
 			.max()
 			.unwrap_or( ratio::Ratio::zero() );
 		n
@@ -100,7 +102,7 @@ impl Ui {
 
 		let mut count = 0;
 		let is_playing = self.player.is_playing();
-		let loc = (self.player.location() / 2).to_float() as f32;
+		let loc = self.player.location().to_float() as f32;
 
 		if let Some( ref text ) = self.text {
 			SetNextWindowPosCenter( SetCond_Always );
@@ -138,7 +140,7 @@ impl Ui {
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( ">>" ), &ImVec2::zero() ) {
-				self.player.seek( self.loc_end * 2 ).unwrap_or( () );
+				self.player.seek( self.loc_end ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 
@@ -197,14 +199,14 @@ impl Ui {
 			}
 		}
 
-		for i in 0 .. self.loc_end.to_int() + 1 {
+		for i in 0 .. self.loc_end.floor() + 1 {
 			let lt = ImVec2::new( i as f32 * note_size.x - 1.0, 0.0        );
 			let rb = ImVec2::new( i as f32 * note_size.x - 1.0, ctx.size.y );
 			ctx.add_line( lt, rb, self.color_line, 1.0 );
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, notes: &Vec<irgen::FlatNote>, note_size: ImVec2, color: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, notes: &Vec<scoregen::FlatNote>, note_size: ImVec2, color: u32 ) {
 		use imgui::*;
 
 		for note in notes.iter() {
@@ -213,13 +215,13 @@ impl Ui {
 				None      => continue,
 			};
 
-			let x0 = ImVec2::new( note.bgn.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
-			let x1 = ImVec2::new( note.end.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
+			let x0 = ImVec2::new( note.t0.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
+			let x1 = ImVec2::new( note.t1.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
 			ctx.add_rect_filled( x0, x1, color, 0.0, !0 );
 
-			let dur = note.end - note.bgn;
+			let dt = note.t1 - note.t0;
 			SetCursorPos( &x0 );
-			Dummy( &ImVec2::new( dur.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
+			Dummy( &ImVec2::new( dt.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
 			if IsItemHovered() {
 				BeginTooltip();
 					let sym = match nnum % 12 {
@@ -234,11 +236,11 @@ impl Ui {
 					};
 					Text( c_str!( "     note = {}{}", sym, nnum / 12 - 1 ) );
 					Text( c_str!( "gate time = {} + {}/{}",
-						misc::idiv( note.bgn.y, note.bgn.x ),
-						misc::imod( note.bgn.y, note.bgn.x ),
-						note.bgn.x,
+						misc::idiv( note.t0.y, note.t0.x ),
+						misc::imod( note.t0.y, note.t0.x ),
+						note.t0.x,
 					) );
-					Text( c_str!( " duration = {}/{}", dur.y, dur.x ) );
+					Text( c_str!( " duration = {}/{}", dt.y, dt.x ) );
 				EndTooltip();
 			}
 		}
@@ -249,10 +251,10 @@ impl Ui {
 		let mut count = 0;
 
 		PushStyleVar1( StyleVar::ItemSpacing as i32, &ImVec2::zero() );
-		for i in 0 .. self.loc_end.to_int() + 1 {
+		for i in 0 .. self.loc_end.floor() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {
-				self.player.seek( ratio::Ratio::new( i * 2, 1 ) ).unwrap_or( () );
+				self.player.seek( ratio::Ratio::new( i, 1 ) ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		}
@@ -271,28 +273,56 @@ fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<()
 		let mut buf = String::new();
 		fs::File::open( file )?.read_to_string( &mut buf )?;
 
+		// XXX: copy from ../src/lib.rs:compile().
 		let compile = || -> Result<_, misc::Error> {
 			let tree = parser::parse( &buf )?;
-			let irgen = irgen::Generator::new( &tree );
-			let mut migen = midi::Generator::new();
+			let score_gen = scoregen::Generator::new( &tree );
+			let value_gen = valuegen::Generator::new( &tree );
+
+			let bgn_ir = value_gen.generate( "out.begin" )?;
+			let end_ir = value_gen.generate( "out.end"   )?;
+			let range = match (bgn_ir, end_ir) {
+				(Some( bgn ), Some( end )) => Some( (
+					bgn.get_value( ratio::Ratio::zero() ),
+					end.get_value( ratio::Ratio::zero() ),
+				) ),
+				_ => None,
+			};
+
 			let mut irs = Vec::new();
-			for i in 0 .. 16 {
-				match irgen.generate( &format!( "out.{}", i ) )? {
-					Some( ir ) => {
-						migen = migen.add_score( i, &ir );
-						irs.push( ir.notes );
-					},
-					None => {
-						irs.push( Vec::new() );
-					},
+			let mut migen = midi::Generator::new();
+			for ch in 0 .. 16 {
+				if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
+					let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
+						Some( v ) => v,
+						None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
+							t0: ratio::Ratio::zero(),
+							t1: ratio::Ratio::inf(),
+							v0: ratio::Ratio::new( 5, 1 ), // XXX
+							v1: ratio::Ratio::new( 5, 1 ), // XXX
+						} ] },
+					};
+					migen = migen.add_score( ch, &score_ir, &value_ir );
+					irs.push( score_ir.notes );
+				}
+				else {
+					irs.push( Vec::new() );
+				}
+
+				for cc in 0 .. 127 {
+					let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
+						Some( v ) => v,
+						None      => continue,
+					};
+					migen = migen.add_cc( ch, cc, &value_ir );
 				}
 			}
-			let (evs, mks) = migen.generate();
-			Ok( (irs, evs, mks) )
+			Ok( (irs, migen.generate(), range) )
 		};
+
 		let msg = match compile() {
-			Ok ( (irs, evs, mks) ) => {
-				UiMessage::Data( irs, evs, mks )
+			Ok ( (irs, evs, range) ) => {
+				UiMessage::Data( irs, evs, range )
 			},
 			Err( e ) => {
 				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );

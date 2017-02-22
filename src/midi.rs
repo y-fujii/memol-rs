@@ -55,9 +55,9 @@ impl Generator {
 			// XXX
 			let v0 = (f.v0 * ratio::Ratio::new( 127, 8 )).floor();
 			let v1 = (f.v1 * ratio::Ratio::new( 127, 8 )).ceil();
-			for v in v0 .. v1 {
+			self.events.push( Event::new( f.t0, 0, &[ (0xb0 + ch) as u8, cc as u8, v0 as u8 ] ) );
+			for v in v0 + 1 .. v1 {
 				let t = f.t0 + (f.t1 - f.t0) * (v - f.v0) / (f.v1 - f.v0);
-				let t = cmp::min( t, f.t0 );
 				self.events.push( Event::new( t, 0, &[ (0xb0 + ch) as u8, cc as u8, v as u8 ] ) );
 			}
 		}

@@ -166,23 +166,16 @@ impl Ratio {
 		Ratio{ y: 1, x: 0 }
 	}
 
-	pub fn max( self, other: Ratio ) -> Ratio {
-		if self < other { other } else { self }
-	}
-
-	// XXX
 	pub fn floor( self ) -> i64 {
-		self.y / self.x
+		misc::idiv( self.y, self.x )
 	}
 
-	// XXX
 	pub fn ceil( self ) -> i64 {
-		(self.y + self.x - 1) / self.x
+		misc::idiv( self.y + self.x - 1, self.x )
 	}
 
-	// XXX
 	pub fn round( self ) -> i64 {
-		(self.y * 2 + self.x) / (self.x * 2)
+		misc::idiv( self.y * 2 + self.x, self.x * 2 )
 	}
 
 	pub fn to_float( self ) -> f64 {

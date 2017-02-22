@@ -1,24 +1,22 @@
 extern crate lalrpop;
+use std::*;
 
 
 fn main() {
 	lalrpop::process_root().unwrap();
 	println!( "cargo:rerun-if-changed=src/parser.lalrpop" );
 
-	if cfg!( target_family = "windows" ) {
-		// libjack.dll is here.
-		println!( "cargo:rustc-link-search=native=c:/windows" );
-		if cfg!( target_pointer_width = "32" ) {
+	match env::var( "TARGET" ).unwrap().as_str() {
+		"x86_64-pc-windows-gnu" => {
+			println!( "cargo:rustc-link-search=native=c:/windows" );
+			println!( "cargo:rustc-link-lib=jack64" );
+		},
+		"i686-pc-windows-gnu" => {
+			println!( "cargo:rustc-link-search=native=c:/windows" );
+			println!( "cargo:rustc-link-lib=jack" );
+		},
+		_ => {
 			println!( "cargo:rustc-link-lib=jack" );
 		}
-		else if cfg!( target_pointer_width = "64" ) {
-			println!( "cargo:rustc-link-lib=jack64" );
-		}
-		else {
-			panic!();
-		}
-	}
-	else {
-		println!( "cargo:rustc-link-lib=jack" );
 	}
 }

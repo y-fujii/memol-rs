@@ -116,7 +116,7 @@ impl<'a> Generator<'a> {
 			ast::Score::Parallel( ref ss ) => {
 				let mut t = span.t0;
 				for s in ss.iter() {
-					t = t.max( self.generate_score( s, &span, dst )? );
+					t = cmp::max( t, self.generate_score( s, &span, dst )? );
 				}
 				t
 			},

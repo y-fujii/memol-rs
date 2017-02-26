@@ -213,9 +213,8 @@ impl<'a> Generator<'a> {
 				let mut del_ties = Vec::new();
 				let mut new_ties = Vec::new();
 				let mut s = State{
-					nnum: state.nnum,
-					note: state.note,
 					ties: collections::HashMap::new(),
+					.. *state
 				};
 				for (i, n) in ns.iter().enumerate() {
 					s.ties = state.ties.clone();
@@ -227,9 +226,8 @@ impl<'a> Generator<'a> {
 						}
 					}
 					for (k, v) in s.ties.iter() {
-						match state.ties.get( k ) {
-							Some( v ) if *v < span.t0 => (),
-							_ => new_ties.push( (*k, *v) ),
+						if *v >= span.t0 {
+							new_ties.push( (*k, *v) );
 						}
 					}
 					if i == 0 {

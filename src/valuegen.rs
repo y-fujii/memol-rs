@@ -37,11 +37,11 @@ impl Ir {
 
 #[derive(Debug)]
 pub struct Generator<'a> {
-	defs: &'a ast::Definition,
+	defs: &'a ast::Definition<'a>,
 }
 
 impl<'a> Generator<'a> {
-	pub fn new( defs: &ast::Definition ) -> Generator {
+	pub fn new( defs: &'a ast::Definition<'a> ) -> Generator<'a> {
 		Generator{ defs: defs }
 	}
 

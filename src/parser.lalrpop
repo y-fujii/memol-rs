@@ -6,13 +6,13 @@ use ratio;
 use ast::*;
 
 #[LALR]
-grammar;
+grammar<'a>;
 
 extern {
 	type Error = (usize, &'static str);
 }
 
-pub definition: Definition = {
+pub definition: Definition<'a> = {
 	<a:definition> <lo:@L> "score" <b:label> "=" <c:score_with> =>? {
 		let mut a = a;
 		match a.scores.insert( b, c ) {
@@ -30,7 +30,7 @@ pub definition: Definition = {
 	=> Definition{ scores: collections::HashMap::new(), values: collections::HashMap::new() },
 };
 
-score_with: Box<Ast<Score>> = {
+score_with: Box<Ast<Score<'a>>> = {
 	<lo:@L> <a:score_with> "with" <b:r"[h-z]"> "=" <c:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::With( a, b.chars().next().unwrap(), c ) ),
 	<lo:@L> <a:score_with> "with" "_" "=" <c:score_prim> <hi:@R> =>
@@ -38,7 +38,7 @@ score_with: Box<Ast<Score>> = {
 	<score_prim>,
 };
 
-score_prim: Box<Ast<Score>> = {
+score_prim: Box<Ast<Score<'a>>> = {
 	<lo:@L> "_" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( vec![ Ast::new_box( lo, hi, Note::Rest ) ] ) ),
 	<lo:@L> <a:label> <hi:@R> =>
@@ -55,7 +55,7 @@ score_prim: Box<Ast<Score>> = {
 		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 };
 
-score_list: Vec<Box<Ast<Score>>> = {
+score_list: Vec<Box<Ast<Score<'a>>>> = {
 	<a:score_list> <b:score_with> => {
 		let mut a = a;
 		a.push( b );
@@ -64,7 +64,7 @@ score_list: Vec<Box<Ast<Score>>> = {
 	=> Vec::new(),
 };
 
-score_content: Vec<Box<Ast<Note>>> = {
+score_content: Vec<Box<Ast<Note<'a>>>> = {
 	<a:score_content> "|" <lo:@L> <b:group_content> <hi:@R> => {
 		let mut a = a;
 		a.push( Ast::new_box( lo, hi, Note::Group( b ) ) );
@@ -77,11 +77,11 @@ score_content: Vec<Box<Ast<Note>>> = {
 	},
 };
 
-note: Box<Ast<Note>> = {
+note: Box<Ast<Note<'a>>> = {
 	<lo:@L> "_" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Rest ),
 	<lo:@L> "/" <hi:@R> =>
-		Ast::new_box( lo, hi, Note::Repeat ),
+		Ast::new_box( lo, hi, Note::Repeat( cell::RefCell::new( None ) ) ),
 	<lo:@L> <a:pitch_lower> <b:key_signature> <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Note( Dir::Lower, a.0, a.1, b ) ),
 	<lo:@L> <a:pitch_upper> <b:key_signature> <hi:@R> =>
@@ -98,7 +98,7 @@ note: Box<Ast<Note>> = {
 		Ast::new_box( lo, hi, Note::Tie( a ) ),
 };
 
-octave: Box<Ast<Note>> = {
+octave: Box<Ast<Note<'a>>> = {
 	<lo:@L> "<" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Octave(  1 ) ),
 	<lo:@L> ">" <hi:@R> =>
@@ -111,7 +111,7 @@ key_signature: i32 = {
 	                    => 0,
 };
 
-group_content: Vec<(Box<Ast<Note>>, i32)> = {
+group_content: Vec<(Box<Ast<Note<'a>>>, i32)> = {
 	<a:group_content> <b:note> => {
 		let mut a = a;
 		a.push( (b, 1) );
@@ -130,7 +130,7 @@ group_content: Vec<(Box<Ast<Note>>, i32)> = {
 	=> Vec::new(),
 };
 
-chord_content: Vec<Box<Ast<Note>>> = {
+chord_content: Vec<Box<Ast<Note<'a>>>> = {
 	<a:chord_content> <b:note> => {
 		let mut a = a;
 		a.push( b );

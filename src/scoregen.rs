@@ -28,18 +28,18 @@ struct Span<'a> {
 #[derive(Debug)]
 struct State<'a> {
 	nnum: i32,
-	note: Option<&'a ast::Ast<ast::Note>>,
+	note: Option<&'a ast::Ast<ast::Note<'a>>>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
 }
 
 #[derive(Debug)]
 pub struct Generator<'a> {
-	defs: &'a ast::Definition,
+	defs: &'a ast::Definition<'a>,
 	syms: Vec<(char, Vec<FlatNote>)>,
 }
 
 impl<'a> Generator<'a> {
-	pub fn new( defs: &ast::Definition ) -> Generator {
+	pub fn new( defs: &'a ast::Definition<'a> ) -> Generator<'a> {
 		let syms = vec![ ('_', vec![
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
@@ -72,7 +72,7 @@ impl<'a> Generator<'a> {
 		Ok( Some( dst ) )
 	}
 
-	fn generate_score( &self, score: &ast::Ast<ast::Score>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
+	fn generate_score( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = State{
@@ -143,7 +143,7 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note<'b>( &self, note: &'b ast::Ast<ast::Note>, span: &Span, state: &mut State<'b>, dst: &mut Ir ) -> Result<(), misc::Error> {
+	fn generate_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State<'a>, dst: &mut Ir ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( ref dir, sym, ord, sig ) => {
 				let fs = match span.syms.get( &sym ) {
@@ -200,11 +200,16 @@ impl<'a> Generator<'a> {
 					nnum: None,
 				} );
 			},
-			ast::Note::Repeat => {
-				match state.note {
-					Some( n ) => self.generate_note( n, span, state, dst )?,
-					None      => return misc::error( note.bgn, "previous note does not exist." ),
-				}
+			ast::Note::Repeat( ref cn ) => {
+				let rn = match *cn.borrow() {
+					Some( n ) => n,
+					None => match state.note {
+						Some( n ) => n,
+						None      => return misc::error( note.bgn, "previous note does not exist." ),
+					}
+				};
+				*cn.borrow_mut() = Some( rn );
+				self.generate_note( rn, span, state, dst )?
 			},
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12;

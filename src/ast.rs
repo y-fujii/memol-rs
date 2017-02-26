@@ -11,8 +11,8 @@ pub struct Ast<T: Clone> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Definition {
-	pub scores: collections::HashMap<String, Box<Ast<Score>>>,
+pub struct Definition<'a> {
+	pub scores: collections::HashMap<String, Box<Ast<Score<'a>>>>,
 	pub values: collections::HashMap<String, Box<Ast<ValueTrack>>>,
 }
 
@@ -24,24 +24,24 @@ pub enum Dir {
 }
 
 #[derive(Clone, Debug)]
-pub enum Note {
+pub enum Note<'a> {
 	Note( Dir, char, i32, i32 ),
 	Rest,
-	Repeat,
+	Repeat( cell::RefCell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i32 ),
-	Chord( Vec<Box<Ast<Note>>> ),
-	Group( Vec<(Box<Ast<Note>>, i32)> ),
-	Tie( Box<Ast<Note>> ),
+	Chord( Vec<Box<Ast<Note<'a>>>> ),
+	Group( Vec<(Box<Ast<Note<'a>>>, i32)> ),
+	Tie( Box<Ast<Note<'a>>> ),
 }
 
 #[derive(Clone, Debug)]
-pub enum Score {
-	Score( Vec<Box<Ast<Note>>> ),
+pub enum Score<'a> {
+	Score( Vec<Box<Ast<Note<'a>>>> ),
 	Symbol( String ),
-	With( Box<Ast<Score>>, char, Box<Ast<Score>> ),
-	Parallel( Vec<Box<Ast<Score>>> ),
-	Sequence( Vec<Box<Ast<Score>>> ),
-	Stretch( Box<Ast<Score>>, ratio::Ratio ),
+	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
+	Parallel( Vec<Box<Ast<Score<'a>>>> ),
+	Sequence( Vec<Box<Ast<Score<'a>>>> ),
+	Stretch( Box<Ast<Score<'a>>>, ratio::Ratio ),
 }
 
 #[derive(Clone, Debug)]

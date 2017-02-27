@@ -20,7 +20,7 @@ pub definition: Definition<'a> = {
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "=" <c:value_track> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "=" <c:value_track_add> =>? {
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
@@ -144,21 +144,37 @@ chord_content: Vec<Box<Ast<Note<'a>>>> = {
 	=> Vec::new(),
 };
 
-value_track: Box<Ast<ValueTrack>> = {
+value_track_add: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:value_track_add> "+" <b:value_track_mul> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Add ) ),
+	<lo:@L> <a:value_track_add> "-" <b:value_track_mul> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Sub ) ),
+	<value_track_mul>,
+};
+
+value_track_mul: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:value_track_mul> "*" <b:value_track_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Mul ) ),
+	<lo:@L> <a:value_track_mul> "/" <b:value_track_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Div ) ),
+	<value_track_prim>,
+};
+
+value_track_prim: Box<Ast<ValueTrack>> = {
 	<lo:@L> <a:label> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Symbol( a ) ),
 	<lo:@L> "[" <a:value_track_list> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( a ) ),
 	<lo:@L> "{" <a:value_track_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::ValueTrack( a ) ),
-	<lo:@L> <a:uratio> <b:value_track> <hi:@R> =>
+	<lo:@L> <a:uratio> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
-	<lo:@L> <a:uint> ":" <b:value_track> <hi:@R> =>
+	<lo:@L> <a:uint> ":" <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
 };
 
 value_track_list: Vec<Box<Ast<ValueTrack>>> = {
-	<a:value_track_list> <b:value_track> => {
+	<a:value_track_list> <b:value_track_add> => {
 		let mut a = a;
 		a.push( b );
 		a

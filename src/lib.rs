@@ -50,8 +50,8 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 	let end_ir = value_gen.generate( "out.end"   )?;
 	let range = match (bgn_ir, end_ir) {
 		(Some( bgn ), Some( end )) => Some( (
-			bgn.get_value( ratio::Ratio::zero() ),
-			end.get_value( ratio::Ratio::zero() ),
+			bgn.value( ratio::Ratio::zero() ),
+			end.value( ratio::Ratio::zero() ),
 		) ),
 		_ => None,
 	};
@@ -61,12 +61,12 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 		if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
 			let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
 				Some( v ) => v,
-				None => valuegen::Ir{ values: vec![ valuegen::FlatValue{
-					t0: ratio::Ratio::zero(),
-					t1: ratio::Ratio::inf(),
-					v0: ratio::Ratio::new( 5, 1 ), // XXX
-					v1: ratio::Ratio::new( 5, 1 ), // XXX
-				} ] },
+				None => valuegen::Ir::Value(
+					ratio::Ratio::zero(),
+					ratio::Ratio::inf(),
+					ratio::Ratio::new( 5, 8 ),
+					ratio::Ratio::new( 5, 8 ),
+				),
 			};
 			migen = migen.add_score( ch, &score_ir, &value_ir );
 		}

@@ -6,16 +6,10 @@ use ast;
 
 
 #[derive(Debug)]
-pub struct FlatValue {
-	pub t0: ratio::Ratio,
-	pub t1: ratio::Ratio,
-	pub v0: ratio::Ratio,
-	pub v1: ratio::Ratio,
-}
-
-#[derive(Debug)]
-pub struct Ir {
-	pub values: Vec<FlatValue>,
+pub enum Ir {
+	BinaryOp( Box<Ir>, Box<Ir>, ast::BinaryOp ),
+	Sequence( Vec<(Ir, ratio::Ratio)> ),
+	Value( ratio::Ratio, ratio::Ratio, ratio::Ratio, ratio::Ratio ),
 }
 
 #[derive(Debug)]
@@ -29,9 +23,38 @@ struct State {
 }
 
 impl Ir {
-	pub fn get_value( &self, t: ratio::Ratio ) -> ratio::Ratio {
-		let f = self.values.iter().filter( |f| f.t0 <= t && t < f.t1 ).next().unwrap();
-		f.v0 + (f.v1 - f.v0) * (t - f.t0) / (f.t1 - f.t0)
+	pub fn value( &self, t: ratio::Ratio ) -> ratio::Ratio {
+		match *self {
+			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, op ) => {
+				let lhs = ir_lhs.value( t );
+				let rhs = ir_rhs.value( t );
+				match op {
+					ast::BinaryOp::Add => lhs + rhs,
+					ast::BinaryOp::Sub => lhs - rhs,
+					ast::BinaryOp::Mul => lhs * rhs,
+					ast::BinaryOp::Div => lhs / rhs,
+				}
+			},
+			Ir::Sequence( ref irs ) => {
+				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
+				irs[i - 1].0.value( t )
+			},
+			Ir::Value( t0, t1, v0, v1 ) => {
+				let t = cmp::min( cmp::max( t, t0 ), t1 );
+				v0 + (v1 - v0) * (t - t0) / (t1 - t0)
+			},
+		}
+	}
+
+	pub fn end( &self ) -> ratio::Ratio {
+		match *self {
+			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, _ ) =>
+				cmp::max( ir_lhs.end(), ir_rhs.end() ),
+			Ir::Sequence( ref irs ) =>
+				irs[irs.len() - 1].0.end(),
+			Ir::Value( _, t1, _, _ ) =>
+				t1,
+		}
 	}
 }
 
@@ -54,16 +77,14 @@ impl<'a> Generator<'a> {
 			Some( v ) => v,
 			None      => return Ok( None ),
 		};
-		let mut dst = Ir{
-			values: Vec::new(),
-		};
-		self.generate_value_track( s, &span, &mut dst )?;
-		Ok( Some( dst ) )
+		let (ir, _) = self.generate_value_track( s, &span )?;
+		Ok( Some( ir ) )
 	}
 
-	fn generate_value_track( &self, track: &ast::Ast<ast::ValueTrack>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
-		let end = match track.ast {
+	fn generate_value_track( &self, track: &ast::Ast<ast::ValueTrack>, span: &Span ) -> Result<(Ir, ratio::Ratio), misc::Error> {
+		let dst = match track.ast {
 			ast::ValueTrack::ValueTrack( ref vs ) => {
+				let mut irs = Vec::new();
 				let mut state = State{};
 				for (i, v) in vs.iter().enumerate() {
 					let span = Span{
@@ -71,18 +92,20 @@ impl<'a> Generator<'a> {
 						t1: span.t1 + (span.t1 - span.t0) * i as i64,
 						.. *span
 					};
-					self.generate_value( v, &span, &mut state, dst )?;
+					self.generate_value( v, &span, &mut state, &mut irs )?;
 				}
-				span.t0 + (span.t1 - span.t0) * vs.len() as i64
+				let t1 = span.t0 + (span.t1 - span.t0) * vs.len() as i64;
+				(Ir::Sequence( irs ), t1)
 			}
 			ast::ValueTrack::Symbol( ref key ) => {
 				let s = match self.defs.values.get( key ) {
 					Some( v ) => v,
 					None      => return misc::error( track.bgn, "undefined symbol." ),
 				};
-				self.generate_value_track( s, &span, dst )?
+				self.generate_value_track( s, &span )?
 			},
 			ast::ValueTrack::Sequence( ref ss ) => {
+				let mut irs = Vec::new();
 				let mut t = span.t0;
 				for s in ss.iter() {
 					let span = Span{
@@ -90,30 +113,34 @@ impl<'a> Generator<'a> {
 						t1: t + (span.t1 - span.t0),
 						.. *span
 					};
-					t = self.generate_value_track( s, &span, dst )?;
+					let (ir, t1) = self.generate_value_track( s, &span )?;
+					irs.push( (ir, t) );
+					t = t1;
 				}
-				t
+				(Ir::Sequence( irs ), t)
 			},
 			ast::ValueTrack::Stretch( ref s, r ) => {
 				let span = Span{
 					t1: span.t0 + r * (span.t1 - span.t0),
 					.. *span
 				};
-				self.generate_value_track( s, &span, dst )?
+				self.generate_value_track( s, &span )?
 			},
+			ast::ValueTrack::BinaryOp( ref lhs, ref rhs, op ) => {
+				let (ir_lhs, t_lhs) = self.generate_value_track( lhs, &span )?;
+				let (ir_rhs, t_rhs) = self.generate_value_track( rhs, &span )?;
+				let ir = Ir::BinaryOp( Box::new( ir_lhs ), Box::new( ir_rhs ), op );
+				let t = cmp::max( t_lhs, t_rhs );
+				(ir, t)
+			}
 		};
-		Ok( end )
+		Ok( dst )
 	}
 
-	fn generate_value( &self, value: &ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Ir ) -> Result<(), misc::Error> {
+	fn generate_value( &self, value: &ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Vec<(Ir, ratio::Ratio)> ) -> Result<(), misc::Error> {
 		match value.ast {
 			ast::Value::Value( v0, v1 ) => {
-				dst.values.push( FlatValue{
-					t0: span.t0,
-					t1: span.t1,
-					v0: v0,
-					v1: v1,
-				} );
+				dst.push( (Ir::Value( span.t0, span.t1, v0, v1 ), span.t0) );
 			},
 			ast::Value::Group( ref vs ) => {
 				let tot: i32 = vs.iter().map( |&(_, i)| i ).sum();

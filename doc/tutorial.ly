@@ -47,6 +47,7 @@
 				border: solid 1px #e0e0e0;
 			}
 			address {
+				margin-top:    2em;
 				margin-bottom: 2em;
 				font-size: small;
 				text-align: right;
@@ -111,7 +112,7 @@ MIDI messages to JACK.
 memol [-c JACK_PORT] FILE
 </pre>
 <p>memol keeps watching the change of the file and reflects it immediately.  If
-<code>'out.begin</code>, <code>'out.end</code> are specified, memol
+<code>'out.begin</code>, <code>'out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
 <p>Since memol supports JACK transport, start/stop/seek operations are synced
 with other JACK clients (Currently Timebase is not supported).  Personally I
@@ -265,8 +266,8 @@ score 'out.0   = 2:'pattern with q = 'chord
 <h2>Value track</h2>
 <p>XXX
 <pre>
-value 'out.0.velocity = { [3 4] 3 2 | 2..4 3 }
-value 'out.0.cc11 = { 3..4 | 3..1 }
+value 'out.0.velocity = { [3 4] 3 2 | 2..4 3 } / {4}
+value 'out.0.cc11 = { 3..4 | 3..1 } / {4}
 </pre>
 <p>XXX: Not yet implemented: offset, arpeggio, random, duration_abs, duration_rel, ...
 
@@ -284,6 +285,13 @@ value 'out.0.cc11 = { 3..4 | 3..1 }
 <p>Although this is out of the language specification, current implementation
 maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
 <code>'out.15</code> are mapped to MIDI channel 1 .. 16.
+
+<h2>Begin/end position</h2>
+<p>XXX
+<pre>
+'out.begin = { 0}
+'out.end   = {24}
+</pre>
 
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
 

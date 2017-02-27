@@ -50,12 +50,18 @@ pub enum Value {
 	Group( Vec<(Box<Ast<Value>>, i32)> ),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum BinaryOp {
+	Add, Sub, Mul, Div,
+}
+
 #[derive(Clone, Debug)]
 pub enum ValueTrack {
 	ValueTrack( Vec<Box<Ast<Value>>> ),
 	Symbol( String ),
 	Sequence( Vec<Box<Ast<ValueTrack>>> ),
 	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
+	BinaryOp( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, BinaryOp ),
 }
 
 impl<T: Clone> Ast<T> {

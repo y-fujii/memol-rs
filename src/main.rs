@@ -24,7 +24,12 @@ fn main() {
 			let mut buf = String::new();
 			fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 
-			match compile( &buf ) {
+			let timer = time::SystemTime::now();
+			let result = compile( &buf );
+			let elapsed = timer.elapsed()?;
+			println!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
+			println!( " event count: {}", result.as_ref().map( |&(ref evs, _)| evs.len() ).unwrap_or( 0 ) );
+			match result {
 				Err( e ) => {
 					let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
 					println!( "error at ({}, {}): {}", row, col, e.msg );

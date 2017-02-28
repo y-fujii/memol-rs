@@ -5,8 +5,9 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 build = "build.rs"
 
 [dependencies]
-lalrpop-util = "*"
+rand = "*"
 regex = "*"
+lalrpop-util = "*"
 getopts = "*"
 
 [build-dependencies]

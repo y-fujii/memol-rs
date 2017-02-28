@@ -171,6 +171,8 @@ value_track_prim: Box<Ast<ValueTrack>> = {
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
 	<lo:@L> <a:uint> ":" <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+	<lo:@L> "gaussian" <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::Gaussian ),
 };
 
 value_track_list: Vec<Box<Ast<ValueTrack>>> = {

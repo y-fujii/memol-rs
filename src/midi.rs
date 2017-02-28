@@ -40,13 +40,15 @@ impl Generator {
 		}
 	}
 
-	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir ) -> Generator {
+	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir, ofss: &valuegen::Ir ) -> Generator {
 		for f in score.notes.iter() {
 			if let Some( nnum ) = f.nnum {
 				let vel = (vels.value( f.t0 ) * 127).round();
 				let vel = cmp::min( cmp::max( vel, 0 ), 127 );
-				self.events.push( Event::new( f.t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
-				self.events.push( Event::new( f.t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
+				let dt0 = ofss.value( f.t0 );
+				let dt1 = ofss.value( f.t0 );
+				self.events.push( Event::new( f.t0 + dt0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
+				self.events.push( Event::new( f.t1 + dt1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
 			}
 		}
 		self

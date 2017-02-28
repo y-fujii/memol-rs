@@ -1,5 +1,6 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
+use rand;
 use misc;
 use ratio;
 use ast;
@@ -7,9 +8,10 @@ use ast;
 
 #[derive(Debug)]
 pub enum Ir {
-	BinaryOp( Box<Ir>, Box<Ir>, ast::BinaryOp ),
-	Sequence( Vec<(Ir, ratio::Ratio)> ),
 	Value( ratio::Ratio, ratio::Ratio, ratio::Ratio, ratio::Ratio ),
+	Sequence( Vec<(Ir, ratio::Ratio)> ),
+	BinaryOp( Box<Ir>, Box<Ir>, ast::BinaryOp ),
+	Gaussian,
 }
 
 #[derive(Debug)]
@@ -25,6 +27,14 @@ struct State {
 impl Ir {
 	pub fn value( &self, t: ratio::Ratio ) -> ratio::Ratio {
 		match *self {
+			Ir::Value( t0, t1, v0, v1 ) => {
+				let t = cmp::min( cmp::max( t, t0 ), t1 );
+				v0 + (v1 - v0) * (t - t0) / (t1 - t0)
+			},
+			Ir::Sequence( ref irs ) => {
+				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
+				irs[i - 1].0.value( t )
+			},
 			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, op ) => {
 				let lhs = ir_lhs.value( t );
 				let rhs = ir_rhs.value( t );
@@ -35,25 +45,23 @@ impl Ir {
 					ast::BinaryOp::Div => lhs / rhs,
 				}
 			},
-			Ir::Sequence( ref irs ) => {
-				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
-				irs[i - 1].0.value( t )
-			},
-			Ir::Value( t0, t1, v0, v1 ) => {
-				let t = cmp::min( cmp::max( t, t0 ), t1 );
-				v0 + (v1 - v0) * (t - t0) / (t1 - t0)
+			Ir::Gaussian => {
+				let rand::distributions::normal::StandardNormal( x ) = rand::random();
+				ratio::Ratio::new( (x * 65536.0) as i64, 65536 ) // XXX
 			},
 		}
 	}
 
 	pub fn end( &self ) -> ratio::Ratio {
 		match *self {
-			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, _ ) =>
-				cmp::max( ir_lhs.end(), ir_rhs.end() ),
-			Ir::Sequence( ref irs ) =>
-				irs[irs.len() - 1].0.end(),
 			Ir::Value( _, t1, _, _ ) =>
 				t1,
+			Ir::Sequence( ref irs ) =>
+				irs[irs.len() - 1].0.end(),
+			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, _ ) =>
+				cmp::max( ir_lhs.end(), ir_rhs.end() ),
+			Ir::Gaussian =>
+				ratio::Ratio::zero(),
 		}
 	}
 }
@@ -132,6 +140,9 @@ impl<'a> Generator<'a> {
 				let ir = Ir::BinaryOp( Box::new( ir_lhs ), Box::new( ir_rhs ), op );
 				let t = cmp::max( t_lhs, t_rhs );
 				(ir, t)
+			}
+			ast::ValueTrack::Gaussian => {
+				(Ir::Gaussian, span.t0)
 			}
 		};
 		Ok( dst )

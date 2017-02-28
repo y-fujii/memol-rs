@@ -62,6 +62,7 @@ pub enum ValueTrack {
 	Sequence( Vec<Box<Ast<ValueTrack>>> ),
 	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
 	BinaryOp( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, BinaryOp ),
+	Gaussian,
 }
 
 impl<T: Clone> Ast<T> {

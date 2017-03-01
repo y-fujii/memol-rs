@@ -264,22 +264,22 @@ score 'out.0   = 2:'pattern with q = 'chord
 </lilypond>
 
 <h2>Value track</h2>
-<p>XXX
+<p>XXX: Specification/implementation is not completed.
 <pre>
 value 'out.0.velocity = { [3 4] 3 2 | 2..4 3 } / {4}
+value 'out.0.offset = gaussian / {128}
 value 'out.0.cc11 = { 3..4 | 3..1 } / {4}
 </pre>
-<p>XXX: Not yet implemented: offset, arpeggio, random, duration_abs, duration_rel, ...
 
-<!--
-<h2>Articulation</h2>
-<p>Some articulation types are supported by fixed functions.
+<h2>Articulation, arpeggio, sustain pedal</h2>
+<p>Some special syntax for articulation, arpeggio, sustain pedal may be added
+in the future.
 <pre>
-        ~ : legato
+  @N(XXX) : arpeggio
+       X~ : legato
 (default) : non-legato
-        ' : staccato
+       X' : staccato
 </pre>
--->
 
 <h2>MIDI channels</h2>
 <p>Although this is out of the language specification, current implementation

@@ -3,6 +3,7 @@ use std::*;
 use misc;
 
 
+// irreducible && x >= 0, x = 0 is interpreted as +0.
 #[derive(Copy, Clone, Debug)]
 pub struct Ratio {
 	pub y: i64,
@@ -25,17 +26,18 @@ impl PartialOrd for Ratio {
 }
 
 impl cmp::Ord for Ratio {
-    fn cmp( &self, other: &Ratio ) -> cmp::Ordering {
+	fn cmp( &self, other: &Ratio ) -> cmp::Ordering {
 		let lhs = self.y * other.x;
 		let rhs = other.y * self.x;
-		// 0 denominator is interpreted as +0.
-		if self.x * other.x < 0 {
-			rhs.cmp( &lhs )
-		}
-		else {
-			lhs.cmp( &rhs )
-		}
-    }
+		lhs.cmp( &rhs )
+	}
+}
+
+impl hash::Hash for Ratio {
+	fn hash<T: hash::Hasher>( &self, state: &mut T ) {
+		self.y.hash( state );
+		self.x.hash( state );
+	}
 }
 
 impl ops::Neg for Ratio {

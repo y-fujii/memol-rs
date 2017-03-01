@@ -40,16 +40,22 @@ impl Generator {
 		}
 	}
 
-	pub fn add_score( mut self, ch: i32, score: &scoregen::Ir, vels: &valuegen::Ir, ofss: &valuegen::Ir ) -> Generator {
-		for f in score.notes.iter() {
-			if let Some( nnum ) = f.nnum {
-				let vel = (vels.value( f.t0 ) * 127).round();
-				let vel = cmp::min( cmp::max( vel, 0 ), 127 );
-				let dt0 = ofss.value( f.t0 );
-				let dt1 = ofss.value( f.t0 );
-				self.events.push( Event::new( f.t0 + dt0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
-				self.events.push( Event::new( f.t1 + dt1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
+	pub fn add_score( mut self, ch: i32, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir ) -> Generator {
+		let mut offset = collections::HashMap::new();
+		for f in ir_score.notes.iter() {
+			let nnum = match f.nnum {
+				Some( v ) => v,
+				None      => continue,
+			};
+			let vel = (ir_vel.value( f.t0 ) * 127).round();
+			let vel = cmp::min( cmp::max( vel, 0 ), 127 );
+			let t0 = f.t0 + *offset.entry( (f.t0, nnum) ).or_insert_with( || ir_ofs.value( f.t0 ) );
+			let t1 = f.t1 + *offset.entry( (f.t1, nnum) ).or_insert_with( || ir_ofs.value( f.t1 ) );
+			if t0 >= t1 {
+				continue;
 			}
+			self.events.push( Event::new( t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
+			self.events.push( Event::new( t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
 		}
 		self
 	}

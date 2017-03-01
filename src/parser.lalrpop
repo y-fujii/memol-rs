@@ -212,6 +212,12 @@ value_group_content: Vec<(Box<Ast<Value>>, i32)> = {
 		a.push( (b, 1) );
 		a
 	},
+	// XXX
+	<a:value_group_content> <c:uint> ":" <b:value> => {
+		let mut a = a;
+		a.push( (b, c) );
+		a
+	},
 	=> Vec::new(),
 };
 

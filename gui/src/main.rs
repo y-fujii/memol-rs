@@ -293,28 +293,33 @@ fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<()
 			let mut migen = midi::Generator::new();
 			for ch in 0 .. 16 {
 				if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
-					let value_ir = match value_gen.generate( &format!( "out.{}.velocity", ch ) )? {
-						Some( v ) => v,
-						None => valuegen::Ir::Value(
+					let vel_ir = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
+						.unwrap_or( valuegen::Ir::Value(
 							ratio::Ratio::zero(),
-							ratio::Ratio::inf(),
+							ratio::Ratio::one(),
 							ratio::Ratio::new( 5, 8 ),
 							ratio::Ratio::new( 5, 8 ),
-						),
-					};
-					migen = migen.add_score( ch, &score_ir, &value_ir );
+						) );
+					let ofs_ir = value_gen.generate( &format!( "out.{}.offset", ch ) )?
+						.unwrap_or( valuegen::Ir::Value(
+							ratio::Ratio::zero(),
+							ratio::Ratio::one(),
+							ratio::Ratio::new( 0, 1 ),
+							ratio::Ratio::new( 0, 1 ),
+						) );
+					migen.add_score( ch, &score_ir, &vel_ir, &ofs_ir );
 					irs.push( score_ir.notes );
 				}
 				else {
 					irs.push( Vec::new() );
 				}
 
-				for cc in 0 .. 127 {
+				for cc in 0 .. 128 {
 					let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
 						Some( v ) => v,
 						None      => continue,
 					};
-					migen = migen.add_cc( ch, cc, &value_ir );
+					migen.add_cc( ch, cc, &value_ir );
 				}
 			}
 			Ok( (irs, migen.generate(), range) )

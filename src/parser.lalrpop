@@ -13,14 +13,16 @@ extern {
 }
 
 pub definition: Definition<'a> = {
-	<a:definition> <lo:@L> "score" <b:label> "=" <c:score_with> =>? {
+	<a:definition> <lo:@L> "score" <b:label> "=" <mi:@L> <c:score_list> <hi:@R> =>? {
+		let c = Ast::new_box( mi, hi, Score::Sequence( c ) );
 		let mut a = a;
 		match a.scores.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "=" <c:value_track_add> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "=" <mi:@L> <c:value_track_list> <hi:@R> =>? {
+		let c = Ast::new_box( mi, hi, ValueTrack::Sequence( c ) );
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
@@ -198,10 +200,10 @@ value_track_content: Vec<Box<Ast<Value>>> = {
 };
 
 value: Box<Ast<Value>> = {
-	<lo:@L> <a:sint> <hi:@R> =>
-		Ast::new_box( lo, hi, Value::Value( ratio::Ratio::new( a as i64, 1 ), ratio::Ratio::new( a as i64, 1 ) ) ),
-	<lo:@L> <a:sint> ".." <b:sint> <hi:@R> =>
-		Ast::new_box( lo, hi, Value::Value( ratio::Ratio::new( a as i64, 1 ), ratio::Ratio::new( b as i64, 1 ) ) ),
+	<lo:@L> <a:sratio> <hi:@R> =>
+		Ast::new_box( lo, hi, Value::Value( a, a ) ),
+	<lo:@L> <a:sratio> ".." <b:sratio> <hi:@R> =>
+		Ast::new_box( lo, hi, Value::Value( a, b ) ),
 	<lo:@L> "[" <a:value_group_content> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, Value::Group( a ) ),
 };
@@ -229,6 +231,13 @@ pitch_lower: (char, i32) = {
 pitch_upper: (char, i32) = {
 	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i32 - 'A' as i32),
 	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
+};
+
+sratio: ratio::Ratio = {
+	<a:sint> "/" <b:uint> =>
+		ratio::Ratio::new( a as i64, b as i64 ),
+	<a:sint> =>
+		ratio::Ratio::new( a as i64, 1 ),
 };
 
 uratio: ratio::Ratio = {

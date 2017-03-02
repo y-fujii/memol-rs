@@ -47,7 +47,7 @@ impl Ir {
 			},
 			Ir::Gaussian => {
 				let rand::distributions::normal::StandardNormal( x ) = rand::random();
-				ratio::Ratio::new( (x * 65536.0) as i64, 65536 ) // XXX
+				ratio::Ratio::new( (x * 256.0).round() as i64, 256 ) // XXX
 			},
 		}
 	}

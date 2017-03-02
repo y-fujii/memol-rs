@@ -22,7 +22,12 @@ pub mod parser {
 
 	pub fn parse( src: &str ) -> Result<Definition, ::misc::Error> {
 		// XXX
-		let src = ::regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap().replace_all( src, "" );
+		let src = ::regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap()
+			.replace_all( src, |caps: &::regex::Captures|
+				caps.get( 0 ).unwrap().as_str().chars().map( |c|
+					if c == '\r' || c == '\n' { c } else { ' ' }
+				).collect()
+			);
 		match parse_definition( &src ) {
 			Ok ( v ) => Ok( v ),
 			Err( e ) => {
@@ -74,14 +79,14 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 					ratio::Ratio::new( 0, 1 ),
 					ratio::Ratio::new( 0, 1 ),
 				) );
-			migen = migen.add_score( ch, &score_ir, &vel_ir, &ofs_ir );
+			migen.add_score( ch, &score_ir, &vel_ir, &ofs_ir );
 		}
-		for cc in 0 .. 127 {
+		for cc in 0 .. 128 {
 			let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
 				Some( v ) => v,
 				None      => continue,
 			};
-			migen = migen.add_cc( ch, cc, &value_ir );
+			migen.add_cc( ch, cc, &value_ir );
 		}
 	}
 	Ok( (migen.generate(), range) )

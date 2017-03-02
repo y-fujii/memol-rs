@@ -40,7 +40,7 @@ impl Generator {
 		}
 	}
 
-	pub fn add_score( mut self, ch: i32, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir ) -> Generator {
+	pub fn add_score( &mut self, ch: i32, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir ) {
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.notes.iter() {
 			let nnum = match f.nnum {
@@ -57,10 +57,9 @@ impl Generator {
 			self.events.push( Event::new( t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
 			self.events.push( Event::new( t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
 		}
-		self
 	}
 
-	pub fn add_cc( mut self, ch: i32, cc: i32, ir: &valuegen::Ir ) -> Generator {
+	pub fn add_cc( &mut self, ch: i32, cc: i32, ir: &valuegen::Ir ) {
 		let mut prev_v = 255;
 		for i in 0 .. (ir.end() * self.cc_span).ceil() {
 			let t = ratio::Ratio::new( i, self.cc_span );
@@ -71,7 +70,6 @@ impl Generator {
 				prev_v = v;
 			}
 		}
-		self
 	}
 
 	pub fn generate( mut self ) -> Vec<Event> {

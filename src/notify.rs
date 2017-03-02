@@ -21,7 +21,7 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 			return Err( io::Error::new( io::ErrorKind::Other, "" ) );
 		}
 
-		let mut buf: [u8; 4096] = mem::uninitialized();
+		let mut buf: [u8; 32] = mem::uninitialized();
 		let _ = fs.read( &mut buf )?; // XXX
 	}
 	Ok( () )

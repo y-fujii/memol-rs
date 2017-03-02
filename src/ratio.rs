@@ -10,6 +10,12 @@ pub struct Ratio {
 	pub x: i64,
 }
 
+impl From<i64> for Ratio {
+	fn from( n: i64 ) -> Self {
+		Ratio{ y: n, x: 1 }
+	}
+}
+
 impl cmp::PartialEq for Ratio {
 	fn eq( &self, other: &Self ) -> bool {
 		self.y * other.x == other.y * self.x
@@ -48,10 +54,11 @@ impl ops::Neg for Ratio {
 	}
 }
 
-impl ops::Add for Ratio {
+impl<T: Into<Ratio>> ops::Add<T> for Ratio {
 	type Output = Ratio;
 
-	fn add( self, other: Ratio ) -> Ratio {
+	fn add( self, other: T ) -> Ratio {
+		let other: Ratio = other.into();
 		Ratio::new(
 			self.y * other.x + self.x * other.y,
 			self.x * other.x,
@@ -59,21 +66,11 @@ impl ops::Add for Ratio {
 	}
 }
 
-impl ops::Add<i64> for Ratio {
+impl<T: Into<Ratio>> ops::Sub<T> for Ratio {
 	type Output = Ratio;
 
-	fn add( self, other: i64 ) -> Ratio {
-		Ratio::new(
-			self.y + other * self.x,
-			self.x,
-		)
-	}
-}
-
-impl ops::Sub for Ratio {
-	type Output = Ratio;
-
-	fn sub( self, other: Ratio ) -> Ratio {
+	fn sub( self, other: T ) -> Ratio {
+		let other: Ratio = other.into();
 		Ratio::new(
 			self.y * other.x - self.x * other.y,
 			self.x * other.x,
@@ -81,32 +78,11 @@ impl ops::Sub for Ratio {
 	}
 }
 
-impl ops::Sub<i64> for Ratio {
+impl<T: Into<Ratio>> ops::Mul<T> for Ratio {
 	type Output = Ratio;
 
-	fn sub( self, other: i64 ) -> Ratio {
-		Ratio::new(
-			self.y - other * self.x,
-			self.x,
-		)
-	}
-}
-
-impl ops::Sub<Ratio> for i64 {
-	type Output = Ratio;
-
-	fn sub( self, other: Ratio ) -> Ratio {
-		Ratio::new(
-			self * other.x - other.y,
-			other.x,
-		)
-	}
-}
-
-impl ops::Mul for Ratio {
-	type Output = Ratio;
-
-	fn mul( self, other: Ratio ) -> Ratio {
+	fn mul( self, other: T ) -> Ratio {
+		let other: Ratio = other.into();
 		Ratio::new(
 			self.y * other.y,
 			self.x * other.x,
@@ -114,35 +90,14 @@ impl ops::Mul for Ratio {
 	}
 }
 
-impl ops::Mul<i64> for Ratio {
+impl<T: Into<Ratio>> ops::Div<T> for Ratio {
 	type Output = Ratio;
 
-	fn mul( self, other: i64 ) -> Ratio {
-		Ratio::new(
-			self.y * other,
-			self.x,
-		)
-	}
-}
-
-impl ops::Div for Ratio {
-	type Output = Ratio;
-
-	fn div( self, other: Ratio ) -> Ratio {
+	fn div( self, other: T ) -> Ratio {
+		let other: Ratio = other.into();
 		Ratio::new(
 			self.y * other.x,
 			self.x * other.y,
-		)
-	}
-}
-
-impl ops::Div<i64> for Ratio {
-	type Output = Ratio;
-
-	fn div( self, other: i64 ) -> Ratio {
-		Ratio::new(
-			self.y,
-			self.x * other,
 		)
 	}
 }

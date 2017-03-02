@@ -262,6 +262,10 @@ score 'out.0   = 2:'pattern with q = 'chord
 <lilypond relative="1">
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
 </lilypond>
+<pre>
+score 'a_major = { (c+DEF+G+AB) }
+score 'out.0   = { ... } with _ = 'a_major
+</pre>
 
 <h2>Value track</h2>
 <p>XXX: Specification/implementation is not completed.
@@ -272,6 +276,7 @@ value 'out.0.cc11 = { 3..4 | 3..1 } / {4}
 </pre>
 
 <h2>Articulation, arpeggio, sustain pedal</h2>
+<p>XXX: Not implemented yet.
 <p>Some special syntax for articulation, arpeggio, sustain pedal may be added
 in the future.
 <pre>

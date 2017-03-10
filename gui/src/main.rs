@@ -351,7 +351,7 @@ fn main() {
 		let io = imgui::get_io();
 		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
-		imutil::set_scale( 1.5, 1.0, 13.0, font );
+		imutil::set_scale( 1.5, 13.0, font );
 
 		let mut window = window::Window::new( Ui::new( "memol" )? );
 		let tx = window.create_sender();

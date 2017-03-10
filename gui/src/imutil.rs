@@ -42,37 +42,37 @@ pub fn srgb_gamma( r: f32, g: f32, b: f32, a: f32 ) -> u32 {
 	(((a                   * 255.0) as u32) << 24)
 }
 
-pub fn set_scale( s: f32, r: f32, font_size: f32, font: &[u8] ) {
+pub fn set_scale( s: f32, font_size: f32, font: &[u8] ) {
 	unsafe {
 		let io = imgui::get_io();
 		let mut cfg = imgui::ImFontConfig::new();
 		cfg.FontDataOwnedByAtlas = false;
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, font_size * s, &cfg, ptr::null(),
+			font.len() as i32, (font_size * s).round(), &cfg, ptr::null(),
 		);
 
 		let style = imgui::get_style();
-		style.WindowPadding *= s;
-		style.WindowMinSize *= s;
-		style.WindowRounding *= r;
-		style.WindowTitleAlign *= s;
-		style.ChildWindowRounding *= r;
-		style.FramePadding *= s;
-		style.FrameRounding *= r;
-		style.ItemSpacing *= s;
-		style.ItemInnerSpacing *= s;
-		style.TouchExtraPadding *= s;
-		style.IndentSpacing *= s;
-		style.ColumnsMinSpacing *= s;
-		style.ScrollbarSize *= s;
-		style.ScrollbarRounding *= r;
-		style.GrabMinSize *= s;
-		style.GrabRounding *= r;
-		style.ButtonTextAlign *= s;
-		style.DisplayWindowPadding *= s;
-		style.DisplaySafeAreaPadding *= s;
-		style.CurveTessellationTol *= s;
+		style.WindowPadding          = (style.WindowPadding          * s).round();
+		style.WindowMinSize          = (style.WindowMinSize          * s).round();
+		style.WindowRounding         = (style.WindowRounding         * s).round();
+		style.WindowTitleAlign       = (style.WindowTitleAlign       * s).round();
+		style.ChildWindowRounding    = (style.ChildWindowRounding    * s).round();
+		style.FramePadding           = (style.FramePadding           * s).round();
+		style.FrameRounding          = (style.FrameRounding          * s).round();
+		style.ItemSpacing            = (style.ItemSpacing            * s).round();
+		style.ItemInnerSpacing       = (style.ItemInnerSpacing       * s).round();
+		style.TouchExtraPadding      = (style.TouchExtraPadding      * s).round();
+		style.IndentSpacing          = (style.IndentSpacing          * s).round();
+		style.ColumnsMinSpacing      = (style.ColumnsMinSpacing      * s).round();
+		style.ScrollbarSize          = (style.ScrollbarSize          * s).round();
+		style.ScrollbarRounding      = (style.ScrollbarRounding      * s).round();
+		style.GrabMinSize            = (style.GrabMinSize            * s).round();
+		style.GrabRounding           = (style.GrabRounding           * s).round();
+		style.ButtonTextAlign        = (style.ButtonTextAlign        * s).round();
+		style.DisplayWindowPadding   = (style.DisplayWindowPadding   * s).round();
+		style.DisplaySafeAreaPadding = (style.DisplaySafeAreaPadding * s).round();
+		style.CurveTessellationTol   = (style.CurveTessellationTol   * s).round();
 	}
 }
 

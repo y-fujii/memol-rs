@@ -188,6 +188,10 @@ impl ImVec2 {
 	pub fn zero() -> Self {
 		ImVec2{ x: 0.0, y: 0.0 }
 	}
+
+	pub fn round( &self ) -> Self {
+		ImVec2{ x: self.x.round(), y: self.y.round() }
+	}
 }
 
 impl ops::Neg for ImVec2 {

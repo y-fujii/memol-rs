@@ -89,11 +89,11 @@ impl Ui {
 			player: player,
 			channel: 0,
 			follow: true,
-			color_line:      imutil::srgb_gamma( 0.5, 0.5, 0.5, 1.0 ),
-			color_time_bar:  imutil::srgb_gamma( 0.0, 0.0, 0.0, 1.0 ),
-			color_chromatic: imutil::srgb_gamma( 0.9, 0.9, 0.9, 1.0 ),
-			color_note_top:  imutil::srgb_gamma( 0.1, 0.3, 0.4, 1.0 ),
-			color_note_sub:  imutil::srgb_gamma( 0.7, 0.9, 1.0, 1.0 ),
+			color_line:      imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.5, 0.5, 0.5, 1.0 ) ) ),
+			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.0, 0.0, 0.0, 1.0 ) ) ),
+			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.9, 0.9, 0.9, 1.0 ) ) ),
+			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.2, 0.3, 0.4, 1.0 ) ) ),
+			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.8, 0.9, 1.0, 1.0 ) ) ),
 		} )
 	}
 
@@ -351,6 +351,7 @@ fn main() {
 		let io = imgui::get_io();
 		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
+		imutil::set_theme( imgui::ImVec4::new( 0.2, 0.3, 0.4, 1.0 ) );
 		imutil::set_scale( 1.5, 13.0, font );
 
 		let mut window = window::Window::new( Ui::new( "memol" )? );

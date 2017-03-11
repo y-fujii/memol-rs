@@ -35,11 +35,20 @@ impl<'a> DrawContext<'a> {
 }
 
 // XXX
-pub fn srgb_gamma( r: f32, g: f32, b: f32, a: f32 ) -> u32 {
-	(((r.powf( 1.0 / 2.2 ) * 255.0) as u32) <<  0) |
-	(((g.powf( 1.0 / 2.2 ) * 255.0) as u32) <<  8) |
-	(((b.powf( 1.0 / 2.2 ) * 255.0) as u32) << 16) |
-	(((a                   * 255.0) as u32) << 24)
+pub fn srgb_gamma( col: imgui::ImVec4 ) -> imgui::ImVec4 {
+	imgui::ImVec4::new(
+		col.x.powf( 1.0 / 2.2 ),
+		col.y.powf( 1.0 / 2.2 ),
+		col.z.powf( 1.0 / 2.2 ),
+		col.w,
+	)
+}
+
+pub fn pack_color( col: imgui::ImVec4 ) -> u32 {
+	(((col.x * 255.0) as u32) <<  0) |
+	(((col.y * 255.0) as u32) <<  8) |
+	(((col.z * 255.0) as u32) << 16) |
+	(((col.w * 255.0) as u32) << 24)
 }
 
 pub fn set_scale( s: f32, font_size: f32, font: &[u8] ) {
@@ -104,4 +113,33 @@ pub fn end_root() {
 		End();
 		PopStyleVar( 2 );
 	}
+}
+
+pub fn set_theme( base: imgui::ImVec4 ) {
+	use imgui::*;
+
+	let fg      = ImVec4::new( 1.0, 1.0, 1.0, 1.0 );
+	let bg      = ImVec4::new( 0.0, 0.0, 0.0, 0.7 );
+	let normal  = srgb_gamma( base );
+	let hovered = srgb_gamma( base * 0.8 + fg * 0.2 );
+	let active  = srgb_gamma( base * 0.6 + fg * 0.4 );
+
+	let style = get_style();
+	style.WindowRounding      = 0.0;
+	style.ChildWindowRounding = 0.0;
+	style.FrameRounding       = 0.0;
+	style.Colors[ImGuiCol_Text                 as usize] = fg;
+	style.Colors[ImGuiCol_WindowBg             as usize] = bg;
+	style.Colors[ImGuiCol_PopupBg              as usize] = bg;
+	style.Colors[ImGuiCol_ScrollbarBg          as usize] = bg;
+	style.Colors[ImGuiCol_ScrollbarGrab        as usize] = normal;
+	style.Colors[ImGuiCol_ScrollbarGrabHovered as usize] = hovered;
+	style.Colors[ImGuiCol_ScrollbarGrabActive  as usize] = active;
+	style.Colors[ImGuiCol_Button               as usize] = normal;
+	style.Colors[ImGuiCol_ButtonHovered        as usize] = hovered;
+	style.Colors[ImGuiCol_ButtonActive         as usize] = active;
+	style.Colors[ImGuiCol_FrameBg              as usize] = normal;
+	style.Colors[ImGuiCol_FrameBgHovered       as usize] = hovered;
+	style.Colors[ImGuiCol_FrameBgActive        as usize] = active;
+	style.Colors[ImGuiCol_CheckMark            as usize] = active;
 }

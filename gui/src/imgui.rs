@@ -73,6 +73,32 @@ impl ImVec4 {
 	}
 }
 
+impl ops::Add<ImVec4> for ImVec4 {
+	type Output = ImVec4;
+
+	fn add( self, other: ImVec4 ) -> ImVec4 {
+		ImVec4::new(
+			self.x + other.x,
+			self.y + other.y,
+			self.z + other.z,
+			self.w + other.w,
+		)
+	}
+}
+
+impl ops::Mul<f32> for ImVec4 {
+	type Output = ImVec4;
+
+	fn mul( self, other: f32 ) -> ImVec4 {
+		ImVec4::new(
+			self.x * other,
+			self.y * other,
+			self.z * other,
+			self.w * other,
+		)
+	}
+}
+
 pub fn get_io() -> &'static mut ImGuiIO {
 	unsafe { &mut *GetIO() }
 }

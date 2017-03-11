@@ -76,23 +76,24 @@ pub fn set_scale( s: f32, font_size: f32, font: &[u8] ) {
 	}
 }
 
-pub fn begin_root( flags: imgui::ImGuiWindowFlags ) {
+pub fn begin_root( flags: u32 ) {
 	use imgui::*;
 	unsafe {
 		let size = get_io().DisplaySize;
 		let rounding = get_style().WindowRounding;
 		let padding  = get_style().WindowPadding;
-		PushStyleVar( StyleVar::WindowRounding as i32, 0.0 );
-		PushStyleVar1( StyleVar::WindowPadding as i32, &ImVec2::zero() );
-		SetNextWindowPos( &ImVec2::zero(), SetCond_Always );
-		SetNextWindowSize( &size, SetCond_Always );
+		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, 0.0 );
+		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &ImVec2::zero() );
+		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32 );
+		SetNextWindowSize( &size, ImGuiSetCond_Always as i32 );
 		Begin1(
 			c_str!( "root" ), &mut true, &size, 0.0,
-			WindowFlags_NoMove | WindowFlags_NoResize |
-			WindowFlags_NoBringToFrontOnFocus | WindowFlags_NoTitleBar | flags
+			(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+			 ImGuiWindowFlags_NoBringToFrontOnFocus |
+			 ImGuiWindowFlags_NoTitleBar | flags) as i32
 		);
-		PushStyleVar( StyleVar::WindowRounding as i32, rounding );
-		PushStyleVar1( StyleVar::WindowPadding as i32, &padding );
+		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, rounding );
+		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &padding );
 	}
 }
 

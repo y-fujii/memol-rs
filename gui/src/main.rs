@@ -105,17 +105,17 @@ impl Ui {
 		let loc = self.player.location().to_float() as f32;
 
 		if let Some( ref text ) = self.text {
-			SetNextWindowPosCenter( SetCond_Always );
-			Begin( c_str!( "Message" ), &mut true, WindowFlags_AlwaysAutoResize );
+			SetNextWindowPosCenter( ImGuiSetCond_Always as i32 );
+			Begin( c_str!( "Message" ), ptr::null_mut(), ImGuiWindowFlags_AlwaysAutoResize as i32 );
 				Text( c_str!( "{}", text ) );
 			End();
 		}
 
-		SetNextWindowPos( &ImVec2::zero(), SetCond_Once );
+		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Once as i32 );
 		Begin(
-			c_str!( "Transport" ), &mut true,
-			WindowFlags_AlwaysAutoResize | WindowFlags_NoMove |
-			WindowFlags_NoResize | WindowFlags_NoTitleBar
+			c_str!( "Transport" ), ptr::null_mut(),
+			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+			 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar) as i32
 		);
 			Button( c_str!( "Menu" ), &ImVec2::zero() );
 			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
@@ -151,7 +151,7 @@ impl Ui {
 			}
 		End();
 
-		imutil::begin_root( WindowFlags_HorizontalScrollbar );
+		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
 			let ctx = imutil::DrawContext::new();
 			let note_size = ImVec2::new( (ctx.size.y / 8.0).ceil(), ctx.size.y / 128.0 );
 			if self.follow && is_playing {
@@ -250,7 +250,7 @@ impl Ui {
 		use imgui::*;
 		let mut count = 0;
 
-		PushStyleVar1( StyleVar::ItemSpacing as i32, &ImVec2::zero() );
+		PushStyleVar1( ImGuiStyleVar_ItemSpacing as i32, &ImVec2::zero() );
 		for i in 0 .. self.loc_end.floor() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {

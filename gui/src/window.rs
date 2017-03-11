@@ -35,25 +35,25 @@ pub struct Window<T, U: Ui<T>> {
 impl<T, U: Ui<T>> Window<T, U> {
 	pub fn new( ui: U ) -> Self {
 		let io = imgui::get_io();
-		io.KeyMap[imgui::Key::Tab        as usize] = glutin::VirtualKeyCode::Tab as i32;
-		io.KeyMap[imgui::Key::LeftArrow  as usize] = glutin::VirtualKeyCode::Left as i32;
-		io.KeyMap[imgui::Key::RightArrow as usize] = glutin::VirtualKeyCode::Right as i32;
-		io.KeyMap[imgui::Key::UpArrow    as usize] = glutin::VirtualKeyCode::Up as i32;
-		io.KeyMap[imgui::Key::DownArrow  as usize] = glutin::VirtualKeyCode::Down as i32;
-		io.KeyMap[imgui::Key::PageUp     as usize] = glutin::VirtualKeyCode::PageUp as i32;
-		io.KeyMap[imgui::Key::PageDown   as usize] = glutin::VirtualKeyCode::PageDown as i32;
-		io.KeyMap[imgui::Key::Home       as usize] = glutin::VirtualKeyCode::Home as i32;
-		io.KeyMap[imgui::Key::End        as usize] = glutin::VirtualKeyCode::End as i32;
-		io.KeyMap[imgui::Key::Delete     as usize] = glutin::VirtualKeyCode::Delete as i32;
-		io.KeyMap[imgui::Key::Backspace  as usize] = glutin::VirtualKeyCode::Back as i32;
-		io.KeyMap[imgui::Key::Enter      as usize] = glutin::VirtualKeyCode::Return as i32;
-		io.KeyMap[imgui::Key::Escape     as usize] = glutin::VirtualKeyCode::Escape as i32;
-		io.KeyMap[imgui::Key::A          as usize] = glutin::VirtualKeyCode::A as i32;
-		io.KeyMap[imgui::Key::C          as usize] = glutin::VirtualKeyCode::C as i32;
-		io.KeyMap[imgui::Key::V          as usize] = glutin::VirtualKeyCode::V as i32;
-		io.KeyMap[imgui::Key::X          as usize] = glutin::VirtualKeyCode::X as i32;
-		io.KeyMap[imgui::Key::Y          as usize] = glutin::VirtualKeyCode::Y as i32;
-		io.KeyMap[imgui::Key::Z          as usize] = glutin::VirtualKeyCode::Z as i32;
+		io.KeyMap[imgui::ImGuiKey_Tab        as usize] = glutin::VirtualKeyCode::Tab as i32;
+		io.KeyMap[imgui::ImGuiKey_LeftArrow  as usize] = glutin::VirtualKeyCode::Left as i32;
+		io.KeyMap[imgui::ImGuiKey_RightArrow as usize] = glutin::VirtualKeyCode::Right as i32;
+		io.KeyMap[imgui::ImGuiKey_UpArrow    as usize] = glutin::VirtualKeyCode::Up as i32;
+		io.KeyMap[imgui::ImGuiKey_DownArrow  as usize] = glutin::VirtualKeyCode::Down as i32;
+		io.KeyMap[imgui::ImGuiKey_PageUp     as usize] = glutin::VirtualKeyCode::PageUp as i32;
+		io.KeyMap[imgui::ImGuiKey_PageDown   as usize] = glutin::VirtualKeyCode::PageDown as i32;
+		io.KeyMap[imgui::ImGuiKey_Home       as usize] = glutin::VirtualKeyCode::Home as i32;
+		io.KeyMap[imgui::ImGuiKey_End        as usize] = glutin::VirtualKeyCode::End as i32;
+		io.KeyMap[imgui::ImGuiKey_Delete     as usize] = glutin::VirtualKeyCode::Delete as i32;
+		io.KeyMap[imgui::ImGuiKey_Backspace  as usize] = glutin::VirtualKeyCode::Back as i32;
+		io.KeyMap[imgui::ImGuiKey_Enter      as usize] = glutin::VirtualKeyCode::Return as i32;
+		io.KeyMap[imgui::ImGuiKey_Escape     as usize] = glutin::VirtualKeyCode::Escape as i32;
+		io.KeyMap[imgui::ImGuiKey_A          as usize] = glutin::VirtualKeyCode::A as i32;
+		io.KeyMap[imgui::ImGuiKey_C          as usize] = glutin::VirtualKeyCode::C as i32;
+		io.KeyMap[imgui::ImGuiKey_V          as usize] = glutin::VirtualKeyCode::V as i32;
+		io.KeyMap[imgui::ImGuiKey_X          as usize] = glutin::VirtualKeyCode::X as i32;
+		io.KeyMap[imgui::ImGuiKey_Y          as usize] = glutin::VirtualKeyCode::Y as i32;
+		io.KeyMap[imgui::ImGuiKey_Z          as usize] = glutin::VirtualKeyCode::Z as i32;
 
 		let window = glutin::WindowBuilder::new()
 			.with_gl_profile( glutin::GlProfile::Core )

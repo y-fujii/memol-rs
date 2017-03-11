@@ -15,6 +15,8 @@ fn main() {
 		.whitelisted_function( "Im.*" )
 		.whitelisted_type( "Im.*" )
 		.whitelisted_var( "Im.*" )
+		.constified_enum( "Im.*" )
+		.prepend_enum_name( false )
 		.generate()
 		.unwrap()
 		.write_to_file( &file )

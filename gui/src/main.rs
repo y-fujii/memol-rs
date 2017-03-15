@@ -89,11 +89,11 @@ impl Ui {
 			player: player,
 			channel: 0,
 			follow: true,
-			color_line:      imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.5, 0.5, 0.5, 1.0 ) ) ),
-			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.0, 0.0, 0.0, 1.0 ) ) ),
-			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.9, 0.9, 0.9, 1.0 ) ) ),
-			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.2, 0.3, 0.4, 1.0 ) ) ),
-			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.8, 0.9, 1.0, 1.0 ) ) ),
+			color_line:      imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.50, 0.50, 0.50, 1.0 ) ) ),
+			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 1.0 ) ) ),
+			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.90, 0.90, 0.90, 1.0 ) ) ),
+			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.15, 0.20, 1.0 ) ) ),
+			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.70, 0.80, 1.0 ) ) ),
 		} )
 	}
 
@@ -153,7 +153,7 @@ impl Ui {
 
 		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
 			let ctx = imutil::DrawContext::new();
-			let note_size = ImVec2::new( (ctx.size.y / 8.0).ceil(), ctx.size.y / 128.0 );
+			let note_size = ImVec2::new( (ctx.size.y / 128.0).ceil() * 16.0, ctx.size.y / 128.0 );
 			if self.follow && is_playing {
 				SetScrollX( loc * note_size.x - ctx.size.x / 2.0 );
 			}
@@ -195,7 +195,7 @@ impl Ui {
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
 				let lt = ImVec2::new( 0.0,                   (127 - i * 12 - j) as f32 * note_size.y );
 				let rb = ImVec2::new( loc_end * note_size.x, (128 - i * 12 - j) as f32 * note_size.y );
-				ctx.add_rect_filled( lt, rb, self.color_chromatic, 0.0, !0 );
+				ctx.add_rect_filled( lt, rb, self.color_chromatic, 1.0, !0 );
 			}
 		}
 
@@ -217,7 +217,7 @@ impl Ui {
 
 			let x0 = ImVec2::new( note.t0.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
 			let x1 = ImVec2::new( note.t1.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
-			ctx.add_rect_filled( x0, x1, color, 0.0, !0 );
+			ctx.add_rect_filled( x0, x1, color, note_size.y / 4.0, !0 );
 
 			let dt = note.t1 - note.t0;
 			SetCursorPos( &x0 );
@@ -351,7 +351,11 @@ fn main() {
 		let io = imgui::get_io();
 		io.IniFilename = ptr::null();
 		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
-		imutil::set_theme( imgui::ImVec4::new( 0.2, 0.3, 0.4, 1.0 ) );
+		imutil::set_theme(
+			imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
+			imgui::ImVec4::new( 1.00, 1.00, 1.00, 1.0 ),
+			imgui::ImVec4::new( 0.05, 0.05, 0.05, 1.0 ),
+		);
 		imutil::set_scale( 1.5, 13.0, font );
 
 		let mut window = window::Window::new( Ui::new( "memol" )? );

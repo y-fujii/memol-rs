@@ -96,7 +96,7 @@ pub fn begin_root( flags: u32 ) {
 		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32 );
 		SetNextWindowSize( &size, ImGuiSetCond_Always as i32 );
 		Begin1(
-			c_str!( "root" ), &mut true, &size, 0.0,
+			c_str!( "root" ), ptr::null_mut(), &size, 0.0,
 			(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
 			 ImGuiWindowFlags_NoBringToFrontOnFocus |
 			 ImGuiWindowFlags_NoTitleBar | flags) as i32
@@ -115,20 +115,21 @@ pub fn end_root() {
 	}
 }
 
-pub fn set_theme( base: imgui::ImVec4 ) {
+pub fn set_theme( base: imgui::ImVec4, fg: imgui::ImVec4, bg: imgui::ImVec4 ) {
 	use imgui::*;
 
-	let fg      = ImVec4::new( 1.0, 1.0, 1.0, 1.0 );
-	let bg      = ImVec4::new( 0.0, 0.0, 0.0, 0.7 );
 	let normal  = srgb_gamma( base );
 	let hovered = srgb_gamma( base * 0.8 + fg * 0.2 );
 	let active  = srgb_gamma( base * 0.6 + fg * 0.4 );
+	let fg      = srgb_gamma( fg );
+	let bg      = srgb_gamma( bg );
 
 	let style = get_style();
 	style.WindowRounding      = 0.0;
 	style.ChildWindowRounding = 0.0;
 	style.FrameRounding       = 0.0;
 	style.Colors[ImGuiCol_Text                 as usize] = fg;
+	style.Colors[ImGuiCol_Border               as usize] = normal;
 	style.Colors[ImGuiCol_WindowBg             as usize] = bg;
 	style.Colors[ImGuiCol_PopupBg              as usize] = bg;
 	style.Colors[ImGuiCol_ScrollbarBg          as usize] = bg;

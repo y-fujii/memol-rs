@@ -28,6 +28,8 @@ fn main() {
 		.flag( "-fno-rtti" )
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )
+		.flag( "-DNDEBUG" )
+		.flag( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 		.file( "imgui/imgui.cpp" )
 		.file( "imgui/imgui_draw.cpp" )
 		.compile( "libimgui.a" );

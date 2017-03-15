@@ -1,4 +1,5 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+#![feature( step_by )]
 #![feature( untagged_unions )]
 #![feature( windows_subsystem )]
 #![windows_subsystem = "windows"]
@@ -32,8 +33,8 @@ struct Ui {
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
-	color_line: u32,
 	color_time_bar: u32,
+	color_time_odd: u32,
 	color_chromatic: u32,
 	color_note_top: u32,
 	color_note_sub: u32,
@@ -89,11 +90,11 @@ impl Ui {
 			player: player,
 			channel: 0,
 			follow: true,
-			color_line:      imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.50, 0.50, 0.50, 1.0 ) ) ),
-			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 1.0 ) ) ),
-			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.90, 0.90, 0.90, 1.0 ) ) ),
-			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.15, 0.20, 1.0 ) ) ),
-			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.70, 0.80, 1.0 ) ) ),
+			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 1.00 ) ) ),
+			color_time_odd:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 0.02 ) ) ),
+			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.90, 0.90, 0.90, 1.00 ) ) ),
+			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.15, 0.20, 1.00 ) ) ),
+			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.70, 0.80, 1.00 ) ) ),
 		} )
 	}
 
@@ -189,9 +190,6 @@ impl Ui {
 
 		let loc_end = self.loc_end.to_float() as f32;
 		for i in 0 .. (128 + 11) / 12 {
-			let lt = ImVec2::new( 0.0,                   (128 - i * 12) as f32 * note_size.y );
-			let rb = ImVec2::new( loc_end * note_size.x, (128 - i * 12) as f32 * note_size.y );
-			ctx.add_line( lt, rb, self.color_line, 1.0 );
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
 				let lt = ImVec2::new( 0.0,                   (127 - i * 12 - j) as f32 * note_size.y );
 				let rb = ImVec2::new( loc_end * note_size.x, (128 - i * 12 - j) as f32 * note_size.y );
@@ -199,10 +197,10 @@ impl Ui {
 			}
 		}
 
-		for i in 0 .. self.loc_end.floor() + 1 {
-			let lt = ImVec2::new( i as f32 * note_size.x - 1.0, 0.0        );
-			let rb = ImVec2::new( i as f32 * note_size.x - 1.0, ctx.size.y );
-			ctx.add_line( lt, rb, self.color_line, 1.0 );
+		for i in (1 .. self.loc_end.floor() + 1).step_by( 2 ) {
+			let lt = ImVec2::new( (i + 0) as f32 * note_size.x, 0.0        );
+			let rb = ImVec2::new( (i + 1) as f32 * note_size.x, ctx.size.y );
+			ctx.add_rect_filled( lt, rb, self.color_time_odd, 1.0, !0 );
 		}
 	}
 
@@ -260,8 +258,8 @@ impl Ui {
 		}
 		PopStyleVar( 1 );
 
-		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0                 );
-		let rb = ImVec2::new( loc * note_size.x - 1.0, 128.0 * note_size.y );
+		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0        );
+		let rb = ImVec2::new( loc * note_size.x - 1.0, ctx.size.y );
 		ctx.add_line( lt, rb, self.color_time_bar, 1.0 );
 
 		count

@@ -27,6 +27,7 @@ impl<T> MessageSender<T> {
 pub struct Window<T, U: Ui<T>> {
 	window: glutin::Window,
 	renderer: renderer::Renderer,
+	timer: time::SystemTime,
 	ui: U,
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
@@ -70,6 +71,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 		Window {
 			window: window,
 			renderer: renderer::Renderer::new(),
+			timer: time::UNIX_EPOCH,
 			ui: ui,
 			tx: tx,
 			rx: rx,
@@ -83,7 +85,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 		}
 	}
 
-	pub fn event_loop( &mut self ) {
+	pub fn event_loop( &mut self ) -> result::Result<(), Box<error::Error>> {
 		let (x, y) = self.window.get_inner_size().unwrap_or( (640, 480) );
 		let mut n = 1 + self.handle_event( &glutin::Event::Resized( x, y ) );
 		loop {
@@ -91,24 +93,28 @@ impl<T, U: Ui<T>> Window<T, U> {
 				//for ev in self.window.poll_events() {
 				while let Some( ev ) = self.window.poll_events().next() {
 					if let glutin::Event::Closed = ev {
-						return;
+						return Ok( () );
 					}
 					n = cmp::max( n, 1 + self.handle_event( &ev ) );
 				}
 
+				let timer = time::SystemTime::now();
+				let delta = timer.duration_since( self.timer )?;
+				self.timer = timer;
+				imgui::get_io().DeltaTime = delta.as_secs() as f32 * 1e3 + delta.subsec_nanos() as f32 / 1e6;
 				unsafe { imgui::NewFrame() };
 				n = cmp::max( n, 1 + self.ui.on_draw() );
 				unsafe { imgui::Render() };
 
 				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
-				self.window.swap_buffers().unwrap();
+				self.window.swap_buffers()?;
 				n -= 1;
 			}
 
 			let ev = self.window.wait_events().next().unwrap();
 			if let glutin::Event::Closed = ev {
-				return;
+				return Ok( () );
 			}
 			n = cmp::max( n, 1 + self.handle_event( &ev ) );
 		}

@@ -50,6 +50,7 @@ extern "C" {
 	pub fn jack_client_close( _: *mut Client ) -> i32;
 	pub fn jack_client_open( _: *const c_char, _: u32, _: *mut u32, ... ) -> *mut Client;
 	pub fn jack_connect( _: *mut Client, _: *const c_char, _: *const c_char ) -> i32;
+	pub fn jack_get_current_transport_frame( _: *const Client ) -> u32;
 	pub fn jack_midi_clear_buffer( _: *mut PortBuffer ) -> ();
 	pub fn jack_midi_event_write( _: *mut PortBuffer, _: u32, _: *const u8, _: usize ) -> i32;
 	pub fn jack_port_get_buffer( _: *mut Port, _: u32 ) -> *mut PortBuffer;

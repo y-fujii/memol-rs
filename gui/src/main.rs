@@ -153,15 +153,23 @@ impl Ui {
 		End();
 
 		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
+			// scrolling.
 			let ctx = imutil::DrawContext::new();
-			let note_size = ImVec2::new( (ctx.size.y / 128.0).ceil() * 16.0, ctx.size.y / 128.0 );
+			let note_size = ImVec2::new( (ctx.size.y / 8.0).ceil(), ctx.size.y / 128.0 );
+			let prev = GetScrollX();
 			if self.follow && is_playing {
-				SetScrollX( loc * note_size.x - ctx.size.x / 2.0 );
+				let next = loc * note_size.x - ctx.size.x / 4.0;
+				SetScrollX( prev * 0.9375 + next * 0.0625 );
 			}
 			else {
-				count = cmp::max( count, self.drag_scroll() );
+				let delta = GetMouseDragDelta( 1, -1.0 );
+				SetScrollX( prev + delta.x * 0.25 );
+				if delta.x != 0.0 {
+					count = cmp::max( count, 1 );
+				}
 			}
 
+			// rendering.
 			let mut ctx = imutil::DrawContext::new();
 			self.draw_background( &mut ctx, note_size );
 			for (i, ir) in self.data.iter().enumerate() {
@@ -176,13 +184,6 @@ impl Ui {
 		imutil::end_root();
 
 		cmp::max( count, if is_playing { 1 } else { 0 } )
-	}
-
-	unsafe fn drag_scroll( &self ) -> i32 {
-		use imgui::*;
-		let delta = GetMouseDragDelta( 1, -1.0 );
-		SetScrollX( GetScrollX() + 0.25 * delta.x );
-		if delta.x != 0.0 { 1 } else { 0 }
 	}
 
 	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2 ) {
@@ -215,7 +216,7 @@ impl Ui {
 
 			let x0 = ImVec2::new( note.t0.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
 			let x1 = ImVec2::new( note.t1.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
-			ctx.add_rect_filled( x0, x1, color, note_size.y / 4.0, !0 );
+			ctx.add_rect_filled( x0, x1, color, note_size.y * 0.25, !0 );
 
 			let dt = note.t1 - note.t0;
 			SetCursorPos( &x0 );
@@ -359,7 +360,7 @@ fn main() {
 		let mut window = window::Window::new( Ui::new( "memol" )? );
 		let tx = window.create_sender();
 		thread::spawn( move || compile_task( &args.free[0], tx ).unwrap() );
-		window.event_loop();
+		window.event_loop()?;
 
 		Ok( () )
 	};

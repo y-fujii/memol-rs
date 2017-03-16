@@ -118,7 +118,11 @@ impl Player {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			jack::jack_transport_query( self.jack, &mut pos );
-			ratio::Ratio::new( pos.frame as i64, pos.frame_rate as i64 )
+			// the resolution of jack_position_t::frame is per process cycles.
+			// jack_get_current_transport_frame() estimates the current
+			// position more accurately.
+			let frame = jack::jack_get_current_transport_frame( self.jack );
+			ratio::Ratio::new( frame as i64, pos.frame_rate as i64 )
 		}
 	}
 

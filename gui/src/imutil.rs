@@ -5,8 +5,9 @@ use std::*;
 
 pub struct DrawContext<'a> {
 	pub draw_list: &'a mut imgui::ImDrawList,
-	pub origin: imgui::ImVec2,
-	pub size: imgui::ImVec2,
+	pub min: imgui::ImVec2,
+	pub max: imgui::ImVec2,
+	pub clip: imgui::ImVec2,
 }
 
 impl<'a> DrawContext<'a> {
@@ -15,22 +16,39 @@ impl<'a> DrawContext<'a> {
 		unsafe {
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				origin: GetWindowContentRegionMin(),
-				size: GetWindowContentRegionMax() - GetWindowContentRegionMin(),
+				min: GetWindowContentRegionMin(),
+				max: GetWindowContentRegionMax(),
+				clip: GetWindowSize(),
 			}
 		}
 	}
 
 	pub fn add_line( &mut self, a: imgui::ImVec2, b: imgui::ImVec2, col: u32, thickness: f32 ) {
-		unsafe {
-			self.draw_list.AddLine( &(self.origin + a), &(self.origin + b), col, thickness );
+		let a = self.min + a;
+		let b = self.min + b;
+		if self.intersect_aabb( a, b ) {
+			unsafe {
+				self.draw_list.AddLine( &a, &b, col, thickness );
+			}
 		}
 	}
 
 	pub fn add_rect_filled( &mut self, a: imgui::ImVec2, b: imgui::ImVec2, col: u32, rounding: f32, flags: i32 ) {
-		unsafe {
-			self.draw_list.AddRectFilled( &(self.origin + a), &(self.origin + b), col, rounding, flags );
+		let a = self.min + a;
+		let b = self.min + b;
+		if self.intersect_aabb( a, b ) {
+			unsafe {
+				self.draw_list.AddRectFilled( &a, &b, col, rounding, flags );
+			}
 		}
+	}
+
+	pub fn size( &self ) -> imgui::ImVec2 {
+		self.max - self.min
+	}
+
+	fn intersect_aabb( &self, a: imgui::ImVec2, b: imgui::ImVec2 ) -> bool {
+		0.0 <= b.x && a.x <= self.clip.x && 0.0 <= b.y && a.y <= self.clip.y
 	}
 }
 

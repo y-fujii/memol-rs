@@ -155,10 +155,10 @@ impl Ui {
 		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
 			// scrolling.
 			let ctx = imutil::DrawContext::new();
-			let note_size = ImVec2::new( (ctx.size.y / 8.0).ceil(), ctx.size.y / 128.0 );
+			let note_size = ImVec2::new( (ctx.size().y / 8.0).ceil(), ctx.size().y / 128.0 );
 			let prev = GetScrollX();
 			if self.follow && is_playing {
-				let next = loc * note_size.x - ctx.size.x / 4.0;
+				let next = loc * note_size.x - ctx.size().x / 4.0;
 				SetScrollX( prev * 0.9375 + next * 0.0625 );
 			}
 			else {
@@ -199,8 +199,8 @@ impl Ui {
 		}
 
 		for i in (1 .. self.loc_end.floor() + 1).step_by( 2 ) {
-			let lt = ImVec2::new( (i + 0) as f32 * note_size.x, 0.0        );
-			let rb = ImVec2::new( (i + 1) as f32 * note_size.x, ctx.size.y );
+			let lt = ImVec2::new( (i + 0) as f32 * note_size.x, 0.0          );
+			let rb = ImVec2::new( (i + 1) as f32 * note_size.x, ctx.size().y );
 			ctx.add_rect_filled( lt, rb, self.color_time_odd, 1.0, !0 );
 		}
 	}
@@ -252,15 +252,15 @@ impl Ui {
 		PushStyleVar1( ImGuiStyleVar_ItemSpacing as i32, &ImVec2::zero() );
 		for i in 0 .. self.loc_end.floor() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
-			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size.y ) ) {
+			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size().y ) ) {
 				self.player.seek( ratio::Ratio::new( i, 1 ) ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		}
 		PopStyleVar( 1 );
 
-		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0        );
-		let rb = ImVec2::new( loc * note_size.x - 1.0, ctx.size.y );
+		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0          );
+		let rb = ImVec2::new( loc * note_size.x - 1.0, ctx.size().y );
 		ctx.add_line( lt, rb, self.color_time_bar, 1.0 );
 
 		count

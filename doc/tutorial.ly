@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>memol language tutorial</title>
+		<title>memol language overview</title>
 		<style>
 			* {
 				font: 100%/1.5 serif;
@@ -56,7 +56,7 @@
 	</head>
 <body>
 
-<h1>memol language Tutorial</h1>
+<h1>memol language overview</h1>
 <p>XXX: under construction.
 
 <p>memol is a music description language which features:

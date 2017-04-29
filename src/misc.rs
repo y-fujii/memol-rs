@@ -2,6 +2,22 @@
 use std::*;
 
 
+pub trait One {
+	fn one() -> Self;
+}
+
+impl One for i32 {
+	fn one() -> Self {
+		1
+	}
+}
+
+impl One for i64 {
+	fn one() -> Self {
+		1
+	}
+}
+
 #[derive(Debug)]
 pub struct UniqueIterator<T: Iterator> {
 	prev: Option<T::Item>,
@@ -57,14 +73,12 @@ pub fn error<T, U: From<Error>>( loc: usize, msg: &str ) -> Result<T, U> {
 	Err( From::from( Error{ loc: loc, msg: msg.into() } ) )
 }
 
-#[allow( deprecated )]
-pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + num::One>( x: T, y: T ) -> T {
+pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
 	let r = x / y;
 	if r * y <= x { r } else { r - T::one() }
 }
 
-#[allow( deprecated )]
-pub fn imod<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + num::One>( x: T, y: T ) -> T {
+pub fn imod<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
 	x - y * idiv( x, y )
 }
 

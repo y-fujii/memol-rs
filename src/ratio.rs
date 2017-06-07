@@ -102,6 +102,28 @@ impl<T: Into<Ratio>> ops::Div<T> for Ratio {
 	}
 }
 
+impl ops::Mul<Ratio> for i64 {
+	type Output = Ratio;
+
+	fn mul( self, other: Ratio ) -> Ratio {
+		Ratio::new(
+			other.y * self,
+			other.x,
+		)
+	}
+}
+
+impl ops::Div<Ratio> for i64 {
+	type Output = Ratio;
+
+	fn div( self, other: Ratio ) -> Ratio {
+		Ratio::new(
+			other.x * self,
+			other.y,
+		)
+	}
+}
+
 impl Ratio {
 	pub fn new( y: i64, x: i64 ) -> Ratio {
 		let t = misc::gcd( y, x );

@@ -28,23 +28,20 @@ fn main() {
 			let result = compile( &buf );
 			let elapsed = timer.elapsed()?;
 			println!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
-			println!( " event count: {}", result.as_ref().map( |&(ref evs, _)| evs.len() ).unwrap_or( 0 ) );
+			println!( " event count: {}", result.as_ref().map( |evs| evs.len() ).unwrap_or( 0 ) );
 			match result {
 				Err( e ) => {
 					let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
 					println!( "error at ({}, {}): {}", row, col, e.msg );
 				},
-				Ok( (events, range) ) => {
-					match range {
-						Some( (bgn, end) ) => {
-							player.set_data_with_range( events, bgn, end );
-							player.seek( bgn )?;
-							player.play()?;
-						},
-						None => {
-							player.set_data( events );
-						}
-					}
+				Ok( events ) => {
+					let bgn = match events.get( 0 ) {
+						Some( ev ) => ev.time,
+						None       => 0.0,
+					};
+					player.set_data( events );
+					player.seek( bgn )?;
+					player.play()?;
 				},
 			}
 

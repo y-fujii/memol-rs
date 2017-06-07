@@ -46,24 +46,38 @@ pub mod parser {
 	}
 }
 
-pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, ratio::Ratio)>), misc::Error> {
+pub const TICK: i64 = 480;
+
+pub fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 	let tree = parser::parse( &src )?;
 	let score_gen = scoregen::Generator::new( &tree );
 	let value_gen = valuegen::Generator::new( &tree );
 
-	let bgn_ir = value_gen.generate( "out.begin" )?;
-	let end_ir = value_gen.generate( "out.end"   )?;
-	let range = match (bgn_ir, end_ir) {
-		(Some( bgn ), Some( end )) => Some( (
-			bgn.value( ratio::Ratio::zero() ),
-			end.value( ratio::Ratio::zero() ),
-		) ),
-		_ => None,
+	let mut score_irs = Vec::new();
+	for ch in 0 .. 16 {
+		score_irs.push( score_gen.generate( &format!( "out.{}", ch ) )? );
+	}
+
+	let bgn = match value_gen.generate( "out.begin" )? {
+		Some( ir ) => (ir.value( ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		None       => 0,
+	};
+	let end = match value_gen.generate( "out.end" )? {
+		Some( ir ) => (ir.value( ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		None => {
+			let v = score_irs.iter()
+				.flat_map( |v| v.iter() )
+				.flat_map( |v| v.notes.iter() )
+				.map( |v| v.t1 )
+				.max()
+				.unwrap_or( ratio::Ratio::zero() );
+			(v * TICK).round()
+		}
 	};
 
-	let mut migen = midi::Generator::new();
-	for ch in 0 .. 16 {
-		if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
+	let mut migen = midi::Generator::new( bgn, end, TICK );
+	for (ch, score_ir) in score_irs.iter().enumerate() {
+		if let Some( ref score_ir ) = *score_ir {
 			let vel_ir = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
 				.unwrap_or( valuegen::Ir::Value(
 					ratio::Ratio::zero(),
@@ -88,5 +102,8 @@ pub fn compile( src: &str ) -> Result<(Vec<midi::Event>, Option<(ratio::Ratio, r
 			migen.add_cc( ch, cc, &value_ir );
 		}
 	}
-	Ok( (migen.generate(), range) )
+	if let Some( tempo_ir ) = value_gen.generate( "out.tempo" )? {
+		migen.add_tempo( &tempo_ir );
+	}
+	Ok( migen.generate()? )
 }

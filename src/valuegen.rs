@@ -25,11 +25,12 @@ struct State {
 }
 
 impl Ir {
-	pub fn value( &self, t: ratio::Ratio ) -> ratio::Ratio {
+	pub fn value( &self, t: ratio::Ratio ) -> f64 {
 		match *self {
 			Ir::Value( t0, t1, v0, v1 ) => {
 				let t = cmp::min( cmp::max( t, t0 ), t1 );
-				v0 + (v1 - v0) * (t - t0) / (t1 - t0)
+				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+				v.to_float()
 			},
 			Ir::Sequence( ref irs ) => {
 				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
@@ -47,21 +48,8 @@ impl Ir {
 			},
 			Ir::Gaussian => {
 				let rand::distributions::normal::StandardNormal( x ) = rand::random();
-				ratio::Ratio::new( (x * 256.0).round() as i64, 256 ) // XXX
+				x
 			},
-		}
-	}
-
-	pub fn end( &self ) -> ratio::Ratio {
-		match *self {
-			Ir::Value( _, t1, _, _ ) =>
-				t1,
-			Ir::Sequence( ref irs ) =>
-				irs[irs.len() - 1].0.end(),
-			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, _ ) =>
-				cmp::max( ir_lhs.end(), ir_rhs.end() ),
-			Ir::Gaussian =>
-				ratio::Ratio::zero(),
 		}
 	}
 }

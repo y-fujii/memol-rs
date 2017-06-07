@@ -8,8 +8,6 @@ use jack;
 
 struct SharedData {
 	events: Vec<midi::Event>,
-	bgn: ratio::Ratio,
-	end: ratio::Ratio,
 	changed: bool,
 }
 
@@ -45,8 +43,6 @@ impl Player {
 			let mut this = Box::new( Player{
 				shared: sync::Mutex::new( SharedData{
 					events: Vec::new(),
-					bgn: -ratio::Ratio::inf(),
-					end:  ratio::Ratio::inf(),
 					changed: false,
 				} ),
 				jack: jack,
@@ -69,14 +65,8 @@ impl Player {
 	}
 
 	pub fn set_data( &mut self, events: Vec<midi::Event> ) {
-		self.set_data_with_range( events, -ratio::Ratio::inf(), ratio::Ratio::inf() );
-	}
-
-	pub fn set_data_with_range( &mut self, events: Vec<midi::Event>, bgn: ratio::Ratio, end: ratio::Ratio ) {
 		let mut shared = self.shared.lock().unwrap();
 		shared.events = events;
-		shared.bgn = bgn;
-		shared.end = end;
 		shared.changed = true;
 	}
 
@@ -105,11 +95,11 @@ impl Player {
 		Ok( () )
 	}
 
-	pub fn seek( &mut self, time: ratio::Ratio ) -> io::Result<()> {
+	pub fn seek( &mut self, time: f64 ) -> io::Result<()> {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			jack::jack_transport_query( self.jack, &mut pos );
-			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as i64).floor() as u32 );
+			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as f64) as u32 );
 		}
 		Ok( () )
 	}
@@ -159,20 +149,16 @@ impl Player {
 				_ => return 0,
 			}
 
-			let fbgn = ratio::Ratio::new( (pos.frame       ) as i64, pos.frame_rate as i64 );
-			let fend = ratio::Ratio::new( (pos.frame + size) as i64, pos.frame_rate as i64 );
-			let rbgn = cmp::max( (fbgn, i32::MIN), (shared.bgn, 0) );
-			let rend = cmp::min( (fend, i32::MIN), (shared.end, 0) );
-			if rbgn < rend {
-				let ibgn = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rbgn );
-				let iend = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < rend );
-				for ev in shared.events[ibgn .. iend].iter() {
-					let n = (ev.time * pos.frame_rate as i64).round() as u32 - pos.frame;
-					jack::jack_midi_event_write( buf, n, ev.msg.as_ptr(), ev.len as usize );
-				}
+			let fbgn = (pos.frame       ) as f64 / pos.frame_rate as f64;
+			let fend = (pos.frame + size) as f64 / pos.frame_rate as f64;
+			let ibgn = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < (fbgn, i32::MIN) );
+			let iend = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < (fend, i32::MIN) );
+			for ev in shared.events[ibgn .. iend].iter() {
+				let n = (ev.time * pos.frame_rate as f64).round() as u32 - pos.frame;
+				jack::jack_midi_event_write( buf, n, ev.msg.as_ptr(), ev.len as usize );
 			}
 
-			if fbgn <= shared.end && shared.end < fend {
+			if ibgn == shared.events.len() {
 				jack::jack_transport_stop( this.jack );
 				shared.changed = true;
 			}

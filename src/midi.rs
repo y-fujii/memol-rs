@@ -87,6 +87,7 @@ impl Generator {
 			self.timeline.push( s );
 			s += 1.0 / (self.tick as f64 * ir.value( Ratio::new( i, self.tick ) ));
 		}
+		self.timeline.push( s ); // includes end for linear interpolation.
 	}
 
 	pub fn generate( mut self ) -> Result<Vec<Event>, misc::Error> {

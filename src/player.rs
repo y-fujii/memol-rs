@@ -149,13 +149,11 @@ impl Player {
 				_ => return 0,
 			}
 
-			let fbgn = (pos.frame       ) as f64 / pos.frame_rate as f64;
-			let fend = (pos.frame + size) as f64 / pos.frame_rate as f64;
-			let ibgn = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < (fbgn, i32::MIN) );
-			let iend = misc::bsearch_boundary( &shared.events, |e| (e.time, e.prio) < (fend, i32::MIN) );
+			let time = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as u32;
+			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (time( ev ), ev.prio) < (pos.frame,        i32::MIN) );
+			let iend = misc::bsearch_boundary( &shared.events, |ev| (time( ev ), ev.prio) < (pos.frame + size, i32::MIN) );
 			for ev in shared.events[ibgn .. iend].iter() {
-				let n = (ev.time * pos.frame_rate as f64).round() as u32 - pos.frame;
-				jack::jack_midi_event_write( buf, n, ev.msg.as_ptr(), ev.len as usize );
+				jack::jack_midi_event_write( buf, time( ev ) - pos.frame, ev.msg.as_ptr(), ev.len as usize );
 			}
 
 			if ibgn == shared.events.len() {

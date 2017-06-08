@@ -84,11 +84,10 @@ impl Generator {
 	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
 		assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
-		for i in 0 .. self.end {
+		for i in 0 .. self.end + 2 {
 			self.timeline.push( s );
 			s += 1.0 / (self.tick as f64 * ir.value( Ratio::new( i, self.tick ) ));
 		}
-		self.timeline.push( s ); // includes end for linear interpolation.
 	}
 
 	pub fn generate( mut self ) -> Result<Vec<Event>, misc::Error> {

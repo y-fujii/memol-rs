@@ -54,7 +54,8 @@ impl Generator {
 				Some( v ) => v,
 				None      => continue,
 			};
-			if f.t0 < Ratio::new( self.bgn, self.tick ) || Ratio::new( self.end, self.tick ) <= f.t1 {
+			// accepts note off messages at end.
+			if f.t0 < Ratio::new( self.bgn, self.tick ) || Ratio::new( self.end, self.tick ) < f.t1 {
 				continue;
 			}
 			let t0 = f.t0.to_float() + *offset.entry( (f.t0, nnum) ).or_insert_with( || ir_ofs.value( f.t0 ) );

@@ -51,7 +51,7 @@ score_prim: Box<Ast<Score<'a>>> = {
 		Ast::new_box( lo, hi, Score::Parallel( a ) ),
 	<lo:@L> "{" <a:score_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( a ) ),
-	<lo:@L> <a:uint> ":" <b:score_prim> <hi:@R> =>
+	<lo:@L> "repeat" <a:uint> <b:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
 	<lo:@L> <a:uratio> <b:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
@@ -171,7 +171,7 @@ value_track_prim: Box<Ast<ValueTrack>> = {
 		Ast::new_box( lo, hi, ValueTrack::ValueTrack( a ) ),
 	<lo:@L> <a:uratio> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
-	<lo:@L> <a:uint> ":" <b:value_track_prim> <hi:@R> =>
+	<lo:@L> "repeat" <a:uint> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
 	<lo:@L> "gaussian" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Gaussian ),

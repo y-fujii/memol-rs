@@ -25,7 +25,7 @@ fn main() {
 			fs::File::open( &args.free[0] )?.read_to_string( &mut buf )?;
 
 			let timer = time::SystemTime::now();
-			let result = compile( &buf );
+			let result = compile( &buf ).and_then( |e| assemble( &e ) );
 			let elapsed = timer.elapsed()?;
 			println!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
 			println!( " event count: {}", result.as_ref().map( |evs| evs.len() ).unwrap_or( 0 ) );

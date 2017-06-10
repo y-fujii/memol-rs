@@ -46,16 +46,32 @@ pub mod parser {
 	}
 }
 
+pub struct Channel {
+	score: scoregen::Ir,
+	velocity: valuegen::Ir,
+	offset: valuegen::Ir,
+	ccs: Vec<(usize, valuegen::Ir)>,
+}
+
+pub struct Assembly {
+	channels: Vec<(usize, Channel)>,
+	tempo: valuegen::Ir,
+	bgn: ratio::Ratio,
+	end: ratio::Ratio,
+}
+
 pub const TICK: i64 = 480;
 
-pub fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
+pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 	let tree = parser::parse( &src )?;
 	let score_gen = scoregen::Generator::new( &tree );
 	let value_gen = valuegen::Generator::new( &tree );
 
-	let mut score_irs = Vec::new();
+	let mut scores = Vec::new();
 	for ch in 0 .. 16 {
-		score_irs.push( score_gen.generate( &format!( "out.{}", ch ) )? );
+		if let Some( ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
+			scores.push( (ch, ir) );
+		}
 	}
 
 	let bgn = match value_gen.generate( "out.begin" )? {
@@ -65,9 +81,8 @@ pub fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 	let end = match value_gen.generate( "out.end" )? {
 		Some( ir ) => (ir.value( ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None => {
-			let v = score_irs.iter()
-				.flat_map( |v| v.iter() )
-				.flat_map( |v| v.notes.iter() )
+			let v = scores.iter()
+				.flat_map( |&(_, ref v)| v.notes.iter() )
 				.map( |v| v.t1 )
 				.max()
 				.unwrap_or( ratio::Ratio::zero() );
@@ -75,35 +90,57 @@ pub fn compile( src: &str ) -> Result<Vec<midi::Event>, misc::Error> {
 		}
 	};
 
-	let mut migen = midi::Generator::new( bgn, end, TICK );
-	for (ch, score_ir) in score_irs.iter().enumerate() {
-		if let Some( ref score_ir ) = *score_ir {
-			let vel_ir = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
-				.unwrap_or( valuegen::Ir::Value(
-					ratio::Ratio::zero(),
-					ratio::Ratio::one(),
-					ratio::Ratio::new( 5, 8 ),
-					ratio::Ratio::new( 5, 8 ),
-				) );
-			let ofs_ir = value_gen.generate( &format!( "out.{}.offset", ch ) )?
-				.unwrap_or( valuegen::Ir::Value(
-					ratio::Ratio::zero(),
-					ratio::Ratio::one(),
-					ratio::Ratio::new( 0, 1 ),
-					ratio::Ratio::new( 0, 1 ),
-				) );
-			migen.add_score( ch, &score_ir, &vel_ir, &ofs_ir );
-		}
+	let mut channels = Vec::new();
+	for (ch, score) in scores.into_iter() {
+		let vel = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
+			.unwrap_or( valuegen::Ir::Value(
+				ratio::Ratio::zero(),
+				ratio::Ratio::one(),
+				ratio::Ratio::new( 5, 8 ),
+				ratio::Ratio::new( 5, 8 ),
+			) );
+		let ofs = value_gen.generate( &format!( "out.{}.offset", ch ) )?
+			.unwrap_or( valuegen::Ir::Value(
+				ratio::Ratio::zero(),
+				ratio::Ratio::one(),
+				ratio::Ratio::new( 0, 1 ),
+				ratio::Ratio::new( 0, 1 ),
+			) );
+		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
-			let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
-				Some( v ) => v,
-				None      => continue,
-			};
-			migen.add_cc( ch, cc, &value_ir );
+			if let Some( ir ) = value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
+				ccs.push( (cc, ir) );
+			}
+		}
+		channels.push( (ch, Channel{ score: score, velocity: vel, offset: ofs, ccs: ccs }) );
+	}
+
+	let tempo = value_gen.generate( "out.tempo" )?
+		.unwrap_or( valuegen::Ir::Value(
+			ratio::Ratio::zero(),
+			ratio::Ratio::one(),
+			ratio::Ratio::one(),
+			ratio::Ratio::one(),
+		) );
+
+	Ok( Assembly{
+		channels: channels,
+		tempo: tempo,
+		bgn: ratio::Ratio::new( bgn, TICK ),
+		end: ratio::Ratio::new( end, TICK ),
+	} )
+}
+
+pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
+	let bgn = (src.bgn * TICK).round();
+	let end = (src.end * TICK).round();
+	let mut migen = midi::Generator::new( bgn, end, TICK );
+	for &(ch, ref irs) in src.channels.iter() {
+		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset );
+		for &(cc, ref ir) in irs.ccs.iter() {
+			migen.add_cc( ch, cc, &ir );
 		}
 	}
-	if let Some( tempo_ir ) = value_gen.generate( "out.tempo" )? {
-		migen.add_tempo( &tempo_ir );
-	}
+	migen.add_tempo( &src.tempo );
 	Ok( migen.generate()? )
 }

@@ -84,10 +84,11 @@ impl Generator {
 	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
 		assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
-		for i in 0 .. self.end + 2 {
+		for i in 0 .. self.end + 1 {
 			self.timeline.push( s );
 			s += 1.0 / (self.tick as f64 * ir.value( Ratio::new( i, self.tick ) ));
 		}
+		self.timeline.push( s );
 	}
 
 	pub fn generate( mut self ) -> Result<Vec<Event>, misc::Error> {
@@ -95,9 +96,6 @@ impl Generator {
 		if self.timeline.len() > 0 {
 			for ev in self.events.iter_mut() {
 				let i = (ev.time * self.tick as f64).floor() as usize;
-				if i + 1 >= self.timeline.len() {
-					return misc::error( 0, "tempo track is too short." );
-				}
 				let f0 = self.timeline[i + 0];
 				let f1 = self.timeline[i + 1];
 				let a = (ev.time * self.tick as f64).fract();

@@ -252,7 +252,10 @@ impl<'a> Generator<'a> {
 				}
 			},
 			ast::Note::Group( ref ns ) => {
-				let tot: i32 = ns.iter().map( |&(_, i)| i ).sum();
+				let tot = ns.iter().map( |&(_, i)| i ).sum();
+				if tot == 0 {
+					return misc::error( note.end, "zero length group." );
+				}
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{

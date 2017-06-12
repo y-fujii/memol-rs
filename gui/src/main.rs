@@ -1,7 +1,5 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
-#![feature( step_by )]
-#![feature( untagged_unions )]
-#![feature( windows_subsystem )]
+#![feature( catch_expr )]
 #![windows_subsystem = "windows"]
 extern crate getopts;
 extern crate gl;
@@ -22,14 +20,15 @@ const JACK_FRAME_WAIT: i32 = 12;
 
 
 enum UiMessage {
-	Data( Vec<Vec<scoregen::FlatNote>>, Vec<midi::Event>, Option<(ratio::Ratio, ratio::Ratio)> ),
+	Data( Assembly, Vec<midi::Event> ),
 	Text( String ),
 }
 
 struct Ui {
-	data: Vec<Vec<scoregen::FlatNote>>,
+	assembly: Assembly,
+	end: ratio::Ratio,
+	tempo: f64, // XXX
 	text: Option<String>,
-	loc_end: ratio::Ratio,
 	player: Box<player::Player>,
 	channel: i32,
 	follow: bool,
@@ -47,35 +46,32 @@ impl window::Ui<UiMessage> for Ui {
 
 	fn on_message( &mut self, msg: UiMessage ) -> i32 {
 		let n = match msg {
-			UiMessage::Data( irs, evs, range ) => {
-				self.data = irs;
-				self.text = None;
-				match range {
-					Some( (t0, t1) ) => {
-						self.player.set_data_with_range( evs, t0, t1 );
-						self.player.seek( t0 ).unwrap_or( () );
-						self.player.play().unwrap_or( () );
-						JACK_FRAME_WAIT
-					},
-					None => {
-						self.player.set_data( evs );
-						0
-					},
-				}
+			UiMessage::Data( asm, evs ) => {
+				self.assembly = asm;
+				self.text     = None;
+				let bgn = match evs.get( 0 ) {
+					Some( ev ) => ev.time,
+					None       => 0.0,
+				};
+				self.player.set_data( evs );
+				self.player.seek( bgn ).unwrap_or( () );
+				self.player.play().unwrap_or( () );
+				JACK_FRAME_WAIT
 			},
 			UiMessage::Text( text ) => {
-				self.data = Vec::new();
-				self.player.set_data( Vec::new() );
-				self.text = Some( text );
+				self.assembly = Assembly::default();
+				self.text     = Some( text );
 				0
 			},
 		};
 
-		self.loc_end = self.data.iter()
-			.flat_map( |v| v.iter() )
+		self.end = self.assembly.channels.iter()
+			.flat_map( |&(_, ref v)| v.score.notes.iter() )
 			.map( |v| v.t1 )
 			.max()
 			.unwrap_or( ratio::Ratio::zero() );
+		self.tempo = self.assembly.tempo.value( ratio::Ratio::zero() );
+
 		n
 	}
 }
@@ -84,9 +80,10 @@ impl Ui {
 	fn new( name: &str ) -> io::Result<Self> {
 		let player = player::Player::new( name )?;
 		Ok( Ui {
-			data: Vec::new(),
+			assembly: Assembly::default(),
+			end: ratio::Ratio::zero(),
+			tempo: 1.0,
 			text: None,
-			loc_end: ratio::Ratio::zero(),
 			player: player,
 			channel: 0,
 			follow: true,
@@ -103,7 +100,7 @@ impl Ui {
 
 		let mut count = 0;
 		let is_playing = self.player.is_playing();
-		let loc = self.player.location().to_float() as f32;
+		let loc = (self.player.location().to_float() * self.tempo) as f32;
 
 		if let Some( ref text ) = self.text {
 			SetNextWindowPosCenter( ImGuiSetCond_Always as i32 );
@@ -127,7 +124,7 @@ impl Ui {
 
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "<<" ), &ImVec2::zero() ) {
-				self.player.seek( ratio::Ratio::zero() ).unwrap_or( () );
+				self.player.seek( 0.0 ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
@@ -141,13 +138,13 @@ impl Ui {
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( ">>" ), &ImVec2::zero() ) {
-				self.player.seek( self.loc_end ).unwrap_or( () );
+				self.player.seek( self.end.to_float() / self.tempo ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 
 			SameLine( 0.0, -1.0 );
-			for i in 0 .. self.data.len() as i32 {
-				RadioButton1( c_str!( "##{}", i ), &mut self.channel, i );
+			for &(ch, _) in self.assembly.channels.iter() {
+				RadioButton1( c_str!( "{}", ch ), &mut self.channel, ch as i32 );
 				SameLine( 0.0, 1.0 );
 			}
 		End();
@@ -172,13 +169,15 @@ impl Ui {
 			// rendering.
 			let mut ctx = imutil::DrawContext::new();
 			self.draw_background( &mut ctx, note_size );
-			for (i, ir) in self.data.iter().enumerate() {
-				if i != self.channel as usize {
-					self.draw_notes( &mut ctx, ir, note_size, self.color_note_sub );
+			for &(ch, ref ir) in self.assembly.channels.iter() {
+				if ch != self.channel as usize {
+					self.draw_notes( &mut ctx, &ir.score, note_size, self.color_note_sub );
 				}
 			}
-			if (self.channel as usize) < self.data.len() {
-				self.draw_notes( &mut ctx, &self.data[self.channel as usize], note_size, self.color_note_top );
+			for &(ch, ref ir) in self.assembly.channels.iter() {
+				if ch == self.channel as usize {
+					self.draw_notes( &mut ctx, &ir.score, note_size, self.color_note_top );
+				}
 			}
 			count = cmp::max( count, self.draw_time_bar( &mut ctx, note_size, loc ) );
 		imutil::end_root();
@@ -189,26 +188,28 @@ impl Ui {
 	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2 ) {
 		use imgui::*;
 
-		let loc_end = self.loc_end.to_float() as f32;
+		let end = self.end.to_float() as f32;
 		for i in 0 .. (128 + 11) / 12 {
 			for j in [ 1, 3, 6, 8, 10 ].iter() {
-				let lt = ImVec2::new( 0.0,                   (127 - i * 12 - j) as f32 * note_size.y );
-				let rb = ImVec2::new( loc_end * note_size.x, (128 - i * 12 - j) as f32 * note_size.y );
+				let lt = ImVec2::new( 0.0,               (127 - i * 12 - j) as f32 * note_size.y );
+				let rb = ImVec2::new( end * note_size.x, (128 - i * 12 - j) as f32 * note_size.y );
 				ctx.add_rect_filled( lt, rb, self.color_chromatic, 1.0, !0 );
 			}
 		}
 
-		for i in (1 .. self.loc_end.floor() + 1).step_by( 2 ) {
+		let mut i = 1;
+		while i <= self.end.floor() {
 			let lt = ImVec2::new( (i + 0) as f32 * note_size.x, 0.0          );
 			let rb = ImVec2::new( (i + 1) as f32 * note_size.x, ctx.size().y );
 			ctx.add_rect_filled( lt, rb, self.color_time_odd, 1.0, !0 );
+			i += 2;
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, notes: &Vec<scoregen::FlatNote>, note_size: ImVec2, color: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, note_size: ImVec2, color: u32 ) {
 		use imgui::*;
 
-		for note in notes.iter() {
+		for note in ir.notes.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
 				None      => continue,
@@ -250,10 +251,10 @@ impl Ui {
 		let mut count = 0;
 
 		PushStyleVar1( ImGuiStyleVar_ItemSpacing as i32, &ImVec2::zero() );
-		for i in 0 .. self.loc_end.floor() + 1 {
+		for i in 0 .. self.end.floor() + 1 {
 			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
 			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size().y ) ) {
-				self.player.seek( ratio::Ratio::new( i, 1 ) ).unwrap_or( () );
+				self.player.seek( i as f64 / self.tempo ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		}
@@ -272,67 +273,14 @@ fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<()
 		let mut buf = String::new();
 		fs::File::open( file )?.read_to_string( &mut buf )?;
 
-		// XXX: copy from ../src/lib.rs:compile().
-		let compile = || -> Result<_, misc::Error> {
-			let tree = parser::parse( &buf )?;
-			let score_gen = scoregen::Generator::new( &tree );
-			let value_gen = valuegen::Generator::new( &tree );
-
-			let bgn_ir = value_gen.generate( "out.begin" )?;
-			let end_ir = value_gen.generate( "out.end"   )?;
-			let range = match (bgn_ir, end_ir) {
-				(Some( bgn ), Some( end )) => Some( (
-					bgn.value( ratio::Ratio::zero() ),
-					end.value( ratio::Ratio::zero() ),
-				) ),
-				_ => None,
-			};
-
-			let mut irs = Vec::new();
-			let mut migen = midi::Generator::new();
-			for ch in 0 .. 16 {
-				if let Some( score_ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
-					let vel_ir = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
-						.unwrap_or( valuegen::Ir::Value(
-							ratio::Ratio::zero(),
-							ratio::Ratio::one(),
-							ratio::Ratio::new( 5, 8 ),
-							ratio::Ratio::new( 5, 8 ),
-						) );
-					let ofs_ir = value_gen.generate( &format!( "out.{}.offset", ch ) )?
-						.unwrap_or( valuegen::Ir::Value(
-							ratio::Ratio::zero(),
-							ratio::Ratio::one(),
-							ratio::Ratio::new( 0, 1 ),
-							ratio::Ratio::new( 0, 1 ),
-						) );
-					migen.add_score( ch, &score_ir, &vel_ir, &ofs_ir );
-					irs.push( score_ir.notes );
-				}
-				else {
-					irs.push( Vec::new() );
-				}
-
-				for cc in 0 .. 128 {
-					let value_ir = match value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
-						Some( v ) => v,
-						None      => continue,
-					};
-					migen.add_cc( ch, cc, &value_ir );
-				}
-			}
-			Ok( (irs, migen.generate(), range) )
-		};
-
-		let msg = match compile() {
-			Ok ( (irs, evs, range) ) => {
-				UiMessage::Data( irs, evs, range )
-			},
-			Err( e ) => {
-				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
-				UiMessage::Text( format!( "error at ({}, {}): {}", row, col, e.msg ) )
-			},
-		};
+		let msg = do catch {
+			let asm = compile( &buf )?;
+			let evs = assemble( &asm )?;
+			Ok( UiMessage::Data( asm, evs ) )
+		}.unwrap_or_else( |e: misc::Error| {
+			let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
+			UiMessage::Text( format!( "error at ({}, {}): {}", row, col, e.msg ) )
+		} );
 		tx.send( msg )?;
 
 		notify::notify_wait( file )?;

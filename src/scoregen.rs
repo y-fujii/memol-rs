@@ -92,7 +92,7 @@ impl<'a> Generator<'a> {
 					return misc::error( score.end, "unpaired tie." );
 				}
 				span.t0 + (span.t1 - span.t0) * ns.len() as i64
-			}
+			},
 			ast::Score::Symbol( ref key ) => {
 				let s = match self.defs.scores.get( key ) {
 					Some( v ) => v,

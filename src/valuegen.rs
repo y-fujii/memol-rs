@@ -92,7 +92,7 @@ impl<'a> Generator<'a> {
 				}
 				let t1 = span.t0 + (span.t1 - span.t0) * vs.len() as i64;
 				(Ir::Sequence( irs ), t1)
-			}
+			},
 			ast::ValueTrack::Symbol( ref key ) => {
 				let s = match self.defs.values.get( key ) {
 					Some( v ) => v,
@@ -128,10 +128,10 @@ impl<'a> Generator<'a> {
 				let ir = Ir::BinaryOp( Box::new( ir_lhs ), Box::new( ir_rhs ), op );
 				let t = cmp::max( t_lhs, t_rhs );
 				(ir, t)
-			}
+			},
 			ast::ValueTrack::Gaussian => {
 				(Ir::Gaussian, span.t0)
-			}
+			},
 		};
 		Ok( dst )
 	}

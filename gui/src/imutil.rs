@@ -52,21 +52,18 @@ impl<'a> DrawContext<'a> {
 	}
 }
 
-// XXX
 pub fn srgb_gamma( col: imgui::ImVec4 ) -> imgui::ImVec4 {
-	imgui::ImVec4::new(
-		col.x.powf( 1.0 / 2.2 ),
-		col.y.powf( 1.0 / 2.2 ),
-		col.z.powf( 1.0 / 2.2 ),
-		col.w,
-	)
+	let f = |x: f32| if x <= 0.0031308 {
+		12.92 * x
+	} else {
+		1.055 * x.powf( 1.0 / 2.4 ) - 0.055
+	};
+	imgui::ImVec4::new( f( col.x ), f( col.y ), f( col.z ), col.w )
 }
 
 pub fn pack_color( col: imgui::ImVec4 ) -> u32 {
-	(((col.x * 255.0) as u32) <<  0) |
-	(((col.y * 255.0) as u32) <<  8) |
-	(((col.z * 255.0) as u32) << 16) |
-	(((col.w * 255.0) as u32) << 24)
+	let f = |x: f32| (x * 255.0 + 0.5) as u32;
+	f( col.x ) | (f( col.y ) << 8) | (f( col.z ) << 16) | (f( col.w ) << 24)
 }
 
 pub fn set_scale( s: f32, font_size: f32, font: &[u8] ) {

@@ -47,20 +47,36 @@ pub mod parser {
 }
 
 pub struct Channel {
-	score: scoregen::Ir,
-	velocity: valuegen::Ir,
-	offset: valuegen::Ir,
-	ccs: Vec<(usize, valuegen::Ir)>,
+	pub score: scoregen::Ir,
+	pub velocity: valuegen::Ir,
+	pub offset: valuegen::Ir,
+	pub ccs: Vec<(usize, valuegen::Ir)>,
 }
 
 pub struct Assembly {
-	channels: Vec<(usize, Channel)>,
-	tempo: valuegen::Ir,
-	bgn: ratio::Ratio,
-	end: ratio::Ratio,
+	pub channels: Vec<(usize, Channel)>,
+	pub tempo: valuegen::Ir,
+	pub bgn: ratio::Ratio,
+	pub end: ratio::Ratio,
 }
 
-pub const TICK: i64 = 480;
+impl default::Default for Assembly {
+	fn default() -> Self {
+		Assembly{
+			channels: Vec::new(),
+			tempo: valuegen::Ir::Value(
+				ratio::Ratio::zero(),
+				ratio::Ratio::one(),
+				ratio::Ratio::one(),
+				ratio::Ratio::one(),
+			),
+			bgn: ratio::Ratio::zero(),
+			end: ratio::Ratio::zero(),
+		}
+	}
+}
+
+pub const TICK: i64 = 240;
 
 pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 	let tree = parser::parse( &src )?;

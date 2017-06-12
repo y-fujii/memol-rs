@@ -50,7 +50,7 @@ pub enum Value {
 	Group( Vec<(Box<Ast<Value>>, i32)> ),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum BinaryOp {
 	Add, Sub, Mul, Div,
 }

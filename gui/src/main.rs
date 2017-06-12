@@ -142,10 +142,9 @@ impl Ui {
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 
-			SameLine( 0.0, -1.0 );
 			for &(ch, _) in self.assembly.channels.iter() {
+				SameLine( 0.0, -1.0 );
 				RadioButton1( c_str!( "{}", ch ), &mut self.channel, ch as i32 );
-				SameLine( 0.0, 1.0 );
 			}
 		End();
 
@@ -159,7 +158,7 @@ impl Ui {
 				SetScrollX( prev * 0.9375 + next * 0.0625 );
 			}
 			else {
-				let delta = GetMouseDragDelta( 1, -1.0 );
+				let delta = GetMouseDragDelta( 0, -1.0 );
 				SetScrollX( prev + delta.x * 0.25 );
 				if delta.x != 0.0 {
 					count = cmp::max( count, 1 );

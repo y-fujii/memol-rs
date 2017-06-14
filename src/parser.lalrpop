@@ -88,10 +88,6 @@ note: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::Note( Dir::Lower, a.0, a.1, b ) ),
 	<lo:@L> <a:pitch_upper> <b:key_signature> <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Note( Dir::Upper, a.0, a.1, b ) ),
-	<lo:@L> "$" <a:key_signature> <b:pitch_lower> <c:key_signature> <hi:@L> =>
-		Ast::new_box( lo, hi, Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
-	<lo:@L> "$" <a:key_signature> <b:pitch_upper> <c:key_signature> <hi:@L> =>
-		Ast::new_box( lo, hi, Note::Note( Dir::Absolute( a ), b.0, b.1, c ) ),
 	<lo:@L> "[" <a:group_content> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Group( a ) ),
 	<lo:@L> "(" <a:chord_content> ")" <hi:@R> =>
@@ -105,6 +101,10 @@ octave: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::Octave(  1 ) ),
 	<lo:@L> ">" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Octave( -1 ) ),
+	<lo:@L> "$" <a:pitch_lower> <b:key_signature> <hi:@R> =>
+		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
+	<lo:@L> "$" <a:pitch_upper> <b:key_signature> <hi:@R> =>
+		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
 };
 
 key_signature: i32 = {

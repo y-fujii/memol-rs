@@ -57,7 +57,8 @@
 <body>
 
 <h1>memol language overview</h1>
-<p>XXX: under construction.
+<p><strong>XXX: The documentation is very incomplete and already has many
+differences from the latest implementation.</strong>
 
 <p>memol is a music description language which features:
 <dl>

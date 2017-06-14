@@ -16,9 +16,8 @@ pub struct Definition<'a> {
 	pub values: collections::HashMap<String, Box<Ast<ValueTrack>>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Dir {
-	Absolute( i32 ),
 	Lower,
 	Upper,
 }
@@ -29,6 +28,7 @@ pub enum Note<'a> {
 	Rest,
 	Repeat( cell::RefCell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i32 ),
+	OctaveByNote( char, i32, i32 ),
 	Chord( Vec<Box<Ast<Note<'a>>>> ),
 	Group( Vec<(Box<Ast<Note<'a>>>, i32)> ),
 	Tie( Box<Ast<Note<'a>>> ),

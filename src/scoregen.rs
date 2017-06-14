@@ -145,16 +145,8 @@ impl<'a> Generator<'a> {
 
 	fn generate_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State<'a>, dst: &mut Ir ) -> Result<(), misc::Error> {
 		match note.ast {
-			ast::Note::Note( ref dir, sym, ord, sig ) => {
-				let fs = match span.syms.get( &sym ) {
-					Some( v ) => v,
-					None      => return misc::error( note.bgn, "note does not exist." ),
-				};
-				let f = match fs.iter().filter( |n| n.t0 <= span.t0 && span.t0 < n.t1 ).nth( ord as usize ) {
-					Some( v ) => v,
-					None      => return misc::error( note.bgn, "note does not exist." ),
-				};
-				let nnum = match f.nnum {
+			ast::Note::Note( dir, sym, ord, sig ) => {
+				let nnum = match self.get_nnum( note, span, sym, ord )? {
 					Some( v ) => v,
 					None => {
 						dst.notes.push( FlatNote{
@@ -165,16 +157,10 @@ impl<'a> Generator<'a> {
 						return Ok( () );
 					},
 				};
-				let nnum = match *dir {
-					ast::Dir::Absolute( n ) => nnum + n * 12 + sig,
-					ast::Dir::Lower => {
-						let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
-						nnum - if nnum <= state.nnum { 0 } else { 12 }
-					},
-					ast::Dir::Upper => {
-						let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
-						nnum + if nnum >= state.nnum { 0 } else { 12 }
-					},
+				let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
+				let nnum = nnum + match dir {
+					ast::Dir::Lower => if nnum <= state.nnum { 0 } else { -12 },
+					ast::Dir::Upper => if nnum >= state.nnum { 0 } else {  12 },
 				};
 				let t0 = match state.ties.remove( &nnum ) {
 					Some( v ) => v,
@@ -213,6 +199,11 @@ impl<'a> Generator<'a> {
 			},
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12;
+			},
+			ast::Note::OctaveByNote( sym, ord, sig ) => {
+				if let Some( v ) = self.get_nnum( note, span, sym, ord )? {
+					state.nnum = v + sig;
+				}
 			},
 			ast::Note::Chord( ref ns ) => {
 				let mut del_ties = Vec::new();
@@ -277,5 +268,17 @@ impl<'a> Generator<'a> {
 			},
 		};
 		Ok( () )
+	}
+
+	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, sym: char, ord: i32 ) -> Result<Option<i32>, misc::Error> {
+		let fs = match span.syms.get( &sym ) {
+			Some( v ) => v,
+			None      => return misc::error( note.bgn, "note does not exist." ),
+		};
+		let f = match fs.iter().filter( |n| n.t0 <= span.t0 && span.t0 < n.t1 ).nth( ord as usize ) {
+			Some( v ) => v,
+			None      => return misc::error( note.bgn, "note does not exist." ),
+		};
+		Ok( f.nnum )
 	}
 }

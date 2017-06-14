@@ -16,8 +16,8 @@ score 'chord =
 }
 
 score 'pattern = [
-	repeat 36 { $-q0 ^ 2(/ $Q1 Q2 Q3 Q4) }
-	{ ($-q0 [_ ($Q1 Q2 Q3) /]) | ($-q0 $Q1 Q2 Q3 Q4 Q5) | / }
+	repeat 36 { $q0 > q0 ^ 2(/ $q1 Q1 Q2 Q3 Q4) }
+	{ ($q0 > q0 [_ ($q1 Q1 Q2 Q3) /]) | ($q0 > q0 $q1 Q1 Q2 Q3 Q4 Q5) | / }
 ]
 
 score 'out.0 = _ ('melody 'pattern with q = 'chord) with _ = 39 { (ABC+DEF+G) } _

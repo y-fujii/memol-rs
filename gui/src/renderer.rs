@@ -12,6 +12,8 @@ pub struct Renderer {
 	pub vao: u32,
 	pub vbo: u32,
 	pub ebo: u32,
+	pub vbo_size: usize,
+	pub ebo_size: usize,
 }
 
 impl Drop for Renderer {
@@ -141,11 +143,13 @@ impl Renderer {
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
+				vbo_size: 0,
+				ebo_size: 0,
 			}
 		}
 	}
 
-	pub fn render( &self ) {
+	pub fn render( &mut self ) {
 		unsafe {
 			let io = imgui::get_io();
 			let draw_data = imgui::get_draw_data();
@@ -167,28 +171,34 @@ impl Renderer {
 			gl::BindVertexArray( self.vao );
 
 			let vtx_size = (0 .. draw_data.CmdListsCount as isize)
-				.map( |i| (**draw_data.CmdLists.offset( i )).VtxBuffer.Size )
+				.map( |i| (**draw_data.CmdLists.offset( i )).VtxBuffer.Size as usize )
 				.max()
 				.unwrap_or( 0 );
-			gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
-			gl::BufferData(
-				gl::ARRAY_BUFFER,
-				vtx_size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
-				ptr::null(),
-				gl::STREAM_DRAW,
-			);
+			if vtx_size > self.vbo_size {
+				self.vbo_size = vtx_size.next_power_of_two();
+				gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
+				gl::BufferData(
+					gl::ARRAY_BUFFER,
+					(self.vbo_size * mem::size_of::<imgui::ImDrawVert>()) as isize,
+					ptr::null(),
+					gl::STREAM_DRAW,
+				);
+			}
 
 			let idx_size = (0 .. draw_data.CmdListsCount as isize)
-				.map( |i| (**draw_data.CmdLists.offset( i )).IdxBuffer.Size )
+				.map( |i| (**draw_data.CmdLists.offset( i )).IdxBuffer.Size as usize )
 				.max()
 				.unwrap_or( 0 );
-			gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
-			gl::BufferData(
-				gl::ELEMENT_ARRAY_BUFFER,
-				idx_size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
-				ptr::null(),
-				gl::STREAM_DRAW,
-			);
+			if idx_size > self.ebo_size {
+				self.ebo_size = idx_size.next_power_of_two();
+				gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
+				gl::BufferData(
+					gl::ELEMENT_ARRAY_BUFFER,
+					(self.ebo_size * mem::size_of::<imgui::ImDrawIdx>()) as isize,
+					ptr::null(),
+					gl::STREAM_DRAW,
+				);
+			}
 
 			for i in 0 .. draw_data.CmdListsCount {
 				let cmd_list = &**draw_data.CmdLists.offset( i as isize );

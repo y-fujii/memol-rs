@@ -7,9 +7,10 @@ fn main() {
 	let out_dir = env::var( "OUT_DIR" ).unwrap();
 
 	let file = path::Path::new( &out_dir ).join( "imgui_gen.rs" );
-	bindgen::builder()
+	bindgen::Builder::default()
 		.clang_arg( "-x" )
 		.clang_arg( "c++" )
+		.clang_arg( "-std=c++14" )
 		.enable_cxx_namespaces()
 		.header( "imgui/imgui.h" )
 		.whitelisted_function( "Im.*" )
@@ -25,6 +26,7 @@ fn main() {
 	gcc::Config::new()
 		.cpp( true )
 		.cpp_link_stdlib( None )
+		.flag( "-std=c++14" )
 		.flag( "-fno-rtti" )
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )

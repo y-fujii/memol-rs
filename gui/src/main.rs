@@ -1,5 +1,4 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
-#![feature( catch_expr )]
 #![windows_subsystem = "windows"]
 extern crate getopts;
 extern crate gl;
@@ -25,6 +24,7 @@ enum UiMessage {
 }
 
 struct Ui {
+	compile_tx: sync::mpsc::Sender<String>,
 	assembly: Assembly,
 	end: ratio::Ratio,
 	tempo: f64, // XXX
@@ -42,6 +42,13 @@ struct Ui {
 impl window::Ui<UiMessage> for Ui {
 	fn on_draw( &mut self ) -> i32 {
 		unsafe { self.draw_all() }
+	}
+
+	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
+		if let Some( path ) = path.to_str() {
+			self.compile_tx.send( path.into() ).unwrap_or( () );
+		}
+		JACK_FRAME_WAIT
 	}
 
 	fn on_message( &mut self, msg: UiMessage ) -> i32 {
@@ -77,13 +84,14 @@ impl window::Ui<UiMessage> for Ui {
 }
 
 impl Ui {
-	fn new( name: &str ) -> io::Result<Self> {
+	fn new( name: &str, compile_tx: sync::mpsc::Sender<String> ) -> io::Result<Self> {
 		let player = player::Player::new( name )?;
 		Ok( Ui {
+			compile_tx: compile_tx,
 			assembly: Assembly::default(),
 			end: ratio::Ratio::zero(),
 			tempo: 1.0,
-			text: None,
+			text: Some( "Drag and drop a file to open.".into() ),
 			player: player,
 			channel: 0,
 			follow: true,
@@ -115,14 +123,6 @@ impl Ui {
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
 			 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar) as i32
 		);
-			Button( c_str!( "Menu" ), &ImVec2::zero() );
-			if BeginPopupContextItem( c_str!( "Menu" ), 0 ) {
-				Checkbox( c_str!( "Follow" ), &mut self.follow );
-				Checkbox( c_str!( "Repeat" ), &mut false );
-				EndPopup();
-			}
-
-			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "<<" ), &ImVec2::zero() ) {
 				self.player.seek( 0.0 ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
@@ -141,6 +141,9 @@ impl Ui {
 				self.player.seek( self.end.to_float() / self.tempo ).unwrap_or( () );
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
+
+			SameLine( 0.0, -1.0 );
+			Checkbox( c_str!( "Follow" ), &mut self.follow );
 
 			for &(ch, _) in self.assembly.channels.iter() {
 				SameLine( 0.0, -1.0 );
@@ -267,22 +270,43 @@ impl Ui {
 	}
 }
 
-fn compile_task( file: &str, tx: window::MessageSender<UiMessage> ) -> Result<(), Box<error::Error>> {
+fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiMessage> ) {
+	let mut path = String::new();
+	let mut modified = time::UNIX_EPOCH;
 	loop {
-		let mut buf = String::new();
-		fs::File::open( file )?.read_to_string( &mut buf )?;
+		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
+			Ok( v ) => {
+				path = v;
+				modified = time::UNIX_EPOCH;
+			},
+			Err( sync::mpsc::RecvTimeoutError::Timeout ) => (),
+			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => {
+				return;
+			},
+		}
+		if path.is_empty() {
+			continue;
+		}
+		|| -> Result<_, Box<error::Error>> {
+			if mem::replace( &mut modified, fs::metadata( &path )?.modified()? ) == modified {
+				return Ok( () );
+			}
 
-		let msg = do catch {
-			let asm = compile( &buf )?;
-			let evs = assemble( &asm )?;
-			Ok( UiMessage::Data( asm, evs ) )
-		}.unwrap_or_else( |e: misc::Error| {
-			let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
-			UiMessage::Text( format!( "error at ({}, {}): {}", row, col, e.msg ) )
-		} );
-		tx.send( msg )?;
+			let mut buf = String::new();
+			fs::File::open( &path )?.read_to_string( &mut buf )?;
 
-		notify::notify_wait( file )?;
+			let msg = || -> Result<_, misc::Error> {
+				let asm = compile( &buf )?;
+				let evs = assemble( &asm )?;
+				Ok( UiMessage::Data( asm, evs ) )
+			}().unwrap_or_else( |e| {
+				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
+				UiMessage::Text( format!( "error at ({}, {}): {}", row, col, e.msg ) )
+			} );
+			tx.send( msg )?;
+
+			Ok( () )
+		}().unwrap_or( () );
 	}
 }
 
@@ -290,7 +314,7 @@ fn main() {
 	let f = || -> Result<(), Box<error::Error>> {
 		let opts = getopts::Options::new();
 		let args = opts.parse( env::args().skip( 1 ) )?;
-		if args.free.len() != 1 {
+		if args.free.len() > 1 {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
@@ -304,9 +328,14 @@ fn main() {
 		);
 		imutil::set_scale( 1.5, 13.0, font );
 
-		let mut window = window::Window::new( Ui::new( "memol" )? );
-		let tx = window.create_sender();
-		thread::spawn( move || compile_task( &args.free[0], tx ).unwrap() );
+		let (compile_tx, compile_rx) = sync::mpsc::channel();
+		if args.free.len() == 1 {
+			compile_tx.send( args.free[0].clone() )?;
+		}
+
+		let mut window = window::Window::new( Ui::new( "memol", compile_tx )? );
+		let window_tx = window.create_sender();
+		thread::spawn( move || compile_task( compile_rx, window_tx ) );
 		window.event_loop()?;
 
 		Ok( () )

@@ -8,6 +8,7 @@ use std::*;
 
 pub trait Ui<T> {
 	fn on_draw( &mut self ) -> i32;
+	fn on_file_dropped( &mut self, &path::PathBuf ) -> i32;
 	fn on_message( &mut self, T ) -> i32;
 }
 
@@ -158,6 +159,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 			Event::Resized( x, y ) => {
 				io.DisplaySize.x = x as f32 / io.DisplayFramebufferScale.x;
 				io.DisplaySize.y = y as f32 / io.DisplayFramebufferScale.y;
+			},
+			Event::DroppedFile( ref path ) => {
+				self.ui.on_file_dropped( path );
 			},
 			_ => (),
 		}

@@ -30,6 +30,7 @@ fn main() {
 		.flag( "-fno-rtti" )
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )
+		.flag( "-fno-use-cxa-atexit" )
 		.flag( "-DNDEBUG" )
 		.flag( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 		.file( "imgui/imgui.cpp" )

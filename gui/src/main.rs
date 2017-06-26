@@ -28,6 +28,7 @@ enum UiMessage {
 struct Ui {
 	compile_tx: sync::mpsc::Sender<String>,
 	assembly: Assembly,
+	events: Vec<midi::Event>,
 	end: ratio::Ratio,
 	tempo: f64, // XXX
 	text: Option<String>,
@@ -57,6 +58,7 @@ impl window::Ui<UiMessage> for Ui {
 		match msg {
 			UiMessage::Data( asm, evs ) => {
 				self.assembly = asm;
+				self.events   = evs;
 				self.text     = None;
 				self.end = self.assembly.channels.iter()
 					.flat_map( |&(_, ref v)| v.score.notes.iter() )
@@ -65,11 +67,11 @@ impl window::Ui<UiMessage> for Ui {
 					.unwrap_or( ratio::Ratio::zero() );
 				self.tempo = self.assembly.tempo.value( ratio::Ratio::zero() );
 				if let Some( ref player ) = self.player {
-					let bgn = match evs.get( 0 ) {
+					let bgn = match self.events.get( 0 ) {
 						Some( ev ) => ev.time,
 						None       => 0.0,
 					};
-					player.set_data( evs );
+					player.set_data( mem::replace( &mut self.events, Vec::new() ) );
 					player.seek( bgn ).unwrap_or( () );
 					player.play().unwrap_or( () );
 				}
@@ -77,14 +79,17 @@ impl window::Ui<UiMessage> for Ui {
 			},
 			UiMessage::Text( text ) => {
 				self.assembly = Assembly::default();
+				self.events   = Vec::new();
 				self.text     = Some( text );
 				self.end      = ratio::Ratio::zero();
 				self.tempo    = 1.0;
 				0
 			},
 			UiMessage::Player( player ) => {
+				if !self.events.is_empty() {
+					player.set_data( mem::replace( &mut self.events, Vec::new() ) );
+				}
 				self.player = Some( player );
-				self.text   = Some( "Drag and drop to open a file.".into() );
 				JACK_FRAME_WAIT
 			},
 		}
@@ -96,9 +101,10 @@ impl Ui {
 		Ui {
 			compile_tx: compile_tx,
 			assembly: Assembly::default(),
+			events: Vec::new(),
 			end: ratio::Ratio::zero(),
 			tempo: 1.0,
-			text: Some( "Initializing...".into() ),
+			text: Some( "Drag and drop to open a file.".into() ),
 			player: None,
 			channel: 0,
 			follow: true,

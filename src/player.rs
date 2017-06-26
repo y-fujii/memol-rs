@@ -18,6 +18,8 @@ pub struct Player {
 	port: *mut jack::Port,
 }
 
+unsafe impl Send for Player {}
+
 impl Drop for Player {
 	fn drop( &mut self ) {
 		unsafe {
@@ -31,13 +33,13 @@ impl Player {
 		unsafe {
 			let jack = jack::jack_client_open( c_str!( "{}", name ), 0, ptr::null_mut() );
 			if jack.is_null() {
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_client_open()." ) );
 			}
 
 			let port = jack::jack_port_register( jack, c_str!( "out" ), c_str!( "8 bit raw midi" ), jack::PORT_IS_OUTPUT, 0 );
 			if port.is_null() {
 				jack::jack_client_close( jack );
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_port_register()." ) );
 			}
 
 			let mut this = Box::new( Player{
@@ -50,21 +52,21 @@ impl Player {
 			} );
 
 			if jack::jack_set_process_callback( this.jack, Player::process_callback, &mut *this ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_process_callback()." ) );
 			}
 			if jack::jack_set_sync_callback( this.jack, Player::sync_callback, &mut *this ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_sync_callback()." ) );
 			}
 
 			if jack::jack_activate( this.jack ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_activate()." ) );
 			}
 
 			Ok( this )
 		}
 	}
 
-	pub fn set_data( &mut self, events: Vec<midi::Event> ) {
+	pub fn set_data( &self, events: Vec<midi::Event> ) {
 		let mut shared = self.shared.lock().unwrap();
 		shared.events = events;
 		shared.changed = true;
@@ -73,20 +75,20 @@ impl Player {
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
 			if jack::jack_connect( self.jack, jack::jack_port_name( self.port ), c_str!( "{}", port ) ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_connect()." ) );
 			}
 		}
 		Ok( () )
 	}
 
-	pub fn play( &mut self ) -> io::Result<()> {
+	pub fn play( &self ) -> io::Result<()> {
 		unsafe {
 			jack::jack_transport_start( self.jack );
 		}
 		Ok( () )
 	}
 
-	pub fn stop( &mut self ) -> io::Result<()> {
+	pub fn stop( &self ) -> io::Result<()> {
 		unsafe {
 			jack::jack_transport_stop( self.jack );
 		}
@@ -95,7 +97,7 @@ impl Player {
 		Ok( () )
 	}
 
-	pub fn seek( &mut self, time: f64 ) -> io::Result<()> {
+	pub fn seek( &self, time: f64 ) -> io::Result<()> {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			jack::jack_transport_query( self.jack, &mut pos );

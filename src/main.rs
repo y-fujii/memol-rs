@@ -15,7 +15,7 @@ fn main() {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
-		let mut player = player::Player::new( "memol" )?;
+		let player = player::Player::new( "memol" )?;
 		for port in args.opt_strs( "c" ) {
 			player.connect( &port )?;
 		}

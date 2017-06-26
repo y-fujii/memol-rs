@@ -130,6 +130,19 @@ pub fn end_root() {
 	}
 }
 
+pub fn message_dialog( title: &str, text: &str ) {
+	use imgui::*;
+	unsafe {
+		SetNextWindowPosCenter( ImGuiSetCond_Always as i32 );
+		Begin(
+			c_str!( "{}", title ), ptr::null_mut(),
+			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar) as i32,
+		);
+			Text( c_str!( "{}", text ) );
+		End();
+	}
+}
+
 pub fn set_theme( base: imgui::ImVec4, fg: imgui::ImVec4, bg: imgui::ImVec4 ) {
 	use imgui::*;
 

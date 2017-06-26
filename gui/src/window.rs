@@ -7,9 +7,9 @@ use std::*;
 
 
 pub trait Ui<T> {
-	fn on_draw( &mut self ) -> i32;
-	fn on_file_dropped( &mut self, &path::PathBuf ) -> i32;
-	fn on_message( &mut self, T ) -> i32;
+	fn on_draw( &mut self ) -> i32 { 0 }
+	fn on_file_dropped( &mut self, &path::PathBuf ) -> i32 { 0 }
+	fn on_message( &mut self, T ) -> i32 { 0 }
 }
 
 pub struct MessageSender<T> {

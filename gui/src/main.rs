@@ -66,16 +66,6 @@ impl window::Ui<UiMessage> for Ui {
 					.max()
 					.unwrap_or( ratio::Ratio::zero() );
 				self.tempo = self.assembly.tempo.value( ratio::Ratio::zero() );
-				if let Some( ref player ) = self.player {
-					let bgn = match self.events.get( 0 ) {
-						Some( ev ) => ev.time,
-						None       => 0.0,
-					};
-					player.set_data( mem::replace( &mut self.events, Vec::new() ) );
-					player.seek( bgn ).unwrap_or( () );
-					player.play().unwrap_or( () );
-				}
-				JACK_FRAME_WAIT
 			},
 			UiMessage::Text( text ) => {
 				self.assembly = Assembly::default();
@@ -83,16 +73,23 @@ impl window::Ui<UiMessage> for Ui {
 				self.text     = Some( text );
 				self.end      = ratio::Ratio::zero();
 				self.tempo    = 1.0;
-				0
 			},
 			UiMessage::Player( player ) => {
-				if !self.events.is_empty() {
-					player.set_data( mem::replace( &mut self.events, Vec::new() ) );
-				}
 				self.player = Some( player );
-				JACK_FRAME_WAIT
 			},
 		}
+
+		if let Some( ref player ) = self.player {
+			let bgn = match self.events.get( 0 ) {
+				Some( ev ) => ev.time,
+				None       => 0.0,
+			};
+			player.set_data( mem::replace( &mut self.events, Vec::new() ) );
+			player.seek( bgn ).unwrap_or( () );
+			player.play().unwrap_or( () );
+		}
+
+		JACK_FRAME_WAIT
 	}
 }
 
@@ -298,10 +295,8 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 				path = v;
 				modified = time::UNIX_EPOCH;
 			},
-			Err( sync::mpsc::RecvTimeoutError::Timeout ) => (),
-			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => {
-				return;
-			},
+			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
+			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return,
 		}
 		if path.is_empty() {
 			continue;
@@ -325,7 +320,9 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 			tx.send( msg ).unwrap();
 
 			Ok( () )
-		}().unwrap_or( () );
+		}().unwrap_or_else( |e|
+			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) ).unwrap()
+		);
 	}
 }
 

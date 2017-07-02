@@ -129,7 +129,10 @@ impl Ui {
 
 		let mut count = 0;
 
-		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Once as i32 );
+		let padding = get_style().WindowPadding;
+		PushStyleVar1( ImGuiStyleVar_WindowMinSize as i32, &ImVec2::zero() );
+		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(padding * 0.5).round() );
+		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32 );
 		Begin(
 			c_str!( "Transport" ), ptr::null_mut(),
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
@@ -163,6 +166,7 @@ impl Ui {
 				RadioButton1( c_str!( "{}", ch ), &mut self.channel, ch as i32 );
 			}
 		End();
+		PopStyleVar( 2 );
 
 		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
 			// scrolling.
@@ -339,13 +343,15 @@ pub fn init_imgui( scale: f32 ) {
 	unsafe {
 		let mut cfg = imgui::ImFontConfig::new();
 		cfg.FontDataOwnedByAtlas = false;
-		cfg.MergeMode = false;
+		cfg.MergeMode     = false;
+		cfg.GlyphOffset.y = -2.0;
 		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
 			font.len() as i32, (12.0 * scale).round(), &cfg, ptr::null(),
 		);
-		cfg.MergeMode = true;
+		cfg.MergeMode     = true;
+		cfg.GlyphOffset.y = 0.0;
 		let font = include_bytes!( "../fonts/awesome.otf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,

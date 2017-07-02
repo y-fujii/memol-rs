@@ -1,0 +1,9 @@
+inconsolata_regular.ttf:
+	    url: https://github.com/google/fonts/tree/master/ofl/inconsolata/
+	 author: Raph Levien
+	license: SIL Open Font License 1.1
+
+awesome.ttf:
+	    url: https://github.com/FortAwesome/Font-Awesome/
+	 author: Dave Gandy
+	license: SIL Open Font License 1.1

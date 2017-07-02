@@ -1,18 +1,17 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
-use imgui;
+use imgui::*;
 use std::*;
 
 
 pub struct DrawContext<'a> {
-	pub draw_list: &'a mut imgui::ImDrawList,
-	pub min: imgui::ImVec2,
-	pub max: imgui::ImVec2,
-	pub clip: imgui::ImVec2,
+	pub draw_list: &'a mut ImDrawList,
+	pub min: ImVec2,
+	pub max: ImVec2,
+	pub clip: ImVec2,
 }
 
 impl<'a> DrawContext<'a> {
 	pub fn new() -> DrawContext<'static> {
-		use imgui::*;
 		unsafe {
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
@@ -23,7 +22,7 @@ impl<'a> DrawContext<'a> {
 		}
 	}
 
-	pub fn add_line( &mut self, a: imgui::ImVec2, b: imgui::ImVec2, col: u32, thickness: f32 ) {
+	pub fn add_line( &mut self, a: ImVec2, b: ImVec2, col: u32, thickness: f32 ) {
 		let a = self.min + a;
 		let b = self.min + b;
 		if self.intersect_aabb( a, b ) {
@@ -33,7 +32,7 @@ impl<'a> DrawContext<'a> {
 		}
 	}
 
-	pub fn add_rect_filled( &mut self, a: imgui::ImVec2, b: imgui::ImVec2, col: u32, rounding: f32, flags: i32 ) {
+	pub fn add_rect_filled( &mut self, a: ImVec2, b: ImVec2, col: u32, rounding: f32, flags: i32 ) {
 		let a = self.min + a;
 		let b = self.min + b;
 		if self.intersect_aabb( a, b ) {
@@ -43,65 +42,52 @@ impl<'a> DrawContext<'a> {
 		}
 	}
 
-	pub fn size( &self ) -> imgui::ImVec2 {
+	pub fn size( &self ) -> ImVec2 {
 		self.max - self.min
 	}
 
-	fn intersect_aabb( &self, a: imgui::ImVec2, b: imgui::ImVec2 ) -> bool {
+	fn intersect_aabb( &self, a: ImVec2, b: ImVec2 ) -> bool {
 		0.0 <= b.x && a.x <= self.clip.x && 0.0 <= b.y && a.y <= self.clip.y
 	}
 }
 
-pub fn srgb_gamma( col: imgui::ImVec4 ) -> imgui::ImVec4 {
+pub fn srgb_gamma( col: ImVec4 ) -> ImVec4 {
 	let f = |x: f32| if x <= 0.0031308 {
 		12.92 * x
 	} else {
 		1.055 * x.powf( 1.0 / 2.4 ) - 0.055
 	};
-	imgui::ImVec4::new( f( col.x ), f( col.y ), f( col.z ), col.w )
+	ImVec4::new( f( col.x ), f( col.y ), f( col.z ), col.w )
 }
 
-pub fn pack_color( col: imgui::ImVec4 ) -> u32 {
+pub fn pack_color( col: ImVec4 ) -> u32 {
 	let f = |x: f32| (x * 255.0 + 0.5) as u32;
 	f( col.x ) | (f( col.y ) << 8) | (f( col.z ) << 16) | (f( col.w ) << 24)
 }
 
-pub fn set_scale( s: f32, font_size: f32, font: &[u8] ) {
-	unsafe {
-		let io = imgui::get_io();
-		let mut cfg = imgui::ImFontConfig::new();
-		cfg.FontDataOwnedByAtlas = false;
-		(*io.Fonts).AddFontFromMemoryTTF(
-			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, (font_size * s).round(), &cfg, ptr::null(),
-		);
-
-		let style = imgui::get_style();
-		style.WindowPadding          = (style.WindowPadding          * s).round();
-		style.WindowMinSize          = (style.WindowMinSize          * s).round();
-		style.WindowRounding         = (style.WindowRounding         * s).round();
-		style.WindowTitleAlign       = (style.WindowTitleAlign       * s).round();
-		style.ChildWindowRounding    = (style.ChildWindowRounding    * s).round();
-		style.FramePadding           = (style.FramePadding           * s).round();
-		style.FrameRounding          = (style.FrameRounding          * s).round();
-		style.ItemSpacing            = (style.ItemSpacing            * s).round();
-		style.ItemInnerSpacing       = (style.ItemInnerSpacing       * s).round();
-		style.TouchExtraPadding      = (style.TouchExtraPadding      * s).round();
-		style.IndentSpacing          = (style.IndentSpacing          * s).round();
-		style.ColumnsMinSpacing      = (style.ColumnsMinSpacing      * s).round();
-		style.ScrollbarSize          = (style.ScrollbarSize          * s).round();
-		style.ScrollbarRounding      = (style.ScrollbarRounding      * s).round();
-		style.GrabMinSize            = (style.GrabMinSize            * s).round();
-		style.GrabRounding           = (style.GrabRounding           * s).round();
-		style.ButtonTextAlign        = (style.ButtonTextAlign        * s).round();
-		style.DisplayWindowPadding   = (style.DisplayWindowPadding   * s).round();
-		style.DisplaySafeAreaPadding = (style.DisplaySafeAreaPadding * s).round();
-		style.CurveTessellationTol   = (style.CurveTessellationTol   * s).round();
-	}
+pub fn set_scale( s: f32 ) {
+	let style = get_style();
+	style.WindowPadding          = (style.WindowPadding          * s).round();
+	style.WindowMinSize          = (style.WindowMinSize          * s).round();
+	style.WindowRounding         = (style.WindowRounding         * s).round();
+	style.ChildWindowRounding    = (style.ChildWindowRounding    * s).round();
+	style.FramePadding           = (style.FramePadding           * s).round();
+	style.FrameRounding          = (style.FrameRounding          * s).round();
+	style.ItemSpacing            = (style.ItemSpacing            * s).round();
+	style.ItemInnerSpacing       = (style.ItemInnerSpacing       * s).round();
+	style.TouchExtraPadding      = (style.TouchExtraPadding      * s).round();
+	style.IndentSpacing          = (style.IndentSpacing          * s).round();
+	style.ColumnsMinSpacing      = (style.ColumnsMinSpacing      * s).round();
+	style.ScrollbarSize          = (style.ScrollbarSize          * s).round();
+	style.ScrollbarRounding      = (style.ScrollbarRounding      * s).round();
+	style.GrabMinSize            = (style.GrabMinSize            * s).round();
+	style.GrabRounding           = (style.GrabRounding           * s).round();
+	style.DisplayWindowPadding   = (style.DisplayWindowPadding   * s).round();
+	style.DisplaySafeAreaPadding = (style.DisplaySafeAreaPadding * s).round();
+	style.CurveTessellationTol   = (style.CurveTessellationTol   * s).round();
 }
 
 pub fn begin_root( flags: u32 ) {
-	use imgui::*;
 	unsafe {
 		let size = get_io().DisplaySize;
 		let rounding = get_style().WindowRounding;
@@ -122,7 +108,6 @@ pub fn begin_root( flags: u32 ) {
 }
 
 pub fn end_root() {
-	use imgui::*;
 	unsafe {
 		PopStyleVar( 2 );
 		End();
@@ -130,22 +115,26 @@ pub fn end_root() {
 	}
 }
 
+pub fn show_text( text: &str ) {
+	let ptr = text.as_ptr() as *const os::raw::c_char;
+	unsafe {
+		TextUnformatted( ptr, ptr.offset( text.len() as isize ) );
+	}
+}
+
 pub fn message_dialog( title: &str, text: &str ) {
-	use imgui::*;
 	unsafe {
 		SetNextWindowPosCenter( ImGuiSetCond_Always as i32 );
 		Begin(
 			c_str!( "{}", title ), ptr::null_mut(),
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar) as i32,
 		);
-			Text( c_str!( "{}", text ) );
+			show_text( text );
 		End();
 	}
 }
 
-pub fn set_theme( base: imgui::ImVec4, fg: imgui::ImVec4, bg: imgui::ImVec4 ) {
-	use imgui::*;
-
+pub fn set_theme( base: ImVec4, fg: ImVec4, bg: ImVec4 ) {
 	let normal  = srgb_gamma( base );
 	let hovered = srgb_gamma( base * 0.8 + fg * 0.2 );
 	let active  = srgb_gamma( base * 0.6 + fg * 0.4 );

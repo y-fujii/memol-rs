@@ -135,21 +135,22 @@ impl Ui {
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
 			 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar) as i32
 		);
-			if Button( c_str!( "<<" ), &ImVec2::zero() ) {
+			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
+			if Button( c_str!( "\u{f048}" ), &size ) {
 				player.seek( 0.0 )?;
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
-			if Button( c_str!( "Play" ), &ImVec2::zero() ) {
+			if Button( c_str!( "\u{f04b}" ), &size ) {
 				player.play()?;
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 			SameLine( 0.0, 1.0 );
-			if Button( c_str!( "Stop" ), &ImVec2::zero() ) {
+			if Button( c_str!( "\u{f04d}" ), &size ) {
 				player.stop()?;
 			}
 			SameLine( 0.0, 1.0 );
-			if Button( c_str!( ">>" ), &ImVec2::zero() ) {
+			if Button( c_str!( "\u{f051}" ), &size ) {
 				player.seek( self.end.to_float() / self.tempo )?;
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
@@ -253,13 +254,13 @@ impl Ui {
 						11 => "B",
 						 _ => panic!(),
 					};
-					Text( c_str!( "     note = {}{}", sym, nnum / 12 - 1 ) );
-					Text( c_str!( "gate time = {} + {}/{}",
+					imutil::show_text( &format!( "     note = {}{}", sym, nnum / 12 - 1 ) );
+					imutil::show_text( &format!( "gate time = {} + {}/{}",
 						misc::idiv( note.t0.y, note.t0.x ),
 						misc::imod( note.t0.y, note.t0.x ),
 						note.t0.x,
 					) );
-					Text( c_str!( " duration = {}/{}", dt.y, dt.x ) );
+					imutil::show_text( &format!( " duration = {}/{}", dt.y, dt.x ) );
 				EndTooltip();
 			}
 		}
@@ -326,6 +327,33 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 	}
 }
 
+pub fn init_imgui( scale: f32 ) {
+	let io = imgui::get_io();
+	io.IniFilename = ptr::null();
+	imutil::set_scale( scale );
+	imutil::set_theme(
+		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
+		imgui::ImVec4::new( 1.00, 1.00, 1.00, 1.0 ),
+		imgui::ImVec4::new( 0.05, 0.05, 0.05, 1.0 ),
+	);
+	unsafe {
+		let mut cfg = imgui::ImFontConfig::new();
+		cfg.FontDataOwnedByAtlas = false;
+		cfg.MergeMode = false;
+		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
+		(*io.Fonts).AddFontFromMemoryTTF(
+			font.as_ptr() as *mut os::raw::c_void,
+			font.len() as i32, (12.0 * scale).round(), &cfg, ptr::null(),
+		);
+		cfg.MergeMode = true;
+		let font = include_bytes!( "../fonts/awesome.otf" );
+		(*io.Fonts).AddFontFromMemoryTTF(
+			font.as_ptr() as *mut os::raw::c_void,
+			font.len() as i32, (12.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),
+		);
+	}
+}
+
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
 		let opts = getopts::Options::new();
@@ -334,15 +362,7 @@ fn main() {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
-		let io = imgui::get_io();
-		io.IniFilename = ptr::null();
-		let font = include_bytes!( "../imgui/extra_fonts/Cousine-Regular.ttf" );
-		imutil::set_theme(
-			imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
-			imgui::ImVec4::new( 1.00, 1.00, 1.00, 1.0 ),
-			imgui::ImVec4::new( 0.05, 0.05, 0.05, 1.0 ),
-		);
-		imutil::set_scale( 1.5, 13.0, font );
+		init_imgui( 2.0 );
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) );
 

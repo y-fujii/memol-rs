@@ -48,6 +48,9 @@ impl Generator {
 	}
 
 	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir ) {
+		let note_len = cell::Cell::new( 0.0 );
+		let mut evaluator = valuegen::Evaluator::new();
+		evaluator.add_symbol( "note_len".into(), |_| note_len.get() );
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.notes.iter() {
 			let nnum = match f.nnum {
@@ -58,22 +61,25 @@ impl Generator {
 			if f.t0 < Ratio::new( self.bgn, self.tick ) || Ratio::new( self.end, self.tick ) < f.t1 {
 				continue;
 			}
-			let t0 = f.t0.to_float() + *offset.entry( (f.t0, nnum) ).or_insert_with( || ir_ofs.value( f.t0 ) );
-			let t1 = f.t1.to_float() + *offset.entry( (f.t1, nnum) ).or_insert_with( || ir_ofs.value( f.t1 ) );
+
+			note_len.set( (f.t1 - f.t0).to_float() );
+			let t0 = f.t0.to_float() + *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
+			let t1 = f.t1.to_float() + *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );
 			if t0 >= t1 {
 				continue;
 			}
-			let vel = (ir_vel.value( f.t0 ) * 127.0).round().max( 0.0 ).min( 127.0 );
+			let vel = (evaluator.eval( ir_vel, f.t0 ) * 127.0).round().max( 0.0 ).min( 127.0 );
 			self.events.push( Event::new( t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
 			self.events.push( Event::new( t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
 		}
 	}
 
 	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &valuegen::Ir ) {
+		let evaluator = valuegen::Evaluator::new();
 		let mut prev_v = 255;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
-			let v = (ir.value( t ) * 127.0).round().max( 0.0 ).min( 127.0 ) as u8;
+			let v = (evaluator.eval( ir, t ) * 127.0).round().max( 0.0 ).min( 127.0 ) as u8;
 			if v != prev_v {
 				self.events.push( Event::new( t.to_float(), 0, &[ (0xb0 + ch) as u8, cc as u8, v ] ) );
 				prev_v = v;
@@ -82,11 +88,12 @@ impl Generator {
 	}
 
 	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
+		let evaluator = valuegen::Evaluator::new();
 		assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {
 			self.timeline.push( s );
-			s += 1.0 / (self.tick as f64 * ir.value( Ratio::new( i, self.tick ) ));
+			s += 1.0 / (self.tick as f64 * evaluator.eval( ir, Ratio::new( i, self.tick ) ));
 		}
 		self.timeline.push( s );
 	}

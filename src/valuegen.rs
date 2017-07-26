@@ -11,7 +11,7 @@ pub enum Ir {
 	Value( ratio::Ratio, ratio::Ratio, ratio::Ratio, ratio::Ratio ),
 	Sequence( Vec<(Ir, ratio::Ratio)> ),
 	BinaryOp( Box<Ir>, Box<Ir>, ast::BinaryOp ),
-	Gaussian,
+	Symbol( String ),
 }
 
 #[derive(Debug)]
@@ -24,44 +24,20 @@ struct Span {
 struct State {
 }
 
-impl Ir {
-	pub fn value( &self, t: ratio::Ratio ) -> f64 {
-		match *self {
-			Ir::Value( t0, t1, v0, v1 ) => {
-				let t = cmp::min( cmp::max( t, t0 ), t1 );
-				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
-				v.to_float()
-			},
-			Ir::Sequence( ref irs ) => {
-				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
-				irs[i - 1].0.value( t )
-			},
-			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, op ) => {
-				let lhs = ir_lhs.value( t );
-				let rhs = ir_rhs.value( t );
-				match op {
-					ast::BinaryOp::Add => lhs + rhs,
-					ast::BinaryOp::Sub => lhs - rhs,
-					ast::BinaryOp::Mul => lhs * rhs,
-					ast::BinaryOp::Div => lhs / rhs,
-				}
-			},
-			Ir::Gaussian => {
-				let rand::distributions::normal::StandardNormal( x ) = rand::random();
-				x
-			},
-		}
-	}
-}
-
-#[derive(Debug)]
 pub struct Generator<'a> {
 	defs: &'a ast::Definition<'a>,
+	syms: collections::HashSet<String>,
 }
 
 impl<'a> Generator<'a> {
 	pub fn new( defs: &'a ast::Definition<'a> ) -> Generator<'a> {
-		Generator{ defs: defs }
+		let mut syms = collections::HashSet::new();
+		syms.insert( "gaussian".into() );
+		syms.insert( "note_len".into() );
+		Generator{
+			defs: defs,
+			syms: syms,
+		}
 	}
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
@@ -94,11 +70,15 @@ impl<'a> Generator<'a> {
 				(Ir::Sequence( irs ), t1)
 			},
 			ast::ValueTrack::Symbol( ref key ) => {
-				let s = match self.defs.values.get( key ) {
-					Some( v ) => v,
-					None      => return misc::error( track.bgn, "undefined symbol." ),
-				};
-				self.generate_value_track( s, &span )?
+				if let Some( s ) = self.defs.values.get( key ) {
+					self.generate_value_track( s, &span )?
+				}
+				else if self.syms.contains( key ) {
+					(Ir::Symbol( key.clone() ), span.t0)
+				}
+				else {
+					return misc::error( track.bgn, "undefined symbol." );
+				}
 			},
 			ast::ValueTrack::Sequence( ref ss ) => {
 				let mut irs = Vec::new();
@@ -129,9 +109,6 @@ impl<'a> Generator<'a> {
 				let t = cmp::max( t_lhs, t_rhs );
 				(ir, t)
 			},
-			ast::ValueTrack::Gaussian => {
-				(Ir::Gaussian, span.t0)
-			},
 		};
 		Ok( dst )
 	}
@@ -157,3 +134,49 @@ impl<'a> Generator<'a> {
 		Ok( () )
 	}
 }
+
+pub struct Evaluator<'a> {
+	syms: collections::HashMap<String, Box<Fn( ratio::Ratio ) -> f64 + 'a>>,
+}
+
+impl<'a> Evaluator<'a> {
+	pub fn new() -> Self {
+		let mut this = Evaluator{ syms: collections::HashMap::new() };
+		this.add_symbol( "gaussian".into(), |_| rand::random::<rand::distributions::normal::StandardNormal>().0 );
+		this.add_symbol( "note_len".into(), |_| 0.0 );
+		this
+	}
+
+	pub fn add_symbol<F: Fn( ratio::Ratio ) -> f64 + 'a>( &mut self, key: String, f: F ) {
+		self.syms.insert( key, Box::new( f ) );
+	}
+
+	pub fn eval( &self, ir: &Ir, t: ratio::Ratio ) -> f64 {
+		match *ir {
+			Ir::Value( t0, t1, v0, v1 ) => {
+				let t = cmp::min( cmp::max( t, t0 ), t1 );
+				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+				v.to_float()
+			},
+			Ir::Sequence( ref irs ) => {
+				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
+				self.eval( &irs[i - 1].0, t )
+			},
+			Ir::BinaryOp( ref ir_lhs, ref ir_rhs, op ) => {
+				let lhs = self.eval( ir_lhs, t );
+				let rhs = self.eval( ir_rhs, t );
+				match op {
+					ast::BinaryOp::Add => lhs + rhs,
+					ast::BinaryOp::Sub => lhs - rhs,
+					ast::BinaryOp::Mul => lhs * rhs,
+					ast::BinaryOp::Div => lhs / rhs,
+				}
+			},
+			Ir::Symbol( ref sym ) => {
+				let f = self.syms.get( sym ).unwrap();
+				f( t )
+			},
+		}
+	}
+}
+

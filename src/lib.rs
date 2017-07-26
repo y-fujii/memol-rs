@@ -90,12 +90,13 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 		}
 	}
 
+	let evaluator = valuegen::Evaluator::new();
 	let bgn = match value_gen.generate( "out.begin" )? {
-		Some( ir ) => (ir.value( ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,
 	};
 	let end = match value_gen.generate( "out.end" )? {
-		Some( ir ) => (ir.value( ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None => {
 			let v = scores.iter()
 				.flat_map( |&(_, ref v)| v.notes.iter() )

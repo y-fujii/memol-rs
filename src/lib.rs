@@ -50,6 +50,7 @@ pub struct Channel {
 	pub score: scoregen::Ir,
 	pub velocity: valuegen::Ir,
 	pub offset: valuegen::Ir,
+	pub duration: valuegen::Ir,
 	pub ccs: Vec<(usize, valuegen::Ir)>,
 }
 
@@ -123,13 +124,15 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 				ratio::Ratio::new( 0, 1 ),
 				ratio::Ratio::new( 0, 1 ),
 			) );
+		let dur = value_gen.generate( &format!( "out.{}.duration", ch ) )?
+			.unwrap_or( valuegen::Ir::Symbol( "note_len".into() ) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
 			if let Some( ir ) = value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
 				ccs.push( (cc, ir) );
 			}
 		}
-		channels.push( (ch, Channel{ score: score, velocity: vel, offset: ofs, ccs: ccs }) );
+		channels.push( (ch, Channel{ score: score, velocity: vel, offset: ofs, duration: dur, ccs: ccs }) );
 	}
 
 	let tempo = value_gen.generate( "out.tempo" )?
@@ -153,7 +156,7 @@ pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
 	let end = (src.end * TICK).round();
 	let mut migen = midi::Generator::new( bgn, end, TICK );
 	for &(ch, ref irs) in src.channels.iter() {
-		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset );
+		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset, &irs.duration );
 		for &(cc, ref ir) in irs.ccs.iter() {
 			migen.add_cc( ch, cc, &ir );
 		}

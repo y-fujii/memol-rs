@@ -47,7 +47,7 @@ impl Generator {
 		}
 	}
 
-	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir ) {
+	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir, ir_dur: &valuegen::Ir ) {
 		let note_len = cell::Cell::new( 0.0 );
 		let mut evaluator = valuegen::Evaluator::new();
 		evaluator.add_symbol( "note_len".into(), |_| note_len.get() );
@@ -63,8 +63,18 @@ impl Generator {
 			}
 
 			note_len.set( (f.t1 - f.t0).to_float() );
-			let t0 = f.t0.to_float() + *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
-			let t1 = f.t1.to_float() + *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );
+			let dt = evaluator.eval( ir_dur, f.t0 );
+			let d0 = *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
+			let d1 = *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );
+			let t0 = f.t0.to_float() + d0;
+			let t1 = if dt == note_len.get() {
+				// avoid event order inversion due to FP errors.
+				f.t1.to_float() + d1
+			}
+			else {
+				let a = dt / note_len.get();
+				(1.0 - a) * (f.t0.to_float() + d0) + a * (f.t1.to_float() + d1)
+			};
 			if t0 >= t1 {
 				continue;
 			}

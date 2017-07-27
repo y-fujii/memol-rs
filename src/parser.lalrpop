@@ -146,6 +146,14 @@ chord_content: Vec<Box<Ast<Note<'a>>>> = {
 	=> Vec::new(),
 };
 
+value_track_min: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:value_track_min> "min" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Min ) ),
+	<lo:@L> <a:value_track_min> "max" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Max ) ),
+	<value_track_add>,
+};
+
 value_track_add: Box<Ast<ValueTrack>> = {
 	<lo:@L> <a:value_track_add> "+" <b:value_track_mul> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Add ) ),
@@ -176,7 +184,7 @@ value_track_prim: Box<Ast<ValueTrack>> = {
 };
 
 value_track_list: Vec<Box<Ast<ValueTrack>>> = {
-	<a:value_track_list> <b:value_track_add> => {
+	<a:value_track_list> <b:value_track_min> => {
 		let mut a = a;
 		a.push( b );
 		a

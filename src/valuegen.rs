@@ -170,6 +170,8 @@ impl<'a> Evaluator<'a> {
 					ast::BinaryOp::Sub => lhs - rhs,
 					ast::BinaryOp::Mul => lhs * rhs,
 					ast::BinaryOp::Div => lhs / rhs,
+					ast::BinaryOp::Min => f64::min( lhs, rhs ),
+					ast::BinaryOp::Max => f64::max( lhs, rhs ),
 				}
 			},
 			Ir::Symbol( ref sym ) => {

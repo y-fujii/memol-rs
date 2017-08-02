@@ -363,6 +363,14 @@ pub fn init_imgui( scale: f32 ) {
 
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
+		#[cfg( windows )]
+		unsafe {
+			extern crate libloading;
+			let lib = libloading::Library::new( "user32.dll" )?;
+			let set_process_dpi_aware: libloading::Symbol<extern fn()> = lib.get( b"SetProcessDPIAware" )?;
+			set_process_dpi_aware();
+		}
+
 		let opts = getopts::Options::new();
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() > 1 {

@@ -13,3 +13,6 @@ memol = { path = ".." }
 [build-dependencies]
 gcc = "*"
 bindgen = "*"
+
+[target.'cfg(windows)'.dependencies]
+libloading = "*"

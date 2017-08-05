@@ -26,7 +26,7 @@ pub enum Dir {
 pub enum Note<'a> {
 	Note( Dir, char, i32, i32 ),
 	Rest,
-	Repeat( cell::RefCell<Option<&'a Ast<Note<'a>>>> ),
+	Repeat( cell::Cell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i32 ),
 	OctaveByNote( char, i32, i32 ),
 	Chord( Vec<Box<Ast<Note<'a>>>> ),

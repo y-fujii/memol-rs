@@ -83,7 +83,7 @@ note: Box<Ast<Note<'a>>> = {
 	<lo:@L> "_" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Rest ),
 	<lo:@L> "/" <hi:@R> =>
-		Ast::new_box( lo, hi, Note::Repeat( cell::RefCell::new( None ) ) ),
+		Ast::new_box( lo, hi, Note::Repeat( cell::Cell::new( None ) ) ),
 	<lo:@L> <a:pitch_lower> <b:key_signature> <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Note( Dir::Lower, a.0, a.1, b ) ),
 	<lo:@L> <a:pitch_upper> <b:key_signature> <hi:@R> =>

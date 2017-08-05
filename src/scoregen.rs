@@ -187,14 +187,14 @@ impl<'a> Generator<'a> {
 				} );
 			},
 			ast::Note::Repeat( ref cn ) => {
-				let rn = match *cn.borrow() {
+				let rn = match cn.get() {
 					Some( n ) => n,
 					None => match state.note {
 						Some( n ) => n,
 						None      => return misc::error( note.bgn, "previous note does not exist." ),
 					}
 				};
-				*cn.borrow_mut() = Some( rn );
+				cn.set( Some( rn ) );
 				self.generate_note( rn, span, state, dst )?
 			},
 			ast::Note::Octave( oct ) => {

@@ -345,7 +345,7 @@ pub fn init_imgui( scale: f32 ) {
 		let mut cfg = imgui::ImFontConfig::new();
 		cfg.FontDataOwnedByAtlas = false;
 		cfg.MergeMode     = false;
-		cfg.GlyphOffset.y = -2.0;
+		cfg.GlyphOffset.y = (-1.0 * scale).round();
 		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,

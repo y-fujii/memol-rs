@@ -1,1 +1,2 @@
-gui/imgui = [git]https://github.com/ocornut/imgui.git
+gui/imgui     = [git]https://github.com/ocornut/imgui.git
+vst/rust-vst2 = [git]https://github.com/overdrivenpotato/rust-vst2.git

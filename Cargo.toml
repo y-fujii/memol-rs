@@ -18,4 +18,4 @@ lto = true
 panic = "abort"
 
 [workspace]
-members = ["gui"]
+members = ["gui", "vst"]

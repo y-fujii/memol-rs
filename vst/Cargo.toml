@@ -1,0 +1,11 @@
+[package]
+name = "memol_vst"
+version = "0.1.0"
+authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+
+[dependencies]
+vst2 = { path = "rust-vst2" }
+memol = { path = ".." }
+
+[lib]
+crate-type = ["cdylib"]

@@ -1,1 +1,1 @@
-gui/imgui = [git]https://github.com/ocornut/imgui.git
+memol_gui/imgui = [git]https://github.com/ocornut/imgui.git

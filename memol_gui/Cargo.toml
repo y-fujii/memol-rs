@@ -8,7 +8,7 @@ build = "build.rs"
 getopts = "*"
 gl = "*"
 glutin = "0.7"
-memol = { path = ".." }
+memol = { path = "../memol" }
 
 [build-dependencies]
 gcc = "*"

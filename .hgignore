@@ -1,5 +1,5 @@
 syntax: glob
-src/parser.rs
+memol/src/parser.rs
 Cargo.lock
 target/
 doc/tutorial/

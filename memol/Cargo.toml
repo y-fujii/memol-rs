@@ -1,0 +1,14 @@
+[package]
+name = "memol"
+version = "0.1.0"
+authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+build = "build.rs"
+
+[dependencies]
+rand = "*"
+regex = "*"
+lalrpop-util = "*"
+getopts = "*"
+
+[build-dependencies]
+lalrpop = "*"

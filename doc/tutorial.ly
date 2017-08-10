@@ -102,7 +102,7 @@ install Rust nightly and Cargo.  Building and installing memol are quite simple
 thanks to Cargo; Just type
 <pre>
 hg clone <a href="https://bitbucket.org/ysfujii/memol-rs/">https://bitbucket.org/ysfujii/memol-rs/</a>
-cd memol-rs
+cd memol-rs/memol
 cargo install
 </pre>
 <p>and everything should be done. Note that Windows target must be

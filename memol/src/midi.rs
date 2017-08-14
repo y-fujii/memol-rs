@@ -9,17 +9,17 @@ use valuegen;
 #[derive(Debug)]
 pub struct Event {
 	pub time: f64,
-	pub prio: i32,
-	pub len: i32,
+	pub prio: i16,
+	pub len: i16,
 	pub msg: [u8; 4],
 }
 
 impl Event {
-	fn new( time: f64, prio: i32, msg: &[u8] ) -> Event {
+	fn new( time: f64, prio: i16, msg: &[u8] ) -> Event {
 		let mut this = Event{
 			time: time,
 			prio: prio,
-			len: msg.len() as i32,
+			len: msg.len() as i16,
 			msg: [0; 4]
 		};
 		this.msg[..msg.len()].copy_from_slice( msg );

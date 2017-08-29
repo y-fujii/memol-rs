@@ -7,17 +7,20 @@ pub struct DrawContext<'a> {
 	pub draw_list: &'a mut ImDrawList,
 	pub min: ImVec2,
 	pub max: ImVec2,
-	pub clip: ImVec2,
+	pub clip_min: ImVec2,
+	pub clip_max: ImVec2,
 }
 
 impl<'a> DrawContext<'a> {
 	pub fn new() -> DrawContext<'static> {
 		unsafe {
+			let pos = GetWindowPos();
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				min: GetWindowContentRegionMin(),
-				max: GetWindowContentRegionMax(),
-				clip: GetWindowSize(),
+				min: pos + GetWindowContentRegionMin(),
+				max: pos + GetWindowContentRegionMax(),
+				clip_min: pos,
+				clip_max: pos + GetWindowSize(),
 			}
 		}
 	}
@@ -47,7 +50,8 @@ impl<'a> DrawContext<'a> {
 	}
 
 	fn intersect_aabb( &self, a: ImVec2, b: ImVec2 ) -> bool {
-		0.0 <= b.x && a.x <= self.clip.x && 0.0 <= b.y && a.y <= self.clip.y
+		self.clip_min.x <= b.x && a.x <= self.clip_max.x &&
+		self.clip_min.y <= b.y && a.y <= self.clip_max.y
 	}
 }
 

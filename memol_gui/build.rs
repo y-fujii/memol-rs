@@ -23,7 +23,7 @@ fn main() {
 		.write_to_file( &file )
 		.unwrap();
 
-	gcc::Config::new()
+	gcc::Build::new()
 		.cpp( true )
 		.cpp_link_stdlib( None )
 		.flag( "-std=c++14" )

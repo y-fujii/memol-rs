@@ -12,8 +12,6 @@ pub struct Renderer {
 	pub vao: u32,
 	pub vbo: u32,
 	pub ebo: u32,
-	pub vbo_size: usize,
-	pub ebo_size: usize,
 }
 
 impl Drop for Renderer {
@@ -143,8 +141,6 @@ impl Renderer {
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
-				vbo_size: 0,
-				ebo_size: 0,
 			}
 		}
 	}
@@ -170,53 +166,23 @@ impl Renderer {
 			gl::Uniform2f( self.loc_scale, 2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
 			gl::BindVertexArray( self.vao );
 
-			let vtx_size = (0 .. draw_data.CmdListsCount as isize)
-				.map( |i| (**draw_data.CmdLists.offset( i )).VtxBuffer.Size as usize )
-				.max()
-				.unwrap_or( 0 );
-			if vtx_size > self.vbo_size {
-				self.vbo_size = vtx_size.next_power_of_two();
-				gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
-				gl::BufferData(
-					gl::ARRAY_BUFFER,
-					(self.vbo_size * mem::size_of::<imgui::ImDrawVert>()) as isize,
-					ptr::null(),
-					gl::STREAM_DRAW,
-				);
-			}
-
-			let idx_size = (0 .. draw_data.CmdListsCount as isize)
-				.map( |i| (**draw_data.CmdLists.offset( i )).IdxBuffer.Size as usize )
-				.max()
-				.unwrap_or( 0 );
-			if idx_size > self.ebo_size {
-				self.ebo_size = idx_size.next_power_of_two();
-				gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
-				gl::BufferData(
-					gl::ELEMENT_ARRAY_BUFFER,
-					(self.ebo_size * mem::size_of::<imgui::ImDrawIdx>()) as isize,
-					ptr::null(),
-					gl::STREAM_DRAW,
-				);
-			}
-
 			for i in 0 .. draw_data.CmdListsCount {
 				let cmd_list = &**draw_data.CmdLists.offset( i as isize );
 
 				gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
-				gl::BufferSubData(
+				gl::BufferData(
 					gl::ARRAY_BUFFER,
-					0,
 					cmd_list.VtxBuffer.Size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
 					cmd_list.VtxBuffer.Data as *const c_void,
+					gl::STREAM_DRAW,
 				);
 
 				gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
-				gl::BufferSubData(
+				gl::BufferData(
 					gl::ELEMENT_ARRAY_BUFFER,
-					0,
 					cmd_list.IdxBuffer.Size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
 					cmd_list.IdxBuffer.Data as *const c_void,
+					gl::STREAM_DRAW,
 				);
 
 				let mut offset = 0;

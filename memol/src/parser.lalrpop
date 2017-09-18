@@ -13,16 +13,16 @@ extern {
 }
 
 pub definition: Definition<'a> = {
-	<a:definition> <lo:@L> "score" <b:label> "=" <mi:@L> <c:score_list> <hi:@R> =>? {
-		let c = Ast::new_box( mi, hi, Score::Sequence( c ) );
+	<a:definition> <lo:@L> <b:label> "(" ")" "=" "score" <mi:@L> <c:score_with> <hi:@R> =>? {
+		//let c = Ast::new_box( mi, hi, Score::Sequence( c ) );
 		let mut a = a;
 		match a.scores.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "=" <mi:@L> <c:value_track_list> <hi:@R> =>? {
-		let c = Ast::new_box( mi, hi, ValueTrack::Sequence( c ) );
+	<a:definition> <lo:@L> <b:label> "(" ")" "=" "value" <mi:@L> <c:value_track_min> <hi:@R> =>? {
+		//let c = Ast::new_box( mi, hi, ValueTrack::Sequence( c ) );
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
@@ -43,7 +43,7 @@ score_with: Box<Ast<Score<'a>>> = {
 score_prim: Box<Ast<Score<'a>>> = {
 	<lo:@L> "_" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( vec![ Ast::new_box( lo, hi, Note::Rest ) ] ) ),
-	<lo:@L> <a:label> <hi:@R> =>
+	<lo:@L> <a:label> "(" ")" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Symbol( a ) ),
 	<lo:@L> "[" <a:score_list> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Sequence( a ) ),
@@ -101,9 +101,9 @@ octave: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::Octave(  1 ) ),
 	<lo:@L> ">" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Octave( -1 ) ),
-	<lo:@L> "$" <a:pitch_lower> <b:key_signature> <hi:@R> =>
+	<lo:@L> "@" <a:pitch_lower> <b:key_signature> <hi:@R> =>
 		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
-	<lo:@L> "$" <a:pitch_upper> <b:key_signature> <hi:@R> =>
+	<lo:@L> "@" <a:pitch_upper> <b:key_signature> <hi:@R> =>
 		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
 };
 
@@ -171,7 +171,7 @@ value_track_mul: Box<Ast<ValueTrack>> = {
 };
 
 value_track_prim: Box<Ast<ValueTrack>> = {
-	<lo:@L> <a:label> <hi:@R> =>
+	<lo:@L> <a:label> "(" ")" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Symbol( a ) ),
 	<lo:@L> "[" <a:value_track_list> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( a ) ),
@@ -264,5 +264,5 @@ uint: i32 = {
 };
 
 label: String = {
-	r"'[a-zA-Z0-9_.]+" => String::from( &<>[1..] ),
+	r"\$[a-zA-Z0-9_.]+" => String::from( &<>[1..] ),
 };

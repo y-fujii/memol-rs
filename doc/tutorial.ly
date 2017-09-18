@@ -5,11 +5,12 @@
 		<title>memol language overview</title>
 		<style>
 			* {
-				font: 100%/1.5 serif;
+				font: inherit;
 				margin:  0;
 				padding: 0;
 			}
 			body {
+				font: 100%/1.5 serif;
 				margin: 2rem auto;
 				max-width: 48rem;
 				text-align: justify;
@@ -126,7 +127,7 @@ being connected to them.
 <h2>Hello, twinkle little star</h2>
 
 <pre>
-score 'out.0 = { c c G G | A A g _ | f f e e | d d c _ }
+$out.0() = score { c c G G | A A g _ | f f e e | d d c _ }
 </pre>
 <lilypond relative="1">
     { c c g' g a a g r f f e e d d c r }
@@ -139,7 +140,7 @@ score 'out.0 = { c c G G | A A g _ | f f e e | d d c _ }
 <p>Newline and whitespace characters have no meanings except before and after
 some registerd words, symbol names and numbers.
 <pre>
-score 'out = {
+$out.0 = score {
 	[(cEGB)//] |
 	(c E G B)
 }
@@ -157,7 +158,7 @@ in lower case, it has lower pitch within a octave.  <code>"&lt;"</code> and
 <code>"&gt;"</code> can be used to make the current octave +1 and -1
 respectively.
 <pre>
-score 'out.0 = { c D E d | &gt; D E &lt; c _ }
+$out.0() = score { c D E d | &gt; D E &lt; c _ }
 </pre>
 <lilypond relative="1">
     { c d e d d' e c, r }
@@ -168,7 +169,7 @@ score 'out.0 = { c D E d | &gt; D E &lt; c _ }
 respectively.  they must specified every time.  A key signature can be
 specified with <code>"with"</code> syntax explained later.
 <pre>
-score 'out.0 = { c D+ E++ F- }
+$out.0() = score { c D+ E++ F- }
 </pre>
 <lilypond relative="1">
     { c dis eisis fes }
@@ -183,7 +184,7 @@ Each child note have an optional number prefix, which represents a relative
 ratio.  For example, <code>"[3e 2c]"</code> gives the duration 3/5 to "e" and
 2/5 to "c".
 <pre>
-score 'out.0 = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
+$out.0() = score { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </pre>
 <lilypond relative="1">
     { c1 c2 c2 \tuplet 3/2 { c2 c2 c2 } c4 c16 c16 c16 c16 c8. c16 \tuplet 3/2 { c8 c8. c32 c32 } }
@@ -195,7 +196,7 @@ parallel.  Chord can be nested oneself and other notation.  The note pitch used
 to determine the octave of next note is the first child of the chord, not the
 last child.
 <pre>
-score 'out.0 = { (c E G) | (c E G [B C b]) (c E F A) }
+$out.0() = score { (c E G) | (c E G [B C b]) (c E F A) }
 </pre>
 <lilypond relative="1">
 	<c e g>1
@@ -211,7 +212,7 @@ score 'out.0 = { (c E G) | (c E G [B C b]) (c E F A) }
 Composite notes such as group and chord also can be tied.  A tied chord means
 all child notes are tied.  A tied group means the last note is tied.
 <pre>
-score 'out.0 = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
+$out.0() = score { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
 </pre>
 <lilypond relative="1">
 	\set tieWaitForNote = ##t
@@ -224,7 +225,7 @@ recent simple note or chord in postordered depth-first traversal.  The ties of
 child notes are inherited if a target is composite (the tie attached to itself
 is not inherited).
 <pre>
-score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
+$out.0() = score { (c E G) / | (c [E /]) | ([3c E]) / }
 </pre>
 <lilypond relative="1">
 	<c e g>2 <c e g>2
@@ -238,7 +239,7 @@ score 'out.0 = { (c E G) / | (c [E /]) | ([3c E]) / }
 <h2>Score level composition</h2>
 <p>XXX: parallel, sequence, stretch, repeat, ...
 <pre>
-score 'out.0 = [ 2:{ c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
+$out.0() = score [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
 </pre>
 
 <h2>Score symbols</h2>
@@ -246,9 +247,9 @@ score 'out.0 = [ 2:{ c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
 defined after their location.  Defining the same name symbol more than once
 causes error.
 <pre>
-score 'part_a = { e F G A }
-score 'part_b = { c D E F }
-score 'out.0 = ('part_a 'part_b)
+$part_a() = score { e F G A }
+$part_b() = score { c D E F }
+$out.0()  = score ('part_a 'part_b)
 </pre>
 
 <h2><code>"with"</code> syntax</h2>
@@ -256,24 +257,25 @@ score 'out.0 = ('part_a 'part_b)
 enables high level music description.
 <p>XXX
 <pre>
-score 'chord   = { (c E G B) (D F G B) | (c E G B) }
-score 'pattern = { [$q0 Q1 Q2 q1] ($q0 Q1 Q2 Q3) }
-score 'out.0   = 2:'pattern with q = 'chord
+$chord()   = { (c E G B) (D F G B) | (c E G B) }
+$pattern() = { [@q0 Q1 Q2 q1] (@q0 Q1 Q2 Q3) }
+$out.0()   = repeat 2 $pattern() with q = $chord()
 </pre>
 <lilypond relative="1">
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
 </lilypond>
 <pre>
-score 'a_major = { (c+DEF+G+AB) }
-score 'out.0   = { ... } with _ = 'a_major
+$a_major = score { (c+DEF+G+AB) }
+$out.0   = score { ... } with _ = $a_major()
 </pre>
 
 <h2>Value track</h2>
 <p>XXX: Specification/implementation is not completed.
 <pre>
-value 'out.0.velocity = { [3 4] 3 2 | 2..4 3 } / {4}
-value 'out.0.offset = gaussian / {128}
-value 'out.0.cc11 = { 3..4 | 3..1 } / {4}
+$out.0.tempo    = value { 1/2 }
+$out.0.velocity = value { [3 4] 3 2 | 2..4 3 } / {4}
+$out.0.offset   = value $gaussian() / {128}
+$out.0.cc11     = value { 3..4 | 3..1 } / {4}
 </pre>
 
 <h2>Articulation, arpeggio, sustain pedal</h2>
@@ -281,7 +283,7 @@ value 'out.0.cc11 = { 3..4 | 3..1 } / {4}
 <p>Some special syntax for articulation, arpeggio, sustain pedal may be added
 in the future.
 <pre>
-  @N(XXX) : arpeggio
+  !N(XXX) : arpeggio
        X~ : legato
 (default) : non-legato
        X' : staccato
@@ -289,14 +291,14 @@ in the future.
 
 <h2>MIDI channels</h2>
 <p>Although this is out of the language specification, current implementation
-maps the score to MIDI outputs by variable names: <code>'out.0</code> ..
-<code>'out.15</code> are mapped to MIDI channel 1 .. 16.
+maps the score to MIDI outputs by variable names: <code>$out.0</code> ..
+<code>$out.15</code> are mapped to MIDI channel 1 .. 16.
 
 <h2>Begin/end position</h2>
 <p>XXX
 <pre>
-'out.begin = { 0}
-'out.end   = {24}
+$out.begin = score { 0}
+$out.end   = score {24}
 </pre>
 
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>

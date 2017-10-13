@@ -323,11 +323,11 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
 				UiMessage::Text( format!( "Compile error at ({}, {}): {}", row, col, e.msg ) )
 			} );
-			tx.send( msg ).unwrap();
+			tx.send( msg );
 
 			Ok( () )
 		}().unwrap_or_else( |e|
-			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) ).unwrap()
+			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) )
 		);
 	}
 }
@@ -379,7 +379,7 @@ fn main() {
 
 		init_imgui( 2.0 );
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
-		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) );
+		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
 
 		let window_tx = window.create_sender();
 		thread::spawn( move || compile_task( compile_rx, window_tx ) );
@@ -390,7 +390,7 @@ fn main() {
 				Ok ( v ) => UiMessage::Player( v ),
 				Err( v ) => UiMessage::Text( format!( "Error: {}", v.description() ) ),
 			};
-			window_tx.send( msg ).unwrap();
+			window_tx.send( msg );
 		} );
 
 		if let Some( path ) = args.free.first() {

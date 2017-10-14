@@ -58,8 +58,8 @@
 <body>
 
 <h1>memol language overview</h1>
-<p><strong>XXX: The documentation is very incomplete and already has many
-differences from the latest implementation.</strong>
+<p><strong>WARNING: The documentation is curently very unkind, incomplete and
+already has many differences from the latest implementation.</strong>
 
 <p>memol is a music description language which features:
 <dl>
@@ -69,11 +69,13 @@ differences from the latest implementation.</strong>
     <dt>Orthogonal
 	<dd>Some musical elements like scale, chord and backing pattern can be
 	described independently and composite them each other.  <code>"with"</code>
-	syntax enables (some of) them in a unified form.  Separate descriptions of
-	expressions (note velocity, control change, ...) are also planned.
+	syntax enables (some of) them in a unified form.  Expressions (note
+	velocity, control change, ...) are also described separately.
     <dt>Focused on musical composition
 	<dd>Language design and implementation help trial-and-error of musical
-	composition well (in the future).
+	composition well (in the future).  Unlike score typesetting languages,
+	memol also focused on describing time-changing value used for MIDI control
+	changes, etc.
 </dl>
 <p>memol does <strong>not</strong> aim to have:
 <dl>
@@ -108,6 +110,8 @@ cargo install
 </pre>
 <p>and everything should be done. Note that Windows target must be
 <code>*-gnu</code>, not <code>*-msvc</code> due to JACK DLL linking issue.
+<p>Alternatively, you can download the pre-compiled binaries from
+<code><a href="http://mimosa-pudica.net/memol/bin/">http://mimosa-pudica.net/memol/bin/</a></code>.</p>
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK.
 <pre>
@@ -123,6 +127,14 @@ connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
 <a href="http://ardour.org/">Ardour</a> can be used, of course.
 <p>JACK_PORT can be specified multiple times and then the memol output port is
 being connected to them.
+<p>Recent version of memol has highly-experimental GUI interfaces mostly for
+debugging purpose.  You can build &amp; run it by typing the commands
+below.</p>
+<pre>
+cd memol-rs/memol_gui
+cargo install
+memol_gui &
+</pre>
 
 <h2>Hello, twinkle little star</h2>
 
@@ -133,18 +145,22 @@ $out.0() = score { c c G G | A A g _ | f f e e | d d c _ }
     { c c g' g a a g r f f e e d d c r }
 </lilypond>
 <p>memol language structure is roughly divided into two layers: inside
-<code>{...}</code> and outside.
+<code>{...}</code> and outside.  Both layers have similar syntax and similar
+semantics, but different.  Inside <code>{...}</code>, sequence is splitted by
+<code>"|"</code> and each part gets the unit time length regardless of the
+number of the elements.
+<p>XXX
+<p>Outside <code>{...}</code>, on the other hand, all the elements have the
+specific length.
 <p>XXX
 
 <h2>Token</h2>
-<p>Newline and whitespace characters have no meanings except before and after
-some registerd words, symbol names and numbers.
-<pre>
-$out.0 = score {
-	[(cEGB)//] |
-	(c E G B)
-}
-</pre>
+<p>Unlike common programming languages, newline and whitespace characters have
+no meanings at most locations.  The exception is one before and after the
+registerd words like <code>"score"</code> and <code>"value"</code>, symbol
+names and numbers.  For example, <code>"(cEGB)"</code> and
+<code>"( c E G B)"</code> have the same meaning, <code>"scoreabc"</code> is
+different from <code>"score abc"</code>.
 
 <h2>Comments</h2>
 <pre>
@@ -237,13 +253,19 @@ $out.0() = score { (c E G) / | (c [E /]) | ([3c E]) / }
 </lilypond>
 
 <h2>Score level composition</h2>
-<p>XXX: parallel, sequence, stretch, repeat, ...
+<p>Score elements can be composited by <code>"[...]"</code> and
+<code>"(...)"</code>, which looks similar to group and chord syntax;
+<code>"[...]"</code> serializes its child elements and <code>"(...)"</code>
+locates its child elements in parallel.  Additionally,
+<code>repeat N element</code> syntax is used for repeating,
+<code>N/M element</code> for stretching time.
 <pre>
 $out.0() = score [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
 </pre>
 
 <h2>Score symbols</h2>
-<p>Score symbols probably works as you expected.  It is possible to use symbols
+<p>Score symbols is similar to constant variables in common programming
+languages and probably works as you expected.  It is possible to use symbols
 defined after their location.  Defining the same name symbol more than once
 causes error.
 <pre>
@@ -256,6 +278,7 @@ $out.0()  = score ('part_a 'part_b)
 <p><code>"with"</code> syntax is one of the unique feature of memol that
 enables high level music description.
 <p>XXX
+<p>XXX
 <pre>
 $chord()   = { (c E G B) (D F G B) | (c E G B) }
 $pattern() = { [@q0 Q1 Q2 q1] (@q0 Q1 Q2 Q3) }
@@ -264,18 +287,25 @@ $out.0()   = repeat 2 $pattern() with q = $chord()
 <lilypond relative="1">
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
 </lilypond>
+<p><code>"with"</code> also used for changing a key signature.  Special symbol
+<code>"_"</code> means <code>"abcdefg"</code> note symbol are assigned.
 <pre>
-$a_major = score { (c+DEF+G+AB) }
-$out.0   = score { ... } with _ = $a_major()
+$a_major() = score { (c+DEF+G+AB) }
+$out.0()   = score { ... } with _ = $a_major()
 </pre>
 
 <h2>Value track</h2>
-<p>XXX: Specification/implementation is not completed.
+<p>Value track has the similar syntax to score track but it describes the
+time-changing value.
+<p>XXX
+<p>Outside <code>"{...}"</code>, arithmetic operation can be applied.
+<p>XXX
 <pre>
-$out.0.tempo    = value { 1/2 }
-$out.0.velocity = value { [3 4] 3 2 | 2..4 3 } / {4}
-$out.0.offset   = value $gaussian() / {128}
-$out.0.cc11     = value { 3..4 | 3..1 } / {4}
+$out.0.tempo()    = value { 1/2 }
+$out.0.velocity() = value { [3 4] 3 2 | 2..4 3 } / { 4 }
+$out.0.offset()   = value $gaussian() / { 128 }
+$out.0.duration() = value $note_len() * { 6/8 } + { 1/8 }
+$out.0.cc11()     = value { 3..4 | 3..1 } / { 4 }
 </pre>
 
 <h2>Articulation, arpeggio, sustain pedal</h2>
@@ -290,6 +320,7 @@ in the future.
 </pre>
 
 <h2>MIDI channels</h2>
+<p>WARNING: This specification will be changed.
 <p>Although this is out of the language specification, current implementation
 maps the score to MIDI outputs by variable names: <code>$out.0</code> ..
 <code>$out.15</code> are mapped to MIDI channel 1 .. 16.
@@ -297,8 +328,8 @@ maps the score to MIDI outputs by variable names: <code>$out.0</code> ..
 <h2>Begin/end position</h2>
 <p>XXX
 <pre>
-$out.begin = score { 0}
-$out.end   = score {24}
+$out.begin() = score { 0}
+$out.end()   = score {24}
 </pre>
 
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>

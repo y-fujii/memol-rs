@@ -27,6 +27,9 @@
 			li {
 				margin-left: 1rem;
 			}
+			li ul {
+				margin: 0;
+			}
 			h1 {
 				font-size: 200%;
 				text-align: center;
@@ -76,12 +79,14 @@ already has many differences from the latest implementation.</strong>
 	composition well (in the future).  Unlike score typesetting languages,
 	memol also focused on describing time-changing value used for MIDI control
 	changes, etc.
+    <dt>Extendable with ordinal programming languages
+	<dd>(Planned. Not implemented yet.)
 </dl>
 <p>memol does <strong>not</strong> aim to have:
 <dl>
-	<dt>Complete ability to describe sheet music
-	<dd>Sheet music generation may be implemented in the future, but memol
-	never will be a complete sheet music description language.
+	<dt>Complete ability to describe music typesetting
+	<dd>Staff notation generation may be implemented in the future, but memol
+	never will be a complete score typesetting language.
 	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
@@ -89,6 +94,19 @@ already has many differences from the latest implementation.</strong>
 the development begun recently so both the language specification and the
 implementation are still in a very early stage.  Currently they lack many
 features for practical use.
+
+<h2>Current status</h2>
+<ul>
+<li>70% of primitive/low-level features are implemented.
+<li>0% of high-level features are implemented.
+	<ul>
+		<li>chord notation, auto-voicing, auto-articulation, language
+		extension API, etc.
+	</ul>
+<li>0% of syntax is stabilized.
+<li>20% of documentation is completed.
+<li>10% of non-language features are implemented.
+</ul>
 
 <h2>Build, install and run</h2>
 
@@ -110,7 +128,7 @@ cargo install
 </pre>
 <p>and everything should be done. Note that Windows target must be
 <code>*-gnu</code>, not <code>*-msvc</code> due to JACK DLL linking issue.
-<p>Alternatively, you can download the pre-compiled binaries from
+Alternatively, you can download the pre-compiled binaries from
 <code><a href="http://mimosa-pudica.net/memol/bin/">http://mimosa-pudica.net/memol/bin/</a></code>.</p>
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK.
@@ -118,7 +136,7 @@ MIDI messages to JACK.
 memol [-c JACK_PORT] FILE
 </pre>
 <p>memol keeps watching the change of the file and reflects it immediately.  If
-<code>'out.begin</code>, <code>'out.end</code> (see below) are specified, memol
+<code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
 <p>Since memol supports JACK transport, start/stop/seek operations are synced
 with other JACK clients (Currently Timebase is not supported).  Personally I
@@ -139,7 +157,7 @@ memol_gui &
 <h2>Hello, twinkle little star</h2>
 
 <pre>
-$out.0() = score { c c G G | A A g _ | f f e e | d d c _ }
+score $out.0() = { c c G G | A A g _ | f f e e | d d c _ }
 </pre>
 <lilypond relative="1">
     { c c g' g a a g r f f e e d d c r }
@@ -156,11 +174,11 @@ specific length.
 
 <h2>Token</h2>
 <p>Unlike common programming languages, newline and whitespace characters have
-no meanings at most locations.  The exception is one before and after the
-registerd words like <code>"score"</code> and <code>"value"</code>, symbol
-names and numbers.  For example, <code>"(cEGB)"</code> and
-<code>"( c E G B)"</code> have the same meaning, <code>"scoreabc"</code> is
-different from <code>"score abc"</code>.
+no meanings at most locations.  The exception is the one before or after the
+registerd words (<code>"score"</code>, <code>"value"</code>, etc.), symbol
+names (<code>"$name"</code>) and numbers.  For example, <code>"(cEGB)"</code>
+and <code>"( c E G B )"</code> have the same meaning, <code>"scoreabc"</code>
+is different from <code>"score abc"</code>.
 
 <h2>Comments</h2>
 <pre>
@@ -174,7 +192,7 @@ in lower case, it has lower pitch within a octave.  <code>"&lt;"</code> and
 <code>"&gt;"</code> can be used to make the current octave +1 and -1
 respectively.
 <pre>
-$out.0() = score { c D E d | &gt; D E &lt; c _ }
+score $out.0() = { c D E d | &gt; D E &lt; c _ }
 </pre>
 <lilypond relative="1">
     { c d e d d' e c, r }
@@ -185,7 +203,7 @@ $out.0() = score { c D E d | &gt; D E &lt; c _ }
 respectively.  they must specified every time.  A key signature can be
 specified with <code>"with"</code> syntax explained later.
 <pre>
-$out.0() = score { c D+ E++ F- }
+score $out.0() = { c D+ E++ F- }
 </pre>
 <lilypond relative="1">
     { c dis eisis fes }
@@ -200,7 +218,7 @@ Each child note have an optional number prefix, which represents a relative
 ratio.  For example, <code>"[3e 2c]"</code> gives the duration 3/5 to "e" and
 2/5 to "c".
 <pre>
-$out.0() = score { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
+score $out.0() = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </pre>
 <lilypond relative="1">
     { c1 c2 c2 \tuplet 3/2 { c2 c2 c2 } c4 c16 c16 c16 c16 c8. c16 \tuplet 3/2 { c8 c8. c32 c32 } }
@@ -212,7 +230,7 @@ parallel.  Chord can be nested oneself and other notation.  The note pitch used
 to determine the octave of next note is the first child of the chord, not the
 last child.
 <pre>
-$out.0() = score { (c E G) | (c E G [B C b]) (c E F A) }
+score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 </pre>
 <lilypond relative="1">
 	<c e g>1
@@ -228,7 +246,7 @@ $out.0() = score { (c E G) | (c E G [B C b]) (c E F A) }
 Composite notes such as group and chord also can be tied.  A tied chord means
 all child notes are tied.  A tied group means the last note is tied.
 <pre>
-$out.0() = score { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
+score $out.0() = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
 </pre>
 <lilypond relative="1">
 	\set tieWaitForNote = ##t
@@ -241,7 +259,7 @@ recent simple note or chord in postordered depth-first traversal.  The ties of
 child notes are inherited if a target is composite (the tie attached to itself
 is not inherited).
 <pre>
-$out.0() = score { (c E G) / | (c [E /]) | ([3c E]) / }
+score $out.0() = { (c E G) / | (c [E /]) | ([3c E]) / }
 </pre>
 <lilypond relative="1">
 	<c e g>2 <c e g>2
@@ -260,7 +278,7 @@ locates its child elements in parallel.  Additionally,
 <code>repeat N element</code> syntax is used for repeating,
 <code>N/M element</code> for stretching time.
 <pre>
-$out.0() = score [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
+score $out.0() = [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
 </pre>
 
 <h2>Score symbols</h2>
@@ -269,9 +287,9 @@ languages and probably works as you expected.  It is possible to use symbols
 defined after their location.  Defining the same name symbol more than once
 causes error.
 <pre>
-$part_a() = score { e F G A }
-$part_b() = score { c D E F }
-$out.0()  = score ('part_a 'part_b)
+score $part_a() = { e F G A }
+score $part_b() = { c D E F }
+score $out.0()  = ($part_a $part_b)
 </pre>
 
 <h2><code>"with"</code> syntax</h2>
@@ -280,9 +298,9 @@ enables high level music description.
 <p>XXX
 <p>XXX
 <pre>
-$chord()   = { (c E G B) (D F G B) | (c E G B) }
-$pattern() = { [@q0 Q1 Q2 q1] (@q0 Q1 Q2 Q3) }
-$out.0()   = repeat 2 $pattern() with q = $chord()
+score $chord()   = { (c E G B) (D F G B) | (c E G B) }
+score $pattern() = { [@q0 Q1 Q2 q1] (@q0 Q1 Q2 Q3) }
+score $out.0()   = repeat 2 $pattern() with q = $chord()
 </pre>
 <lilypond relative="1">
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
@@ -290,8 +308,8 @@ $out.0()   = repeat 2 $pattern() with q = $chord()
 <p><code>"with"</code> also used for changing a key signature.  Special symbol
 <code>"_"</code> means <code>"abcdefg"</code> note symbol are assigned.
 <pre>
-$a_major() = score { (c+DEF+G+AB) }
-$out.0()   = score { ... } with _ = $a_major()
+score $a_major() = { (c+DEF+G+AB) }
+score $out.0()   = { ... } with _ = $a_major()
 </pre>
 
 <h2>Value track</h2>
@@ -301,11 +319,11 @@ time-changing value.
 <p>Outside <code>"{...}"</code>, arithmetic operation can be applied.
 <p>XXX
 <pre>
-$out.0.tempo()    = value { 1/2 }
-$out.0.velocity() = value { [3 4] 3 2 | 2..4 3 } / { 4 }
-$out.0.offset()   = value $gaussian() / { 128 }
-$out.0.duration() = value $note_len() * { 6/8 } + { 1/8 }
-$out.0.cc11()     = value { 3..4 | 3..1 } / { 4 }
+value $out.0.tempo()    = { 1/2 }
+value $out.0.velocity() = { [3 4] 3 2 | 2..4 3 } / { 4 }
+value $out.0.offset()   = $gaussian() / { 128 }
+value $out.0.duration() = $note_len() * { 6/8 } + { 1/8 }
+value $out.0.cc11()     = { 3..4 | 3..1 } / { 4 }
 </pre>
 
 <h2>Articulation, arpeggio, sustain pedal</h2>
@@ -328,8 +346,8 @@ maps the score to MIDI outputs by variable names: <code>$out.0</code> ..
 <h2>Begin/end position</h2>
 <p>XXX
 <pre>
-$out.begin() = score { 0}
-$out.end()   = score {24}
+value $out.begin() = { 0}
+value $out.end()   = {24}
 </pre>
 
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>

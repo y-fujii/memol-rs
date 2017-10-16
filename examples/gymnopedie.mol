@@ -1,6 +1,6 @@
 /* Gymnopedie No. 1, Erik Satie */
 
-$melody() = score {
+score $melody() = {
 	_  | _   | _    | _    | < _FA | gfc  | bCD | a    |
 	f^ | f^  | f^   | f    | < _FA | gfc  | bCD | a    |
 	C  | F   | > e^ | e^   | e     | ABC- | Edb | Dc-b |
@@ -8,19 +8,19 @@ $melody() = score {
 	f  | baB | CDE  | cDE  | 2fG   | C-   | D
 }
 
-$chord() = score [
+score $chord() = [
 	repeat 8 { (gBDF_)  | (dACF_) < } {
 	(fACF_)  | (b<BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_)        | (a<AC-E_) | (DGBE_)   | (DDGBE)  |
 	(Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)         | (DDGBE)   | (Dc-EAD)  | (EBEG_)  |
 	(FACF_)  | (b<BDF_) | (ECEA_)   | (EACFA)  | E (EbAD) (EEBD) | (AgC-EA_) | (DaD<DFA) }
 ]
 
-$pattern() = score [
+score $pattern() = [
 	repeat 36 { @q0 > q0 ^ 2(/ @q1 Q1 Q2 Q3 Q4) }
 	{ (@q0 > q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 > q0 @q1 Q1 Q2 Q3 Q4 Q5) | / }
 ]
 
-$out.0() = score [ _ ( $melody() $pattern() with q = $chord() ) with _ = 39 { (ABC+DEF+G) } _ ]
-$out.0.offset()   = value $gaussian() * { 1/512 }
-$out.0.velocity() = value { 1/2 } + $gaussian() * { 1/64 }
-$out.tempo()      = value { 2/5 }
+score $out.0() = [ _ ( $melody() $pattern() with q = $chord() ) with _ = 39 { (ABC+DEF+G) } _ ]
+value $out.0.offset()   = $gaussian() * { 1/512 }
+value $out.0.velocity() = { 1/2 } + $gaussian() * { 1/64 }
+value $out.tempo()      = { 2/5 }

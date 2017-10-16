@@ -13,16 +13,14 @@ extern {
 }
 
 pub definition: Definition<'a> = {
-	<a:definition> <lo:@L> <b:label> "(" ")" "=" "score" <mi:@L> <c:score_with> <hi:@R> =>? {
-		//let c = Ast::new_box( mi, hi, Score::Sequence( c ) );
+	<a:definition> <lo:@L> "score" <b:label> "(" ")" "=" <mi:@L> <c:score_with> <hi:@R> =>? {
 		let mut a = a;
 		match a.scores.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> <b:label> "(" ")" "=" "value" <mi:@L> <c:value_track_min> <hi:@R> =>? {
-		//let c = Ast::new_box( mi, hi, ValueTrack::Sequence( c ) );
+	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <mi:@L> <c:value_track_min> <hi:@R> =>? {
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),

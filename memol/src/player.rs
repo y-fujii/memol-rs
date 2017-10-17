@@ -98,6 +98,7 @@ impl Player {
 	}
 
 	pub fn seek( &self, time: f64 ) -> io::Result<()> {
+		debug_assert!( time >= 0.0 );
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			jack::jack_transport_query( self.jack, &mut pos );
@@ -151,11 +152,11 @@ impl Player {
 				_ => return 0,
 			}
 
-			let time = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as u32;
-			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (time( ev ), ev.prio) < (pos.frame,        i16::MIN) );
-			let iend = misc::bsearch_boundary( &shared.events, |ev| (time( ev ), ev.prio) < (pos.frame + size, i16::MIN) );
+			let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64 - pos.frame as f64).round();
+			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (0.0  as f64, i16::MIN) );
+			let iend = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (size as f64, i16::MIN) );
 			for ev in shared.events[ibgn .. iend].iter() {
-				jack::jack_midi_event_write( buf, time( ev ) - pos.frame, ev.msg.as_ptr(), ev.len as usize );
+				jack::jack_midi_event_write( buf, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
 			}
 
 			if ibgn == shared.events.len() {

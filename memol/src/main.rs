@@ -36,7 +36,7 @@ fn main() {
 				},
 				Ok( events ) => {
 					let bgn = match events.get( 0 ) {
-						Some( ev ) => ev.time,
+						Some( ev ) => ev.time.max( 0.0 ),
 						None       => 0.0,
 					};
 					player.set_data( events );

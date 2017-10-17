@@ -99,7 +99,7 @@ impl Generator {
 
 	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
 		let evaluator = valuegen::Evaluator::new();
-		assert!( self.timeline.len() == 0 );
+		debug_assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {
 			self.timeline.push( s );
@@ -113,9 +113,10 @@ impl Generator {
 		if self.timeline.len() > 0 {
 			for ev in self.events.iter_mut() {
 				let i = (ev.time * self.tick as f64).floor() as usize;
+				let i = cmp::min( cmp::max( i, 0 ), self.timeline.len() - 2 );
 				let f0 = self.timeline[i + 0];
 				let f1 = self.timeline[i + 1];
-				let a = (ev.time * self.tick as f64).fract();
+				let a = ev.time * self.tick as f64 - i as f64;
 				ev.time = (1.0 - a) * f0 + a * f1;
 			}
 		}

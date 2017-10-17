@@ -199,7 +199,7 @@ impl Renderer {
 							(io.DisplayFramebufferScale.x * (cmd.ClipRect.z   - cmd.ClipRect.x)) as i32,
 							(io.DisplayFramebufferScale.y * (cmd.ClipRect.w   - cmd.ClipRect.y)) as i32,
 						);
-						assert!( mem::size_of::<imgui::ImDrawIdx>() == 2 );
+						debug_assert!( mem::size_of::<imgui::ImDrawIdx>() == 2 );
 						gl::DrawElements( gl::TRIANGLES, cmd.ElemCount as i32, gl::UNSIGNED_SHORT, offset as *const c_void );
 					}
 					offset += cmd.ElemCount as usize * mem::size_of::<imgui::ImDrawIdx>();

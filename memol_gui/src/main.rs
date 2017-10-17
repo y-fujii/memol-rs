@@ -82,7 +82,7 @@ impl window::Ui<UiMessage> for Ui {
 
 		if let Some( ref player ) = self.player {
 			let bgn = match self.events.get( 0 ) {
-				Some( ev ) => ev.time,
+				Some( ev ) => ev.time.max( 0.0 ),
 				None       => 0.0,
 			};
 			player.set_data( mem::replace( &mut self.events, Vec::new() ) );

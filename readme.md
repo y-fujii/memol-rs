@@ -18,7 +18,7 @@ memol is a music description language which features:
 
 ## Example
 
-	$out.0() = score { (c E G) | (c E G [B C b]) (c E F A) }
+	score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 
 ![sample](doc/sample.png)
 

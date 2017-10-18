@@ -278,7 +278,7 @@ locates its child elements in parallel.  Additionally,
 <code>repeat N element</code> syntax is used for repeating,
 <code>N/M element</code> for stretching time.
 <pre>
-score $out.0() = [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4 { D E F } ) ]
+score $out.0() = [ repeat 2 { c D E d } ( { E F G A | c c c c } 3/4:{ D E F } ) ]
 </pre>
 
 <h2>Score symbols</h2>
@@ -320,7 +320,7 @@ time-changing value.
 <p>XXX
 <pre>
 value $out.0.tempo()    = { 1/2 }
-value $out.0.velocity() = { [3 4] 3 2 | 2..4 3 } / { 4 }
+value $out.0.velocity() = { [3:3 4] 3 2 | 2..4 3 } / { 4 }
 value $out.0.offset()   = $gaussian() / { 128 }
 value $out.0.duration() = $note_len() * { 6/8 } + { 1/8 }
 value $out.0.cc11()     = { 3..4 | 3..1 } / { 4 }

@@ -1,17 +1,17 @@
 /* Gymnopedie No. 1, Erik Satie */
 
 score $melody() = {
-	_  | _   | _    | _    | < _FA | gfc  | bCD | a    |
-	f^ | f^  | f^   | f    | < _FA | gfc  | bCD | a    |
-	C  | F   | > e^ | e^   | e     | ABC- | Edb | Dc-b |
-	D^ | 2DD | EF-G | Ac-D | Edb   | D^   | 2DD | G    |
-	f  | baB | CDE  | cDE  | 2fG   | C-   | D
+	_  | _   | _    | _  < | _FA | gfc  | bCD | a    |
+	f^ | f^  | f^   | f  < | _FA | gfc  | bCD | a    |
+	C  | F > | e^   | e^   | e   | ABC- | Edb | Dc-b |
+	D^ | 2DD | EF-G | Ac-D | Edb | D^   | 2DD | G    |
+	f  | baB | CDE  | cDE  | 2fG | C-   | D
 }
 
 score $chord() = [
-	repeat 8 { (gBDF_)  | (dACF_) < } {
-	(fACF_)  | (b<BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_)        | (a<AC-E_) | (DGBE_)   | (DDGBE)  |
-	(Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)         | (DDGBE)   | (Dc-EAD)  | (EBEG_)  |
+	repeat 8 { (gBDF_)  | (dACF_) } {
+	(fACF_)  | (b<BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_)        | (a<AC-E_) | (DGBE_)   | (DDGBE) |
+	(Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)         | (DDGBE)   | (Dc-EAD)  | (EBEG_) |
 	(FACF_)  | (b<BDF_) | (ECEA_)   | (EACFA)  | E (EbAD) (EEBD) | (AgC-EA_) | (DaD<DFA) }
 ]
 

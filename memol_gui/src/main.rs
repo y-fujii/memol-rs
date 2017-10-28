@@ -169,6 +169,7 @@ impl Ui {
 		End();
 		PopStyleVar( 2 );
 
+		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
 		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
 			// scrolling.
 			let ctx = imutil::DrawContext::new();
@@ -205,6 +206,7 @@ impl Ui {
 				count = cmp::max( count, JACK_FRAME_WAIT );
 			}
 		imutil::end_root();
+		PopStyleColor( 1 );
 
 		count = cmp::max( count, if is_playing { 1 } else { 0 } );
 		Ok( count )
@@ -247,7 +249,7 @@ impl Ui {
 			let dt = note.t1 - note.t0;
 			SetCursorPos( &x0 );
 			Dummy( &ImVec2::new( dt.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
-			if IsItemHovered() {
+			if IsItemHovered( ImGuiHoveredFlags_Default as i32 ) {
 				BeginTooltip();
 					let sym = match nnum % 12 {
 						 0 => "C",  1 => "C+",

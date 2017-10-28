@@ -100,8 +100,8 @@ pub fn begin_root( flags: u32 ) {
 		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &ImVec2::zero() );
 		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32, &ImVec2::zero() );
 		SetNextWindowSize( &size, ImGuiSetCond_Always as i32 );
-		Begin1(
-			c_str!( "root" ), ptr::null_mut(), &size, 0.0,
+		Begin(
+			c_str!( "root" ), ptr::null_mut(),
 			(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
 			 ImGuiWindowFlags_NoBringToFrontOnFocus |
 			 ImGuiWindowFlags_NoTitleBar | flags) as i32

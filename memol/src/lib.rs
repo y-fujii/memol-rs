@@ -91,7 +91,7 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 		}
 	}
 
-	let evaluator = valuegen::Evaluator::new();
+	let mut evaluator = valuegen::Evaluator::new();
 	let bgn = match value_gen.generate( "out.begin" )? {
 		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,
@@ -152,9 +152,11 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 }
 
 pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
+	let mut rng = rand::ChaChaRng::new_unseeded();
+
 	let bgn = (src.bgn * TICK).round();
 	let end = (src.end * TICK).round();
-	let mut migen = midi::Generator::new( bgn, end, TICK );
+	let mut migen = midi::Generator::new( &mut rng, bgn, end, TICK );
 	for &(ch, ref irs) in src.channels.iter() {
 		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset, &irs.duration );
 		for &(cc, ref ir) in irs.ccs.iter() {

@@ -1,6 +1,7 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
 use rand;
+use rand::Rand;
 use misc;
 use ratio;
 use ast;
@@ -136,22 +137,30 @@ impl<'a> Generator<'a> {
 }
 
 pub struct Evaluator<'a> {
-	syms: collections::HashMap<String, Box<Fn( ratio::Ratio ) -> f64 + 'a>>,
+	syms: collections::HashMap<String, Box<'a + FnMut( ratio::Ratio ) -> f64>>,
 }
 
 impl<'a> Evaluator<'a> {
 	pub fn new() -> Self {
-		let mut this = Evaluator{ syms: collections::HashMap::new() };
-		this.add_symbol( "gaussian".into(), |_| rand::random::<rand::distributions::normal::StandardNormal>().0 );
-		this.add_symbol( "note_len".into(), |_| 0.0 );
+		let mut this = Evaluator{
+			syms: collections::HashMap::new(),
+		};
+		this.add_symbol( "gaussian".into(), move |_| 0.0 );
+		this.add_symbol( "note_len".into(), move |_| 0.0 );
 		this
 	}
 
-	pub fn add_symbol<F: Fn( ratio::Ratio ) -> f64 + 'a>( &mut self, key: String, f: F ) {
+	pub fn new_with_random<T: 'a + rand::Rng>( rng: &'a mut T ) -> Self {
+		let mut this = Self::new();
+		this.add_symbol( "gaussian".into(), move |_| rand::distributions::normal::StandardNormal::rand( rng ).0 );
+		this
+	}
+
+	pub fn add_symbol<F: 'a + FnMut( ratio::Ratio ) -> f64>( &mut self, key: String, f: F ) {
 		self.syms.insert( key, Box::new( f ) );
 	}
 
-	pub fn eval( &self, ir: &Ir, t: ratio::Ratio ) -> f64 {
+	pub fn eval( &mut self, ir: &Ir, t: ratio::Ratio ) -> f64 {
 		match *ir {
 			Ir::Value( t0, t1, v0, v1 ) => {
 				let t = cmp::min( cmp::max( t, t0 ), t1 );
@@ -175,7 +184,7 @@ impl<'a> Evaluator<'a> {
 				}
 			},
 			Ir::Symbol( ref sym ) => {
-				let f = self.syms.get( sym ).unwrap();
+				let f = self.syms.get_mut( sym ).unwrap();
 				f( t )
 			},
 		}

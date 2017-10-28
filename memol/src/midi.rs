@@ -1,5 +1,6 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
+use rand;
 use misc;
 use ratio::Ratio;
 use scoregen;
@@ -28,7 +29,8 @@ impl Event {
 }
 
 #[derive(Debug)]
-pub struct Generator {
+pub struct Generator<'a, T: 'a + rand::Rng> {
+	rng: &'a mut T,
 	events: Vec<Event>,
 	timeline: Vec<f64>,
 	bgn: i64,
@@ -36,9 +38,10 @@ pub struct Generator {
 	tick: i64,
 }
 
-impl Generator {
-	pub fn new( bgn: i64, end: i64, tick: i64 ) -> Generator {
+impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
+	pub fn new( rng: &'a mut T, bgn: i64, end: i64, tick: i64 ) -> Self {
 		Generator{
+			rng: rng,
 			events: Vec::new(),
 			timeline: Vec::new(),
 			bgn: bgn,
@@ -49,7 +52,7 @@ impl Generator {
 
 	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir, ir_dur: &valuegen::Ir ) {
 		let note_len = cell::Cell::new( 0.0 );
-		let mut evaluator = valuegen::Evaluator::new();
+		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
 		evaluator.add_symbol( "note_len".into(), |_| note_len.get() );
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.notes.iter() {
@@ -85,7 +88,7 @@ impl Generator {
 	}
 
 	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &valuegen::Ir ) {
-		let evaluator = valuegen::Evaluator::new();
+		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 255;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -98,7 +101,7 @@ impl Generator {
 	}
 
 	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
-		let evaluator = valuegen::Evaluator::new();
+		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
 		debug_assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {

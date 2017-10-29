@@ -51,7 +51,7 @@ score_prim: Box<Ast<Score<'a>>> = {
 		Ast::new_box( lo, hi, Score::Score( a ) ),
 	<lo:@L> "repeat" <a:uint> <b:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
-	<lo:@L> <a:uratio> ":" <b:score_prim> <hi:@R> =>
+	<lo:@L> "stretch" <a:sratio> <b:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 };
 
@@ -182,13 +182,19 @@ value_track_mul: Box<Ast<ValueTrack>> = {
 };
 
 value_track_prim: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:uint> <hi:@R> => {
+		let v = ratio::Ratio::new( a as i64, 1 );
+		Ast::new_box( lo, hi, ValueTrack::ValueTrack(
+			vec![ Ast::new_box( lo, hi, Value::Value( v, v ) ) ]
+		) )
+	},
 	<lo:@L> <a:label> "(" ")" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Symbol( a ) ),
 	<lo:@L> "[" <a:value_track_list> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( a ) ),
 	<lo:@L> "{" <a:value_track_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::ValueTrack( a ) ),
-	<lo:@L> <a:uratio> ":" <b:value_track_prim> <hi:@R> =>
+	<lo:@L> "stretch" <a:sratio> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
 	<lo:@L> "repeat" <a:uint> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
@@ -255,13 +261,6 @@ sratio: ratio::Ratio = {
 	<a:sint> "/" <b:uint> =>
 		ratio::Ratio::new( a as i64, b as i64 ),
 	<a:sint> =>
-		ratio::Ratio::new( a as i64, 1 ),
-};
-
-uratio: ratio::Ratio = {
-	<a:uint> "/" <b:uint> =>
-		ratio::Ratio::new( a as i64, b as i64 ),
-	<a:uint> =>
 		ratio::Ratio::new( a as i64, 1 ),
 };
 

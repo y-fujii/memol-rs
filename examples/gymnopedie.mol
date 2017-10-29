@@ -21,6 +21,6 @@ score $pattern() = [
 ]
 
 score $out.0() = [ _ ( $melody() $pattern() with q = $chord() ) with _ = repeat 39 { (ABC+DEF+G) } _ ]
-value $out.0.offset()   = $gaussian() * { 1/512 }
-value $out.0.velocity() = { 1/2 } + $gaussian() * { 1/64 }
-value $out.tempo()      = { 2/5 }
+value $out.0.offset()   = $gaussian() / 512
+value $out.0.velocity() = 1 / 2 + $gaussian() / 64
+value $out.tempo()      = 2 / 5

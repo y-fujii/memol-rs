@@ -65,7 +65,7 @@ impl window::Ui<UiMessage> for Ui {
 					.map( |v| v.t1 )
 					.max()
 					.unwrap_or( ratio::Ratio::zero() );
-				let evaluator = valuegen::Evaluator::new();
+				let mut evaluator = valuegen::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
 			},
 			UiMessage::Text( text ) => {

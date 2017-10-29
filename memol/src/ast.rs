@@ -52,7 +52,7 @@ pub enum Value {
 
 #[derive(Copy, Clone, Debug)]
 pub enum BinaryOp {
-	Add, Sub, Mul, Div, Eq, Ne, Le, Ge, Lt, Gt,
+	Add, Sub, Mul, Div, Eq, Ne, Le, Ge, Lt, Gt, Or,
 }
 
 #[derive(Clone, Debug)]

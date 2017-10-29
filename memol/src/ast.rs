@@ -52,7 +52,7 @@ pub enum Value {
 
 #[derive(Copy, Clone, Debug)]
 pub enum BinaryOp {
-	Add, Sub, Mul, Div, Min, Max,
+	Add, Sub, Mul, Div, Eq, Ne, Le, Ge, Lt, Gt,
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +62,7 @@ pub enum ValueTrack {
 	Sequence( Vec<Box<Ast<ValueTrack>>> ),
 	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
 	BinaryOp( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, BinaryOp ),
+	Branch( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>> ),
 }
 
 impl<T: Clone> Ast<T> {

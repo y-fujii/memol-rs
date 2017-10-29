@@ -20,7 +20,7 @@ pub definition: Definition<'a> = {
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <mi:@L> <c:value_track_min> <hi:@R> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <mi:@L> <c:value_track_eq> <hi:@R> =>? {
 		let mut a = a;
 		match a.values.insert( b, c ) {
 			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
@@ -149,11 +149,19 @@ chord_content: Vec<Box<Ast<Note<'a>>>> = {
 	=> Vec::new(),
 };
 
-value_track_min: Box<Ast<ValueTrack>> = {
-	<lo:@L> <a:value_track_min> "min" <b:value_track_add> <hi:@R> =>
-		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Min ) ),
-	<lo:@L> <a:value_track_min> "max" <b:value_track_add> <hi:@R> =>
-		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Max ) ),
+value_track_eq: Box<Ast<ValueTrack>> = {
+	<lo:@L> <a:value_track_eq> "==" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Eq ) ),
+	<lo:@L> <a:value_track_eq> "!=" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Ne ) ),
+	<lo:@L> <a:value_track_eq> "<=" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Le ) ),
+	<lo:@L> <a:value_track_eq> ">=" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Ge ) ),
+	<lo:@L> <a:value_track_eq> "<" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Lt ) ),
+	<lo:@L> <a:value_track_eq> ">" <b:value_track_add> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::BinaryOp( a, b, BinaryOp::Gt ) ),
 	<value_track_add>,
 };
 
@@ -184,10 +192,12 @@ value_track_prim: Box<Ast<ValueTrack>> = {
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
 	<lo:@L> "repeat" <a:uint> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+	<lo:@L> "if" <a:value_track_eq> "then" <b:value_track_prim> "else" <c:value_track_prim> <hi:@R> =>
+		Ast::new_box( lo, hi, ValueTrack::Branch( a, b, c ) ),
 };
 
 value_track_list: Vec<Box<Ast<ValueTrack>>> = {
-	<a:value_track_list> <b:value_track_min> => {
+	<a:value_track_list> <b:value_track_eq> => {
 		let mut a = a;
 		a.push( b );
 		a

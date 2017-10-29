@@ -10,9 +10,10 @@ use ast;
 #[derive(Debug)]
 pub enum Ir {
 	Value( ratio::Ratio, ratio::Ratio, ratio::Ratio, ratio::Ratio ),
+	Symbol( String ),
 	Sequence( Vec<(Ir, ratio::Ratio)> ),
 	BinaryOp( Box<Ir>, Box<Ir>, ast::BinaryOp ),
-	Symbol( String ),
+	Branch( Box<Ir>, Box<Ir>, Box<Ir> ),
 }
 
 #[derive(Debug)]
@@ -110,6 +111,14 @@ impl<'a> Generator<'a> {
 				let t = cmp::max( t_lhs, t_rhs );
 				(ir, t)
 			},
+			ast::ValueTrack::Branch( ref cond, ref then, ref elze ) => {
+				let (ir_cond, t_cond) = self.generate_value_track( cond, &span )?;
+				let (ir_then, t_then) = self.generate_value_track( then, &span )?;
+				let (ir_elze, t_elze) = self.generate_value_track( elze, &span )?;
+				let ir = Ir::Branch( Box::new( ir_cond ), Box::new( ir_then ), Box::new( ir_elze ) );
+				let t = cmp::max( t_cond, cmp::max( t_then, t_elze ) );
+				(ir, t)
+			},
 		};
 		Ok( dst )
 	}
@@ -167,6 +176,10 @@ impl<'a> Evaluator<'a> {
 				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
 				v.to_float()
 			},
+			Ir::Symbol( ref sym ) => {
+				let f = self.syms.get_mut( sym ).unwrap();
+				f( t )
+			},
 			Ir::Sequence( ref irs ) => {
 				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
 				self.eval( &irs[i - 1].0, t )
@@ -179,13 +192,19 @@ impl<'a> Evaluator<'a> {
 					ast::BinaryOp::Sub => lhs - rhs,
 					ast::BinaryOp::Mul => lhs * rhs,
 					ast::BinaryOp::Div => lhs / rhs,
-					ast::BinaryOp::Min => f64::min( lhs, rhs ),
-					ast::BinaryOp::Max => f64::max( lhs, rhs ),
+					ast::BinaryOp::Eq => if lhs == rhs { 1.0 } else { 0.0 },
+					ast::BinaryOp::Ne => if lhs != rhs { 1.0 } else { 0.0 },
+					ast::BinaryOp::Le => if lhs <= rhs { 1.0 } else { 0.0 },
+					ast::BinaryOp::Ge => if lhs >= rhs { 1.0 } else { 0.0 },
+					ast::BinaryOp::Lt => if lhs <  rhs { 1.0 } else { 0.0 },
+					ast::BinaryOp::Gt => if lhs >  rhs { 1.0 } else { 0.0 },
 				}
 			},
-			Ir::Symbol( ref sym ) => {
-				let f = self.syms.get_mut( sym ).unwrap();
-				f( t )
+			Ir::Branch( ref ir_cond, ref ir_then, ref ir_else ) => {
+				let cond = self.eval( ir_cond, t );
+				let then = self.eval( ir_then, t );
+				let elze = self.eval( ir_else, t );
+				cond * then + (1.0 - cond) * elze
 			},
 		}
 	}

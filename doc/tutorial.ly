@@ -90,6 +90,9 @@ already has many differences from the latest implementation.</strong>
 	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
+<p>You can see the example written in (current) memol language at
+<code><a href="https://bitbucket.org/ysfujii/memol-rs/raw/tip/examples/gymnopedie.mol">examples/gymnopedie.mol</a></code>
+.
 <p>Although the core idea of the language is considered for many years,
 the development begun recently so both the language specification and the
 implementation are still in a very early stage.  Currently they lack many

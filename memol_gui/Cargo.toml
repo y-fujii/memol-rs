@@ -11,7 +11,7 @@ glutin = "*"
 memol = { path = "../memol" }
 
 [build-dependencies]
-gcc = "*"
+cc = "*"
 bindgen = "*"
 
 [target.'cfg(windows)'.dependencies]

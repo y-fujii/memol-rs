@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 extern crate bindgen;
 use std::*;
 
@@ -22,7 +22,7 @@ fn main() {
 		.write_to_file( &file )
 		.unwrap();
 
-	gcc::Build::new()
+	cc::Build::new()
 		.cpp( true )
 		.cpp_link_stdlib( None )
 		.flag( "-std=c++14" )
@@ -30,8 +30,8 @@ fn main() {
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )
 		.flag( "-fno-use-cxa-atexit" )
-		.flag( "-DNDEBUG" )
-		.flag( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
+		.define( "NDEBUG", None )
+		.define( "IMGUI_DISABLE_OBSOLETE_FUNCTIONS", None )
 		.file( "imgui/imgui.cpp" )
 		.file( "imgui/imgui_draw.cpp" )
 		.compile( "libimgui.a" );

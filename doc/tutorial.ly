@@ -98,7 +98,7 @@ features for practical use.
 <h2>Current status</h2>
 <ul>
 <li>70% of primitive/low-level features are implemented.
-<li>0% of high-level features are implemented.
+<li>0% of middle-level features are implemented.
 	<ul>
 		<li>chord notation, auto-voicing, auto-articulation, language
 		extension API, etc.
@@ -146,7 +146,7 @@ connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
 <p>JACK_PORT can be specified multiple times and then the memol output port is
 being connected to them.
 <p>Recent version of memol has highly-experimental GUI interfaces mostly for
-debugging purpose.  You can build &amp; run it by typing the commands
+my debugging purpose.  You can build &amp; run it by typing the commands
 below.</p>
 <pre>
 cd memol-rs/memol_gui

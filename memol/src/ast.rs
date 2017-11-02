@@ -3,14 +3,14 @@ use std::*;
 use ratio;
 
 
-#[derive(Clone, Debug)]
-pub struct Ast<T: Clone> {
+#[derive(Debug)]
+pub struct Ast<T> {
 	pub ast: T,
 	pub bgn: usize,
 	pub end: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Definition<'a> {
 	pub scores: collections::HashMap<String, Box<Ast<Score<'a>>>>,
 	pub values: collections::HashMap<String, Box<Ast<ValueTrack>>>,
@@ -22,7 +22,7 @@ pub enum Dir {
 	Upper,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Note<'a> {
 	Note( Dir, char, i32, i32 ),
 	Rest,
@@ -34,17 +34,18 @@ pub enum Note<'a> {
 	Tie( Box<Ast<Note<'a>>> ),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Score<'a> {
 	Score( Vec<Box<Ast<Note<'a>>>> ),
 	Symbol( String ),
 	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
 	Parallel( Vec<Box<Ast<Score<'a>>>> ),
 	Sequence( Vec<Box<Ast<Score<'a>>>> ),
+	Repeat( Box<Ast<Score<'a>>>, i32 ),
 	Stretch( Box<Ast<Score<'a>>>, ratio::Ratio ),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Value {
 	Value( ratio::Ratio, ratio::Ratio ),
 	Group( Vec<(Box<Ast<Value>>, i32)> ),
@@ -55,17 +56,18 @@ pub enum BinaryOp {
 	Add, Sub, Mul, Div, Eq, Ne, Le, Ge, Lt, Gt, Or,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ValueTrack {
 	ValueTrack( Vec<Box<Ast<Value>>> ),
 	Symbol( String ),
 	Sequence( Vec<Box<Ast<ValueTrack>>> ),
+	Repeat( Box<Ast<ValueTrack>>, i32 ),
 	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
 	BinaryOp( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, BinaryOp ),
 	Branch( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>> ),
 }
 
-impl<T: Clone> Ast<T> {
+impl<T> Ast<T> {
 	pub fn new( bgn: usize, end: usize, ast: T ) -> Ast<T> {
 		Ast{ ast: ast, bgn: bgn, end: end }
 	}

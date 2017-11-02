@@ -132,6 +132,18 @@ impl<'a> Generator<'a> {
 				}
 				t
 			},
+			ast::Score::Repeat( ref s, n ) => {
+				let mut t = span.t0;
+				for _ in 0 .. n {
+					let span = Span{
+						t0: t,
+						t1: t + (span.t1 - span.t0),
+						.. *span
+					};
+					t = self.generate_score( s, &span, dst )?;
+				}
+				t
+			},
 			ast::Score::Stretch( ref s, r ) => {
 				let span = Span{
 					t1: span.t0 + r * (span.t1 - span.t0),

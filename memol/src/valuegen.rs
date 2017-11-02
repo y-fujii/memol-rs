@@ -97,6 +97,21 @@ impl<'a> Generator<'a> {
 				}
 				(Ir::Sequence( irs ), t)
 			},
+			ast::ValueTrack::Repeat( ref s, n ) => {
+				let mut irs = Vec::new();
+				let mut t = span.t0;
+				for _ in 0 .. n {
+					let span = Span{
+						t0: t,
+						t1: t + (span.t1 - span.t0),
+						.. *span
+					};
+					let (ir, t1) = self.generate_value_track( s, &span )?;
+					irs.push( (ir, t) );
+					t = t1;
+				}
+				(Ir::Sequence( irs ), t)
+			},
 			ast::ValueTrack::Stretch( ref s, r ) => {
 				let span = Span{
 					t1: span.t0 + r * (span.t1 - span.t0),

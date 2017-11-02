@@ -50,7 +50,7 @@ score_prim: Box<Ast<Score<'a>>> = {
 	<lo:@L> "{" <a:score_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( a ) ),
 	<lo:@L> "repeat" <a:uint> <b:score_prim> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+		Ast::new_box( lo, hi, Score::Repeat( b, a ) ),
 	<lo:@L> "stretch" <a:sratio> <b:score_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 };
@@ -209,7 +209,7 @@ value_track_prim: Box<Ast<ValueTrack>> = {
 	<lo:@L> "stretch" <a:sratio> <b:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Stretch( b, a ) ),
 	<lo:@L> "repeat" <a:uint> <b:value_track_prim> <hi:@R> =>
-		Ast::new_box( lo, hi, ValueTrack::Sequence( (0 .. a).map( |_| b.clone() ).collect() ) ),
+		Ast::new_box( lo, hi, ValueTrack::Repeat( b, a ) ),
 	<lo:@L> "if" <a:value_track_or> "then" <b:value_track_prim> "else" <c:value_track_prim> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Branch( a, b, c ) ),
 	<lo:@L> "!" <a:value_track_prim> <hi:@R> => {

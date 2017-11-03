@@ -109,7 +109,7 @@ impl Ui {
 			dragging: false,
 			time_scale: 24.0,
 			color_line_0: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.30, 0.30, 0.30, 1.00 ) ) ),
-			color_line_1: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.60, 0.60, 1.00 ) ) ),
+			color_line_1: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.70, 0.70, 0.70, 1.00 ) ) ),
 			color_note:   imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
 		}
 	}
@@ -249,8 +249,11 @@ impl Ui {
 		}
 
 		let ys = [
-			36, 40,
-			60, 81, 84,
+			36 - 24, 40 - 24,
+			36,      40,
+			60,
+			81,      84,
+			81 + 24, 84 + 24,
 		];
 		for &i in ys.iter() {
 			let v0 = ImVec2::new( 0.0                   - 0.5 * 0.25, i as f32 + 0.5 );

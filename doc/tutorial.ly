@@ -155,6 +155,7 @@ cd memol-rs/memol_gui
 cargo install
 memol_gui &
 </pre>
+<p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
 
 <h2>Hello, twinkle little star</h2>
 

@@ -108,9 +108,9 @@ impl Ui {
 			follow: true,
 			dragging: false,
 			time_scale: 24.0,
-			color_line_0: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.40, 0.40, 0.40, 1.00 ) ) ),
-			color_line_1: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.80, 0.80, 0.80, 1.00 ) ) ),
-			color_note:   imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.15, 0.15, 0.15, 1.00 ) ) ),
+			color_line_0: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.30, 0.30, 0.30, 1.00 ) ) ),
+			color_line_1: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.60, 0.60, 1.00 ) ) ),
+			color_note:   imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
 		}
 	}
 

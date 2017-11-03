@@ -20,7 +20,7 @@ score $pattern() = [
 	{ (@q0 > q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 > q0 @q1 Q1 Q2 Q3 Q4 Q5) | / }
 ]
 
-score $out.0() = [ _ ( $melody() $pattern() with q = $chord() ) with _ = repeat 39 { (ABC+DEF+G) } _ ]
+score $out.0() = [_ ($melody() $pattern() with q = $chord()) with _ = repeat 39 { (ABC+DEF+G) } _]
 value $out.0.offset()   = $gaussian() / 512
 value $out.0.velocity() = 1 / 2 + $gaussian() / 64
 value $out.tempo()      = 2 / 5

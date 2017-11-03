@@ -103,9 +103,11 @@ impl<T, U: Ui<T>> Window<T, U> {
 			while n > 0 {
 				let mut closed = false;
 				self.looper.poll_events( |ev|
-					match Self::handle_event( ui, rx, &ev ) {
-						Some( k ) => n = cmp::max( n, k + 1 ),
-						None      => closed = true,
+					if let glutin::Event::DeviceEvent{ .. } = ev {} else {
+						match Self::handle_event( ui, rx, &ev ) {
+							Some( k ) => n = cmp::max( n, k + 1 ),
+							None      => closed = true,
+						}
 					}
 				);
 				if closed {
@@ -130,11 +132,16 @@ impl<T, U: Ui<T>> Window<T, U> {
 
 			let mut closed = false;
 			self.looper.run_forever( |ev| {
-				match Self::handle_event( ui, rx, &ev ) {
-					Some( k ) => n = k + 1,
-					None      => closed = true,
+				if let glutin::Event::DeviceEvent{ .. } = ev {
+					glutin::ControlFlow::Continue
 				}
-				glutin::ControlFlow::Break
+				else {
+					match Self::handle_event( ui, rx, &ev ) {
+						Some( k ) => n = k + 1,
+						None      => closed = true,
+					}
+					glutin::ControlFlow::Break
+				}
 			} );
 			if closed {
 				return Ok( () );

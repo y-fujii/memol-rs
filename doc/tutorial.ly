@@ -117,13 +117,12 @@ features for practical use.
 main development platform is Linux.  Please make sure that following programs
 are installed before building.
 <ul>
-    <li><a href="http://rust-lang.org/">Rust nightly</a>
-    <li><a href="http://crates.io/">Cargo</a>
+    <li><a href="http://rust-lang.org/">Rust</a>
     <li><a href="http://jackaudio.org/">JACK</a>
 </ul>
 <p>Using <a href="https://www.rustup.rs/">rustup</a> is an easiest way to
-install Rust nightly and Cargo.  Building and installing memol are quite simple
-thanks to Cargo; Just type
+install Rust.  Building and installing memol are quite simple thanks to Cargo;
+Just type
 <pre>
 hg clone <a href="https://bitbucket.org/ysfujii/memol-rs/">https://bitbucket.org/ysfujii/memol-rs/</a>
 cd memol-rs/memol

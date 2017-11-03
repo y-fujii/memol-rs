@@ -5,53 +5,65 @@ use std::*;
 
 pub struct DrawContext<'a> {
 	pub draw_list: &'a mut ImDrawList,
-	pub min: ImVec2,
-	pub max: ImVec2,
+	pub a: ImVec2,
+	pub b: ImVec2,
 	pub clip_min: ImVec2,
 	pub clip_max: ImVec2,
 }
 
 impl<'a> DrawContext<'a> {
-	pub fn new() -> DrawContext<'static> {
+	pub fn new( a: f32, b: ImVec2 ) -> DrawContext<'static> {
 		unsafe {
 			let pos = GetWindowPos();
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				min: pos + GetWindowContentRegionMin(),
-				max: pos + GetWindowContentRegionMax(),
+				a: ImVec2::new( a, -a ),
+				b: pos + ImVec2::new( GetWindowContentRegionMin().x, GetWindowContentRegionMax().y ) + b,
 				clip_min: pos,
 				clip_max: pos + GetWindowSize(),
 			}
 		}
 	}
 
-	pub fn add_line( &mut self, a: ImVec2, b: ImVec2, col: u32, thickness: f32 ) {
-		let a = self.min + a;
-		let b = self.min + b;
-		if self.intersect_aabb( a, b ) {
+	pub fn add_line( &mut self, v0: ImVec2, v1: ImVec2, col: u32, thickness: f32 ) {
+		let (lt, rb) = self.transform_rect( v0, v1 );
+		if self.intersect_aabb( lt, rb ) {
 			unsafe {
-				self.draw_list.AddLine( &a, &b, col, thickness );
+				self.draw_list.AddLine( &lt, &rb, col, self.a.x * thickness );
 			}
 		}
 	}
 
-	pub fn add_rect_filled( &mut self, a: ImVec2, b: ImVec2, col: u32, rounding: f32, flags: i32 ) {
-		let a = self.min + a;
-		let b = self.min + b;
-		if self.intersect_aabb( a, b ) {
+	pub fn add_rect_filled( &mut self, v0: ImVec2, v1: ImVec2, col: u32, rounding: f32, flags: i32 ) {
+		let (lt, rb) = self.transform_rect( v0, v1 );
+		if self.intersect_aabb( lt, rb ) {
 			unsafe {
-				self.draw_list.AddRectFilled( &a, &b, col, rounding, flags );
+				self.draw_list.AddRectFilled( &lt, &rb, col, self.a.x * rounding, flags );
 			}
 		}
 	}
 
-	pub fn size( &self ) -> ImVec2 {
-		self.max - self.min
+	pub fn transform_loc( &self, v: ImVec2 ) -> ImVec2 {
+		self.a * v + self.b
 	}
 
-	fn intersect_aabb( &self, a: ImVec2, b: ImVec2 ) -> bool {
-		self.clip_min.x <= b.x && a.x <= self.clip_max.x &&
-		self.clip_min.y <= b.y && a.y <= self.clip_max.y
+	pub fn transform_rect( &self, v0: ImVec2, v1: ImVec2 ) -> (ImVec2, ImVec2) {
+		let v0 = self.transform_loc( v0 );
+		let v1 = self.transform_loc( v1 );
+		let lt = ImVec2::new( f32::min( v0.x, v1.x ), f32::min( v0.y, v1.y ) );
+		let rb = ImVec2::new( f32::max( v0.x, v1.x ), f32::max( v0.y, v1.y ) );
+		(lt, rb)
+	}
+
+	fn intersect_aabb( &self, v0: ImVec2, v1: ImVec2 ) -> bool {
+		self.clip_min.x <= v1.x && v0.x <= self.clip_max.x &&
+		self.clip_min.y <= v1.y && v0.y <= self.clip_max.y
+	}
+}
+
+pub fn window_origin() -> ImVec2 {
+	unsafe {
+		GetWindowPos() + GetWindowContentRegionMin()
 	}
 }
 
@@ -91,9 +103,13 @@ pub fn set_scale( s: f32 ) {
 	style.CurveTessellationTol   = (style.CurveTessellationTol   * s).round();
 }
 
-pub fn begin_root( flags: u32 ) {
+pub fn root_size() -> ImVec2 {
+	get_io().DisplaySize
+}
+
+pub fn root_begin( flags: u32 ) {
 	unsafe {
-		let size = get_io().DisplaySize;
+		let size = root_size();
 		let rounding = get_style().WindowRounding;
 		let padding  = get_style().WindowPadding;
 		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, 0.0 );
@@ -111,7 +127,7 @@ pub fn begin_root( flags: u32 ) {
 	}
 }
 
-pub fn end_root() {
+pub fn root_end() {
 	unsafe {
 		PopStyleVar( 2 );
 		End();

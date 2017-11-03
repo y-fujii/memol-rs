@@ -35,11 +35,11 @@ struct Ui {
 	player: Option<Box<player::Player>>,
 	channel: i32,
 	follow: bool,
-	color_time_bar: u32,
-	color_time_odd: u32,
-	color_chromatic: u32,
-	color_note_top: u32,
-	color_note_sub: u32,
+	dragging: bool,
+	time_scale: f32,
+	color_line_0: u32,
+	color_line_1: u32,
+	color_note: u32,
 }
 
 impl window::Ui<UiMessage> for Ui {
@@ -106,11 +106,11 @@ impl Ui {
 			player: None,
 			channel: 0,
 			follow: true,
-			color_time_bar:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 1.00 ) ) ),
-			color_time_odd:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.00, 0.00, 0.00, 0.02 ) ) ),
-			color_chromatic: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.90, 0.90, 0.90, 1.00 ) ) ),
-			color_note_top:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.10, 0.15, 0.20, 1.00 ) ) ),
-			color_note_sub:  imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.60, 0.70, 0.80, 1.00 ) ) ),
+			dragging: false,
+			time_scale: 24.0,
+			color_line_0: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.40, 0.40, 0.40, 1.00 ) ) ),
+			color_line_1: imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.80, 0.80, 0.80, 1.00 ) ) ),
+			color_note:   imutil::pack_color( imutil::srgb_gamma( imgui::ImVec4::new( 0.15, 0.15, 0.15, 1.00 ) ) ),
 		}
 	}
 
@@ -170,70 +170,96 @@ impl Ui {
 		PopStyleVar( 2 );
 
 		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
-		imutil::begin_root( ImGuiWindowFlags_HorizontalScrollbar );
-			// scrolling.
-			let ctx = imutil::DrawContext::new();
-			let note_size = ImVec2::new( (ctx.size().y / 8.0).ceil(), ctx.size().y / 128.0 );
-			let prev = GetScrollX();
-			if self.follow && is_playing {
-				let next = location * note_size.x - ctx.size().x / 4.0;
-				SetScrollX( prev * 0.9375 + next * 0.0625 );
-			}
-			else {
-				let delta = GetMouseDragDelta( 0, -1.0 );
-				SetScrollX( prev + delta.x * 0.25 );
-				if delta.x != 0.0 {
+		let content_h = imutil::root_size().y - get_style().ScrollbarSize;
+		let unit = content_h / 128.0;
+		let content_w = unit * self.time_scale * (self.end + 1).to_float() as f32;
+		SetNextWindowContentSize( &ImVec2::new( content_w, content_h ) );
+		imutil::root_begin( ImGuiWindowFlags_HorizontalScrollbar );
+			/* mouse operation. */ {
+				let dx = GetMouseDragDelta( 0, -1.0 ).x;
+				self.dragging |= dx != 0.0;
+
+				if self.dragging {
+					SetScrollX( GetScrollX() + dx * 0.25 );
 					count = cmp::max( count, 1 );
 				}
+				else {
+					SetCursorScreenPos( &GetWindowPos() );
+					if InvisibleButton( c_str!( "background" ), &GetWindowSize() ) {
+						let x = (GetMousePos().x - imutil::window_origin().x) / (unit * self.time_scale) - 0.5;
+						player.seek( f64::max( x as f64, 0.0 ) / self.tempo )?;
+						count = cmp::max( count, JACK_FRAME_WAIT );
+					}
+					else if self.follow && is_playing {
+						let next = (location + 0.5) * self.time_scale * unit - (1.0 / 6.0) * GetWindowSize().x;
+						SetScrollX( (31.0 / 32.0) * GetScrollX() + (1.0 / 32.0) * next );
+						count = cmp::max( count, 1 );
+					}
+				}
+
+				self.dragging &= !IsMouseReleased( 0 );
 			}
 
-			// rendering.
-			let mut ctx = imutil::DrawContext::new();
-			self.draw_background( &mut ctx, note_size );
-			for &(ch, ref ir) in self.assembly.channels.iter() {
-				if ch != self.channel as usize {
-					self.draw_notes( &mut ctx, &ir.score, note_size, self.color_note_sub );
+			/* rendering. */ {
+				let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
+				self.draw_background( &mut ctx );
+				for &(ch, ref ir) in self.assembly.channels.iter() {
+					if ch == self.channel as usize {
+						self.draw_notes( &mut ctx, &ir.score, self.color_note );
+					}
 				}
+				self.draw_time_bar( &mut ctx, location );
 			}
-			for &(ch, ref ir) in self.assembly.channels.iter() {
-				if ch == self.channel as usize {
-					self.draw_notes( &mut ctx, &ir.score, note_size, self.color_note_top );
-				}
-			}
-
-			if let Some( seek ) = self.draw_time_bar( &mut ctx, note_size, location ) {
-				player.seek( seek )?;
-				count = cmp::max( count, JACK_FRAME_WAIT );
-			}
-		imutil::end_root();
+		imutil::root_end();
 		PopStyleColor( 1 );
 
 		count = cmp::max( count, if is_playing { 1 } else { 0 } );
 		Ok( count )
 	}
 
-	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2 ) {
+	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext ) {
 		use imgui::*;
 
 		let end = self.end.to_float() as f32;
-		for i in 0 .. (128 + 11) / 12 {
-			for j in [ 1, 3, 6, 8, 10 ].iter() {
-				let lt = ImVec2::new( 0.0,               (127 - i * 12 - j) as f32 * note_size.y );
-				let rb = ImVec2::new( end * note_size.x, (128 - i * 12 - j) as f32 * note_size.y );
-				ctx.add_rect_filled( lt, rb, self.color_chromatic, 1.0, !0 );
+
+		for i in 0 .. self.end.floor() + 1 {
+			let ys = [
+				(43.5 - 24.0, 57.5 - 24.0),
+				(43.5       , 57.5       ),
+				(64.5       , 77.5       ),
+				(64.5 + 24.0, 77.5 + 24.0),
+			];
+			for &(y0, y1) in ys.iter() {
+				let v0 = ImVec2::new( self.time_scale * i as f32, y0 );
+				let v1 = ImVec2::new( self.time_scale * i as f32, y1 );
+				ctx.add_line( v0, v1, self.color_line_0, 0.25 );
 			}
 		}
 
-		let mut i = 1;
-		while i <= self.end.floor() {
-			let lt = ImVec2::new( (i + 0) as f32 * note_size.x, 0.0          );
-			let rb = ImVec2::new( (i + 1) as f32 * note_size.x, ctx.size().y );
-			ctx.add_rect_filled( lt, rb, self.color_time_odd, 1.0, !0 );
-			i += 2;
+		let ys = [
+			43,      47,      50,      53,      57,
+			43 - 24, 47 - 24, 50 - 24, 53 - 24, 57 - 24,
+			64,      67,      71,      74,      77,
+			64 + 24, 67 + 24, 71 + 24, 74 + 24, 77 + 24,
+		];
+		for &i in ys.iter() {
+			let v0 = ImVec2::new( self.time_scale * 0.0 - 0.5 * 0.25, i as f32 + 0.5 );
+			let v1 = ImVec2::new( self.time_scale * end + 0.5 * 0.25, i as f32 + 0.5 );
+			ctx.add_line( v0, v1, self.color_line_0, 0.25 );
+		}
+
+		let ys = [
+			36, 40,
+			60, 81, 84,
+		];
+		for &i in ys.iter() {
+			let v0 = ImVec2::new( 0.0                   - 0.5 * 0.25, i as f32 + 0.5 );
+			let v1 = ImVec2::new( end * self.time_scale + 0.5 * 0.25, i as f32 + 0.5 );
+			ctx.add_line( v0, v1, self.color_line_1, 0.25 );
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, note_size: ImVec2, color: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, color: u32 ) {
 		use imgui::*;
 
 		for note in ir.notes.iter() {
@@ -242,13 +268,13 @@ impl Ui {
 				None      => continue,
 			};
 
-			let x0 = ImVec2::new( note.t0.to_float() as f32 * note_size.x,       (127 - nnum) as f32 * note_size.y );
-			let x1 = ImVec2::new( note.t1.to_float() as f32 * note_size.x - 1.0, (128 - nnum) as f32 * note_size.y );
-			ctx.add_rect_filled( x0, x1, color, note_size.y * 0.25, !0 );
+			let x0 = ImVec2::new( self.time_scale * note.t0.to_float() as f32, nnum as f32 + 0.0 );
+			let x1 = ImVec2::new( self.time_scale * note.t1.to_float() as f32, nnum as f32 + 1.0 );
+			ctx.add_rect_filled( x0, x1, color, 0.5, !0 );
 
-			let dt = note.t1 - note.t0;
-			SetCursorPos( &x0 );
-			Dummy( &ImVec2::new( dt.to_float() as f32 * note_size.x - 1.0, note_size.y ) );
+			let (lt, rb) = ctx.transform_rect( x0, x1 );
+			SetCursorScreenPos( &lt );
+			Dummy( &(rb - lt) );
 			if IsItemHovered( ImGuiHoveredFlags_Default as i32 ) {
 				BeginTooltip();
 					let sym = match nnum % 12 {
@@ -261,6 +287,7 @@ impl Ui {
 						11 => "B",
 						 _ => panic!(),
 					};
+					let dt = note.t1 - note.t0;
 					imutil::show_text( &format!( "     note = {}{}", sym, nnum / 12 - 1 ) );
 					imutil::show_text( &format!( "gate time = {} + {}/{}",
 						misc::idiv( note.t0.y, note.t0.x ),
@@ -273,24 +300,10 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_time_bar( &self, ctx: &mut imutil::DrawContext, note_size: ImVec2, loc: f32 ) -> Option<f64> {
-		use imgui::*;
-		let mut seek = None;
-
-		PushStyleVar1( ImGuiStyleVar_ItemSpacing as i32, &ImVec2::zero() );
-		for i in 0 .. self.end.floor() + 1 {
-			SetCursorPos( &ImVec2::new( (i as f32 - 0.5) * note_size.x, 0.0 ) );
-			if InvisibleButton( c_str!( "time_bar##{}", i ), &ImVec2::new( note_size.x, ctx.size().y ) ) {
-				seek = Some( i as f64 / self.tempo );
-			}
-		}
-		PopStyleVar( 1 );
-
-		let lt = ImVec2::new( loc * note_size.x - 1.0, 0.0          );
-		let rb = ImVec2::new( loc * note_size.x - 1.0, ctx.size().y );
-		ctx.add_line( lt, rb, self.color_time_bar, 1.0 );
-
-		seek
+	unsafe fn draw_time_bar( &self, ctx: &mut imutil::DrawContext, loc: f32 ) {
+		let v0 = ImVec2::new( self.time_scale * loc,   0.0 );
+		let v1 = ImVec2::new( self.time_scale * loc, 128.0 );
+		ctx.add_line( v0, v1, self.color_line_0, 0.25 );
 	}
 }
 

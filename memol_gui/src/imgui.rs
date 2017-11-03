@@ -45,6 +45,14 @@ impl ops::Sub<ImVec2> for ImVec2 {
 	}
 }
 
+impl ops::Mul<ImVec2> for ImVec2 {
+	type Output = ImVec2;
+
+	fn mul( self, other: ImVec2 ) -> ImVec2 {
+		ImVec2::new( self.x * other.x, self.y * other.y )
+	}
+}
+
 impl ops::Mul<f32> for ImVec2 {
 	type Output = ImVec2;
 

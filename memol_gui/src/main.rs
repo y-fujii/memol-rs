@@ -63,6 +63,7 @@ impl window::Ui<UiMessage> for Ui {
 					.unwrap_or( ratio::Ratio::zero() );
 				let mut evaluator = valuegen::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
+				self.channel = 0;
 			},
 			UiMessage::Text( text ) => {
 				self.assembly = Assembly::default();
@@ -109,18 +110,54 @@ impl Ui {
 	unsafe fn draw_all( &mut self ) -> Result<i32, Box<error::Error>> {
 		use imgui::*;
 
+		let is_playing;
+		let location;
+		match self.player {
+			Some( ref player ) => {
+				is_playing = player.is_playing();
+				location   = player.location();
+			},
+			None => {
+				is_playing = false;
+				location   = ratio::Ratio::zero();
+			},
+		}
+
 		if let Some( ref text ) = self.text {
 			imutil::message_dialog( "Message", text );
 		}
 
+		let mut changed = self.draw_transport()?;
+
+		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
+		imutil::root_begin( 0 );
+		if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
+			let result = self.piano_roll.draw(
+				&ch.score, self.end.to_float() as f32,
+				(location.to_float() * self.tempo) as f32,
+				is_playing && self.follow,
+				GetWindowSize(),
+			)?;
+			if let (&Some( ref player ), Some( loc )) = (&self.player, result) {
+				player.seek( f64::max( loc as f64, 0.0 ) / self.tempo )?;
+				changed = true;
+			}
+		}
+		imutil::root_end();
+		PopStyleColor( 1 );
+
+		let count = if changed { JACK_FRAME_WAIT } else if is_playing { 1 } else { 0 };
+		Ok( count )
+	}
+
+	unsafe fn draw_transport( &mut self ) -> Result<bool, Box<error::Error>> {
+		use imgui::*;
+
 		let player = match self.player {
 			Some( ref v ) => v,
-			None          => return Ok( 0 ),
+			None          => return Ok( false ),
 		};
-		let is_playing = player.is_playing();
-		let time_cur   = (player.location().to_float() * self.tempo) as f32;
-
-		let mut count = 0;
+		let mut changed = false;
 
 		let padding = get_style().WindowPadding;
 		PushStyleVar1( ImGuiStyleVar_WindowMinSize as i32, &ImVec2::zero() );
@@ -134,21 +171,22 @@ impl Ui {
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
 				player.seek( 0.0 )?;
-				count = cmp::max( count, JACK_FRAME_WAIT );
+				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04b}" ), &size ) {
 				player.play()?;
-				count = cmp::max( count, JACK_FRAME_WAIT );
+				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04d}" ), &size ) {
 				player.stop()?;
+				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
 				player.seek( self.end.to_float() / self.tempo )?;
-				count = cmp::max( count, JACK_FRAME_WAIT );
+				changed = true;
 			}
 
 			SameLine( 0.0, -1.0 );
@@ -161,26 +199,7 @@ impl Ui {
 		End();
 		PopStyleVar( 2 );
 
-		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
-		imutil::root_begin( 0 );
-			if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
-				if let Some( loc ) = self.piano_roll.draw(
-					&ch.score, self.end.to_float() as f32,
-					time_cur, is_playing && self.follow,
-					GetWindowSize(),
-				)? {
-					player.seek( f64::max( loc as f64, 0.0 ) / self.tempo )?;
-					count = cmp::max( count, JACK_FRAME_WAIT );
-				}
-			}
-			else {
-				self.channel = 0;
-			}
-		imutil::root_end();
-		PopStyleColor( 1 );
-
-		count = cmp::max( count, if is_playing { 1 } else { 0 } );
-		Ok( count )
+		Ok( changed )
 	}
 }
 

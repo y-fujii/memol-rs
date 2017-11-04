@@ -12,17 +12,21 @@ pub struct DrawContext<'a> {
 }
 
 impl<'a> DrawContext<'a> {
-	pub fn new( a: f32, b: ImVec2 ) -> DrawContext<'static> {
+	pub fn new( v0: ImVec2, v1: ImVec2 ) -> DrawContext<'static> {
 		unsafe {
-			let pos = GetWindowPos();
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				a: ImVec2::new( a, -a ),
-				b: pos + ImVec2::new( GetWindowContentRegionMin().x, GetWindowContentRegionMax().y ) + b,
-				clip_min: pos,
-				clip_max: pos + GetWindowSize(),
+				a: ImVec2::new( 1.0, -1.0 ),
+				b: ImVec2::new( v0.x, v1.y ),
+				clip_min: v0,
+				clip_max: v1,
 			}
 		}
+	}
+
+	pub fn set_transform( &mut self, a: f32, b: ImVec2 ) {
+		self.a = ImVec2::new( a, -a );
+		self.b = ImVec2::new( self.clip_min.x, self.clip_max.y ) + b;
 	}
 
 	pub fn add_line( &mut self, v0: ImVec2, v1: ImVec2, col: u32, thickness: f32 ) {
@@ -58,12 +62,6 @@ impl<'a> DrawContext<'a> {
 	fn intersect_aabb( &self, v0: ImVec2, v1: ImVec2 ) -> bool {
 		self.clip_min.x <= v1.x && v0.x <= self.clip_max.x &&
 		self.clip_min.y <= v1.y && v0.y <= self.clip_max.y
-	}
-}
-
-pub fn window_origin() -> ImVec2 {
-	unsafe {
-		GetWindowPos() + GetWindowContentRegionMin()
 	}
 }
 

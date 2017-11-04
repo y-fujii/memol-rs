@@ -176,25 +176,23 @@ impl Ui {
 		SetNextWindowContentSize( &ImVec2::new( content_w, content_h ) );
 		imutil::root_begin( ImGuiWindowFlags_HorizontalScrollbar );
 			/* mouse operation. */ {
-				let dx = GetMouseDragDelta( 0, -1.0 ).x;
-				self.dragging |= dx != 0.0;
+				SetCursorScreenPos( &GetWindowPos() );
+				let clicked = InvisibleButton( c_str!( "background" ), &GetWindowSize() );
+				self.dragging |= IsItemActive() && IsMouseDragging( 0, -1.0 );
 
 				if self.dragging {
-					SetScrollX( GetScrollX() + dx * 0.25 );
+					SetScrollX( GetScrollX() + 0.25 * GetMouseDragDelta( 0, -1.0 ).x );
 					count = cmp::max( count, 1 );
 				}
-				else {
-					SetCursorScreenPos( &GetWindowPos() );
-					if InvisibleButton( c_str!( "background" ), &GetWindowSize() ) {
-						let x = (GetMousePos().x - imutil::window_origin().x) / (unit * self.time_scale) - 0.5;
-						player.seek( f64::max( x as f64, 0.0 ) / self.tempo )?;
-						count = cmp::max( count, JACK_FRAME_WAIT );
-					}
-					else if self.follow && is_playing {
-						let next = (location + 0.5) * self.time_scale * unit - (1.0 / 6.0) * GetWindowSize().x;
-						SetScrollX( (31.0 / 32.0) * GetScrollX() + (1.0 / 32.0) * next );
-						count = cmp::max( count, 1 );
-					}
+				else if clicked {
+					let x = (GetMousePos().x - imutil::window_origin().x) / (unit * self.time_scale) - 0.5;
+					player.seek( f64::max( x as f64, 0.0 ) / self.tempo )?;
+					count = cmp::max( count, JACK_FRAME_WAIT );
+				}
+				else if self.follow && is_playing {
+					let next = (location + 0.5) * self.time_scale * unit - (1.0 / 6.0) * GetWindowSize().x;
+					SetScrollX( (31.0 / 32.0) * GetScrollX() + (1.0 / 32.0) * next );
+					count = cmp::max( count, 1 );
 				}
 
 				self.dragging &= !IsMouseReleased( 0 );

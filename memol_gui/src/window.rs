@@ -75,7 +75,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 			looper: looper,
 			window: window,
 			renderer: renderer::Renderer::new(),
-			timer: time::UNIX_EPOCH,
+			timer: time::SystemTime::now(),
 			ui: ui,
 			tx: tx,
 			rx: rx,
@@ -114,10 +114,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 					return Ok( () );
 				}
 
-				let timer = time::SystemTime::now();
-				let delta = timer.duration_since( self.timer )?;
-				self.timer = timer;
-				imgui::get_io().DeltaTime = delta.as_secs() as f32 * 1e3 + delta.subsec_nanos() as f32 / 1e6;
+				let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
+				let delta = self.timer.duration_since( timer )?;
+				imgui::get_io().DeltaTime = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
 
 				unsafe { imgui::NewFrame() };
 				n = cmp::max( n, ui.on_draw() + 1 );

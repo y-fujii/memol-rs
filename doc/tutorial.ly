@@ -77,7 +77,7 @@ already has many differences from the latest implementation.</strong>
     <dt>Focused on musical composition
 	<dd>Language design and implementation help trial-and-error of musical
 	composition well (in the future).  Unlike score typesetting languages,
-	memol also focused on describing time-changing value used for MIDI control
+	memol also focused on describing time-dependent value used for MIDI control
 	changes, etc.
     <dt>Extendable with ordinal programming languages
 	<dd>(Planned. Not implemented yet.)
@@ -147,9 +147,8 @@ connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
 <a href="http://ardour.org/">Ardour</a> can be used, of course.
 <p>JACK_PORT can be specified multiple times and then the memol output port is
 being connected to them.
-<p>Recent version of memol has highly-experimental GUI interfaces mostly for
-my debugging purpose.  You can build &amp; run it by typing the commands
-below.</p>
+<p>Recent version of memol has highly-experimental GUI mostly for my debugging
+purpose.  You can build &amp; run it by typing the commands below.</p>
 <pre>
 cd memol-rs/memol_gui
 cargo install
@@ -317,7 +316,7 @@ score $out.0()   = { ... } with _ = $a_major()
 
 <h2>Value track</h2>
 <p>Value track has the similar syntax to score track but it describes the
-time-changing value.
+time-dependent value.
 <p>XXX
 <p>Outside <code>"{...}"</code>, arithmetic operation can be applied.
 <p>XXX

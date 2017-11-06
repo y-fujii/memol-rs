@@ -57,6 +57,7 @@ pub struct Channel {
 pub struct Assembly {
 	pub channels: Vec<(usize, Channel)>,
 	pub tempo: valuegen::Ir,
+	pub len: ratio::Ratio,
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
 }
@@ -71,6 +72,7 @@ impl default::Default for Assembly {
 				ratio::Ratio::one(),
 				ratio::Ratio::one(),
 			),
+			len: ratio::Ratio::zero(),
 			bgn: ratio::Ratio::zero(),
 			end: ratio::Ratio::zero(),
 		}
@@ -90,23 +92,6 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 			scores.push( (ch, ir) );
 		}
 	}
-
-	let mut evaluator = valuegen::Evaluator::new();
-	let bgn = match value_gen.generate( "out.begin" )? {
-		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
-		None       => 0,
-	};
-	let end = match value_gen.generate( "out.end" )? {
-		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
-		None => {
-			let v = scores.iter()
-				.flat_map( |&(_, ref v)| v.notes.iter() )
-				.map( |v| v.t1 )
-				.max()
-				.unwrap_or( ratio::Ratio::zero() );
-			(v * TICK).round()
-		}
-	};
 
 	let mut channels = Vec::new();
 	for (ch, score) in scores.into_iter() {
@@ -143,9 +128,26 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 			ratio::Ratio::one(),
 		) );
 
+	let len = channels.iter()
+		.flat_map( |&(_, ref v)| v.score.notes.iter() )
+		.map( |v| v.t1 )
+		.max()
+		.unwrap_or( ratio::Ratio::zero() );
+
+	let mut evaluator = valuegen::Evaluator::new();
+	let bgn = match value_gen.generate( "out.begin" )? {
+		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		None       => 0,
+	};
+	let end = match value_gen.generate( "out.end" )? {
+		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		None       => (len * TICK).round()
+	};
+
 	Ok( Assembly{
 		channels: channels,
 		tempo: tempo,
+		len: len,
 		bgn: ratio::Ratio::new( bgn, TICK ),
 		end: ratio::Ratio::new( end, TICK ),
 	} )

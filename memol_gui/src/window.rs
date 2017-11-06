@@ -98,10 +98,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 		let ui = &mut self.ui;
 		let rx = &mut self.rx;
 
+		let mut closed = false;
 		let mut n = 1;
 		loop {
 			while n > 0 {
-				let mut closed = false;
 				self.looper.poll_events( |ev|
 					if let glutin::Event::DeviceEvent{ .. } = ev {} else {
 						match Self::handle_event( ui, rx, &ev ) {
@@ -112,6 +112,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 				);
 				if closed {
 					return Ok( () );
+				}
+				if (0 .. 3).any( |i| io.MouseDown[i] ) {
+					n = cmp::max( n, 1 + 1 );
 				}
 
 				let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
@@ -129,7 +132,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 				n -= 1;
 			}
 
-			let mut closed = false;
 			self.looper.run_forever( |ev| {
 				if let glutin::Event::DeviceEvent{ .. } = ev {
 					glutin::ControlFlow::Continue
@@ -142,9 +144,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 					glutin::ControlFlow::Break
 				}
 			} );
-			if closed {
-				return Ok( () );
-			}
 		}
 	}
 

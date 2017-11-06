@@ -29,7 +29,6 @@ struct Ui {
 	compile_tx: sync::mpsc::Sender<String>,
 	assembly: Assembly,
 	events: Vec<midi::Event>,
-	end: ratio::Ratio,
 	tempo: f64, // XXX
 	text: Option<String>,
 	player: Option<Box<player::Player>>,
@@ -56,21 +55,12 @@ impl window::Ui<UiMessage> for Ui {
 				self.assembly = asm;
 				self.events   = evs;
 				self.text     = None;
-				self.end = self.assembly.channels.iter()
-					.flat_map( |&(_, ref v)| v.score.notes.iter() )
-					.map( |v| v.t1 )
-					.max()
-					.unwrap_or( ratio::Ratio::zero() );
 				let mut evaluator = valuegen::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
 				self.channel = 0;
 			},
 			UiMessage::Text( text ) => {
-				self.assembly = Assembly::default();
-				self.events   = Vec::new();
-				self.text     = Some( text );
-				self.end      = ratio::Ratio::zero();
-				self.tempo    = 1.0;
+				self.text = Some( text );
 			},
 			UiMessage::Player( player ) => {
 				self.player = Some( player );
@@ -97,9 +87,8 @@ impl Ui {
 			compile_tx: compile_tx,
 			assembly: Assembly::default(),
 			events: Vec::new(),
-			end: ratio::Ratio::zero(),
 			tempo: 1.0,
-			text: Some( "Drag and drop to open a file.".into() ),
+			text: None,
 			player: None,
 			piano_roll: pianoroll::PianoRoll::new(),
 			channel: 0,
@@ -133,7 +122,7 @@ impl Ui {
 		imutil::root_begin( 0 );
 		if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
 			let result = self.piano_roll.draw(
-				&ch.score, self.end.to_float() as f32,
+				&ch.score, self.assembly.len.to_float() as f32,
 				(location.to_float() * self.tempo) as f32,
 				is_playing && self.follow,
 				GetWindowSize(),
@@ -185,7 +174,7 @@ impl Ui {
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
-				player.seek( self.end.to_float() / self.tempo )?;
+				player.seek( self.assembly.len.to_float() / self.tempo )?;
 				changed = true;
 			}
 
@@ -306,6 +295,11 @@ fn main() {
 
 		if let Some( path ) = args.free.first() {
 			compile_tx.send( path.clone() )?;
+		}
+		else {
+			window.create_sender().send( UiMessage::Text(
+				"Drag and drop to open a file.".into()
+			) );
 		}
 
 		window.event_loop()

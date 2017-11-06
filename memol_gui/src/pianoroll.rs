@@ -32,6 +32,7 @@ impl PianoRoll {
 		let content_w = unit * self.time_scale * (time_len + 1.0);
 		let content_size = ImVec2::new( content_w, content_h );
 
+		SetNextWindowContentSize( &content_size );
 		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_HorizontalScrollbar as i32 );
 			let origin = ImGui::GetCursorScreenPos();
 			let clicked = InvisibleButton( c_str!( "background" ), &content_size );

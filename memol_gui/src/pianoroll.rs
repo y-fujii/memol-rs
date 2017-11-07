@@ -34,7 +34,7 @@ impl PianoRoll {
 
 		SetNextWindowContentSize( &content_size );
 		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_HorizontalScrollbar as i32 );
-			let origin = ImGui::GetCursorScreenPos();
+			let origin = GetCursorScreenPos();
 			let clicked = InvisibleButton( c_str!( "background" ), &content_size );
 
 			self.dragging |= IsItemActive() && IsMouseDragging( 0, -1.0 );

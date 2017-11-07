@@ -196,39 +196,38 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 	let mut path = String::new();
 	let mut modified = time::UNIX_EPOCH;
 	loop {
-		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
-			Ok( v ) => {
+		match notify::wait_file_or_channel( &path, &rx, modified ) {
+			notify::WaitResult::File( v ) => {
+				modified = v;
+			},
+			notify::WaitResult::Message( v ) => {
 				path = v;
 				modified = time::UNIX_EPOCH;
+				continue;
 			},
-			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
-			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return,
+			notify::WaitResult::Disconnect => {
+				break;
+			},
 		}
 		if path.is_empty() {
 			continue;
 		}
-		|| -> Result<_, Box<error::Error>> {
-			if mem::replace( &mut modified, fs::metadata( &path )?.modified()? ) == modified {
-				return Ok( () );
-			}
 
-			let mut buf = String::new();
-			fs::File::open( &path )?.read_to_string( &mut buf )?;
+		let mut buf = String::new();
+		if let Err( e ) = fs::File::open( &path ).and_then( |mut e| e.read_to_string( &mut buf ) ) {
+			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) );
+			continue;
+		}
 
-			let msg = || -> Result<_, misc::Error> {
-				let asm = compile( &buf )?;
-				let evs = assemble( &asm )?;
-				Ok( UiMessage::Data( asm, evs ) )
-			}().unwrap_or_else( |e| {
-				let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
-				UiMessage::Text( format!( "Compile error at ({}, {}): {}", row, col, e.msg ) )
-			} );
-			tx.send( msg );
-
-			Ok( () )
-		}().unwrap_or_else( |e|
-			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) )
-		);
+		let msg = || -> Result<_, misc::Error> {
+			let asm = compile( &buf )?;
+			let evs = assemble( &asm )?;
+			Ok( UiMessage::Data( asm, evs ) )
+		}().unwrap_or_else( |e| {
+			let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
+			UiMessage::Text( format!( "Compile error at ({}, {}): {}", row, col, e.msg ) )
+		} );
+		tx.send( msg );
 	}
 }
 

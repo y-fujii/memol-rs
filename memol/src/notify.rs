@@ -3,7 +3,7 @@ use std::*;
 
 
 #[cfg( target_os = "linux" )]
-pub fn notify_wait( path: &str ) -> io::Result<()> {
+pub fn wait_file( path: &str ) -> io::Result<()> {
 	const IN_CLOEXEC: i32 = 0o2000000;
 	const IN_CLOSE_WRITE: u32 = 0x8;
 	extern "C" {
@@ -28,7 +28,7 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 }
 
 #[cfg( not( target_os = "linux" ) )]
-pub fn notify_wait( path: &str ) -> io::Result<()> {
+pub fn wait_file( path: &str ) -> io::Result<()> {
 	let bgn = fs::metadata( path )?.modified()?;
 	let mut mid;
 	loop {
@@ -47,4 +47,38 @@ pub fn notify_wait( path: &str ) -> io::Result<()> {
 		mid = end;
 	}
 	Ok( () )
+}
+
+pub enum WaitResult<T> {
+	File( time::SystemTime ),
+	Message( T ),
+	Disconnect,
+}
+
+pub fn wait_file_or_channel<T: AsRef<path::Path>, U>( path: &T, rx: &sync::mpsc::Receiver<U>, bgn: time::SystemTime ) -> WaitResult<U> {
+	let mut mid;
+	loop {
+		mid = fs::metadata( path ).and_then( |e| e.modified() ).unwrap_or( bgn );
+		if mid != bgn {
+			break;
+		}
+		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
+			Ok ( v )                                          => return WaitResult::Message( v ),
+			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
+			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return WaitResult::Disconnect,
+		}
+	}
+	loop {
+		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
+			Ok ( v )                                          => return WaitResult::Message( v ),
+			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
+			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return WaitResult::Disconnect,
+		}
+		let end = fs::metadata( path ).and_then( |e| e.modified() ).unwrap_or( mid );
+		if end == mid {
+			break;
+		}
+		mid = end;
+	}
+	WaitResult::File( mid )
 }

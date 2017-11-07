@@ -45,7 +45,7 @@ fn main() {
 				},
 			}
 
-			notify::notify_wait( &args.free[0] )?;
+			notify::wait_file( &args.free[0] )?;
 		}
 	};
 	if let Err( e ) = f() {

@@ -110,9 +110,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 						}
 					}
 				);
-				if closed {
-					return Ok( () );
-				}
 				if (0 .. 3).any( |i| io.MouseDown[i] ) {
 					n = cmp::max( n, 1 + 1 );
 				}
@@ -130,6 +127,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 				self.window.swap_buffers()?;
 
 				n -= 1;
+			}
+
+			if closed {
+				return Ok( () );
 			}
 
 			self.looper.run_forever( |ev| {

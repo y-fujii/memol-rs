@@ -30,6 +30,7 @@ fn main() {
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )
 		.flag( "-fno-use-cxa-atexit" )
+		.flag( "-Wno-implicit-fallthrough" )
 		.define( "NDEBUG", None )
 		.define( "IMGUI_DISABLE_OBSOLETE_FUNCTIONS", None )
 		.file( "imgui/imgui.cpp" )

@@ -110,6 +110,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 						}
 					}
 				);
+				if closed {
+					return Ok( () );
+				}
 				if (0 .. 3).any( |i| io.MouseDown[i] ) {
 					n = cmp::max( n, 1 + 1 );
 				}
@@ -129,9 +132,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 				n -= 1;
 			}
 
-			if closed {
-				return Ok( () );
-			}
 
 			self.looper.run_forever( |ev| {
 				if let glutin::Event::DeviceEvent{ .. } = ev {
@@ -145,6 +145,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 					glutin::ControlFlow::Break
 				}
 			} );
+			if closed {
+				return Ok( () );
+			}
 		}
 	}
 

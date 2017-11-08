@@ -57,7 +57,6 @@ impl window::Ui<UiMessage> for Ui {
 				self.text     = None;
 				let mut evaluator = valuegen::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
-				self.channel = 0;
 			},
 			UiMessage::Text( text ) => {
 				self.text = Some( text );

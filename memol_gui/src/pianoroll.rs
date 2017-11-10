@@ -11,7 +11,8 @@ pub struct PianoRoll {
 	line_width: f32,
 	color_line_0: u32,
 	color_line_1: u32,
-	color_note: u32,
+	color_note_0: u32,
+	color_note_1: u32,
 }
 
 impl PianoRoll {
@@ -22,7 +23,8 @@ impl PianoRoll {
 			line_width: 0.25,
 			color_line_0: imutil::pack_color( imutil::srgb_gamma( ImVec4::new( 0.30, 0.30, 0.30, 1.00 ) ) ),
 			color_line_1: imutil::pack_color( imutil::srgb_gamma( ImVec4::new( 0.70, 0.70, 0.70, 1.00 ) ) ),
-			color_note:   imutil::pack_color( imutil::srgb_gamma( ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
+			color_note_0: imutil::pack_color( imutil::srgb_gamma( ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
+			color_note_1: imutil::pack_color( imutil::srgb_gamma( ImVec4::new( 0.80, 0.40, 0.10, 1.00 ) ) ),
 		}
 	}
 
@@ -57,7 +59,7 @@ impl PianoRoll {
 			let mut ctx = imutil::DrawContext::new( origin, origin + content_size );
 			ctx.set_transform( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
 			self.draw_background( &mut ctx, time_len );
-			self.draw_notes( &mut ctx, &ir, self.color_note );
+			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
 		EndChild();
 
@@ -104,15 +106,18 @@ impl PianoRoll {
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, color: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, time_cur: f32, color_0: u32, color_1: u32 ) {
 		for note in ir.notes.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
 				None      => continue,
 			};
 
-			let x0 = ImVec2::new( self.time_scale * note.t0.to_float() as f32, nnum as f32 + 0.0 );
-			let x1 = ImVec2::new( self.time_scale * note.t1.to_float() as f32, nnum as f32 + 1.0 );
+			let t0 = note.t0.to_float() as f32;
+			let t1 = note.t1.to_float() as f32;
+			let x0 = ImVec2::new( self.time_scale * t0, nnum as f32 + 0.0 );
+			let x1 = ImVec2::new( self.time_scale * t1, nnum as f32 + 1.0 );
+			let color = if t0 <= time_cur && time_cur <= t1 { color_1 } else { color_0 };
 			ctx.add_rect_filled( x0, x1, color, 0.5, !0 );
 
 			let (lt, rb) = ctx.transform_rect( x0, x1 );
@@ -146,6 +151,6 @@ impl PianoRoll {
 	unsafe fn draw_time_bar( &self, ctx: &mut imutil::DrawContext, time_cur: f32 ) {
 		let v0 = ImVec2::new( self.time_scale * time_cur,   0.0 );
 		let v1 = ImVec2::new( self.time_scale * time_cur, 128.0 );
-		ctx.add_line( v0, v1, self.color_line_0, self.line_width );
+		ctx.add_line( v0, v1, self.color_note_1, self.line_width );
 	}
 }

@@ -132,7 +132,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 				n -= 1;
 			}
 
-
 			self.looper.run_forever( |ev| {
 				if let glutin::Event::DeviceEvent{ .. } = ev {
 					glutin::ControlFlow::Continue

@@ -287,6 +287,7 @@ impl<'a> Generator<'a> {
 			Some( v ) => v,
 			None      => return misc::error( note.bgn, "note does not exist." ),
 		};
+		// XXX: O(N^2).
 		let f = match fs.iter().filter( |n| n.t0 <= span.t0 && span.t0 < n.t1 ).nth( ord as usize ) {
 			Some( v ) => v,
 			None      => return misc::error( note.bgn, "note does not exist." ),

@@ -36,6 +36,8 @@ impl<'a> Generator<'a> {
 		let mut syms = collections::HashSet::new();
 		syms.insert( "gaussian".into() );
 		syms.insert( "note_len".into() );
+		syms.insert( "note_cnt".into() );
+		syms.insert( "note_nth".into() );
 		Generator{
 			defs: defs,
 			syms: syms,
@@ -171,6 +173,8 @@ impl<'a> Evaluator<'a> {
 		};
 		this.add_symbol( "gaussian".into(), move |_| 0.0 );
 		this.add_symbol( "note_len".into(), move |_| 0.0 );
+		this.add_symbol( "note_cnt".into(), move |_| 0.0 );
+		this.add_symbol( "note_nth".into(), move |_| 0.0 );
 		this
 	}
 

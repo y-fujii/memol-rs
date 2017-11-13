@@ -52,8 +52,12 @@ impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
 
 	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir, ir_dur: &valuegen::Ir ) {
 		let note_len = cell::Cell::new( 0.0 );
+		let note_cnt = cell::Cell::new( 0.0 );
+		let note_nth = cell::Cell::new( 0.0 );
 		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
 		evaluator.add_symbol( "note_len".into(), |_| note_len.get() );
+		evaluator.add_symbol( "note_cnt".into(), |_| note_cnt.get() );
+		evaluator.add_symbol( "note_nth".into(), |_| note_nth.get() );
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.notes.iter() {
 			let nnum = match f.nnum {
@@ -65,7 +69,17 @@ impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
 				continue;
 			}
 
+			// XXX: O(N^2).
+			let mut cnt = 0;
+			for g in ir_score.notes.iter().filter( |g| g.t0 <= f.t0 && f.t0 < g.t1 ) {
+				if g as *const _ == f as *const _ {
+					note_nth.set( cnt as f64 );
+				}
+				cnt += 1;
+			};
+			note_cnt.set( cnt as f64 );
 			note_len.set( (f.t1 - f.t0).to_float() );
+
 			let dt = evaluator.eval( ir_dur, f.t0 );
 			let d0 = *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
 			let d1 = *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );

@@ -110,7 +110,7 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 				ratio::Ratio::new( 0, 1 ),
 			) );
 		let dur = value_gen.generate( &format!( "out.{}.duration", ch ) )?
-			.unwrap_or( valuegen::Ir::Symbol( "note_len".into() ) );
+			.unwrap_or( valuegen::Ir::Symbol( "note.len".into() ) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
 			if let Some( ir ) = value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {

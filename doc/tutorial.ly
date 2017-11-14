@@ -323,10 +323,12 @@ time-dependent value.
 <pre>
 value $out.0.tempo()    = 1 / 2
 value $out.0.velocity() = { [3:3 4] 3 2 | 2..4 3 } / 8 + { 0..1 | 1..2 } / 4
-value $out.0.offset()   = $gaussian() / 128
-value $out.0.duration() = $note_len() * 6 / 8 + 1 / 8
+value $out.0.offset()   = $note.nth() / 32 + $gaussian() / 256
+value $out.0.duration() = $note.len() * 6 / 8 + 1 / 8
 value $out.0.cc11()     = { 3..4 | 3..1 } / 4
 </pre>
+<p>There are some special symbols: <code>$note.len(), $note.cnt(), $note.nth()</code>.
+<p>XXX
 
 <h2>Articulation, arpeggio, sustain pedal</h2>
 <p>XXX: Not implemented yet.

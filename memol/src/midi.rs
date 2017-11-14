@@ -55,9 +55,9 @@ impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
 		let note_cnt = cell::Cell::new( 0.0 );
 		let note_nth = cell::Cell::new( 0.0 );
 		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
-		evaluator.add_symbol( "note_len".into(), |_| note_len.get() );
-		evaluator.add_symbol( "note_cnt".into(), |_| note_cnt.get() );
-		evaluator.add_symbol( "note_nth".into(), |_| note_nth.get() );
+		evaluator.add_symbol( "note.len".into(), |_| note_len.get() );
+		evaluator.add_symbol( "note.cnt".into(), |_| note_cnt.get() );
+		evaluator.add_symbol( "note.nth".into(), |_| note_nth.get() );
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.notes.iter() {
 			let nnum = match f.nnum {

@@ -76,7 +76,7 @@ impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
 					note_nth.set( cnt as f64 );
 				}
 				cnt += 1;
-			};
+			}
 			note_cnt.set( cnt as f64 );
 			note_len.set( (f.t1 - f.t0).to_float() );
 

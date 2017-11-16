@@ -72,8 +72,10 @@ impl window::Ui<UiMessage> for Ui {
 				None       => 0.0,
 			};
 			player.set_data( mem::replace( &mut self.events, Vec::new() ) );
-			player.seek( bgn ).unwrap_or( () );
-			player.play().unwrap_or( () );
+			if !player.is_playing() {
+				player.seek( bgn ).unwrap_or( () );
+				player.play().unwrap_or( () );
+			}
 		}
 
 		JACK_FRAME_WAIT

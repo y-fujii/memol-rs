@@ -150,8 +150,8 @@ chord_content: Vec<Box<Ast<Note<'a>>>> = {
 };
 
 value_track: Box<Ast<ValueTrack>> = {
-	<value_track_and_wz_if>,
-	<value_track_and_wo_if>,
+	<value_track_or_wz_if>,
+	<value_track_or_wo_if>,
 };
 
 value_track_or_wz_if: Box<Ast<ValueTrack>> = {

@@ -5,10 +5,11 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 build = "build.rs"
 
 [dependencies]
+getopts = "*"
+lalrpop-util = "*"
+libloading = "*"
 rand = "*"
 regex = "*"
-lalrpop-util = "*"
-getopts = "*"
 
 [build-dependencies]
 lalrpop = "*"

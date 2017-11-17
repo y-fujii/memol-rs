@@ -2,6 +2,7 @@
 extern crate rand;
 extern crate regex;
 extern crate lalrpop_util;
+extern crate libloading;
 #[macro_use]
 pub mod misc;
 pub mod ratio;

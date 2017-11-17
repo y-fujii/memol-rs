@@ -25,7 +25,7 @@ fn main() {
 	cc::Build::new()
 		.cpp( true )
 		.cpp_link_stdlib( None )
-		.flag( "-std=c++14" )
+		.flag( "-std=gnu++14" )
 		.flag( "-fno-rtti" )
 		.flag( "-fno-exceptions" )
 		.flag( "-fno-threadsafe-statics" )

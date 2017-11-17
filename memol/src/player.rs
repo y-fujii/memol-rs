@@ -13,9 +13,10 @@ struct SharedData {
 
 // XXX: unmovable mark or 2nd depth indirection.
 pub struct Player {
-	shared: sync::Mutex<SharedData>,
+	lib: jack::Library,
 	jack: *mut jack::Client,
 	port: *mut jack::Port,
+	shared: sync::Mutex<SharedData>,
 }
 
 unsafe impl Send for Player {}
@@ -23,7 +24,7 @@ unsafe impl Send for Player {}
 impl Drop for Player {
 	fn drop( &mut self ) {
 		unsafe {
-			jack::jack_client_close( self.jack );
+			(self.lib.client_close)( self.jack );
 		}
 	}
 }
@@ -31,34 +32,37 @@ impl Drop for Player {
 impl Player {
 	pub fn new( name: &str ) -> io::Result<Box<Player>> {
 		unsafe {
-			let jack = jack::jack_client_open( c_str!( "{}", name ), 0, ptr::null_mut() );
+			let lib = jack::Library::new()?;
+
+			let jack = (lib.client_open)( format!( "{}\0", name ).as_ptr(), 0, ptr::null_mut() );
 			if jack.is_null() {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_client_open()." ) );
 			}
 
-			let port = jack::jack_port_register( jack, c_str!( "out" ), c_str!( "8 bit raw midi" ), jack::PORT_IS_OUTPUT, 0 );
+			let port = (lib.port_register)( jack, "out\0".as_ptr(), jack::JACK_DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
 			if port.is_null() {
-				jack::jack_client_close( jack );
+				(lib.client_close)( jack );
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_port_register()." ) );
 			}
 
-			let mut this = Box::new( Player{
+			let this = Box::new( Player{
+				lib: lib,
+				jack: jack,
+				port: port,
 				shared: sync::Mutex::new( SharedData{
 					events: Vec::new(),
 					changed: false,
 				} ),
-				jack: jack,
-				port: port,
 			} );
 
-			if jack::jack_set_process_callback( this.jack, Player::process_callback, &mut *this ) != 0 {
+			if (this.lib.set_process_callback)( this.jack, Player::process_callback, &*this ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_process_callback()." ) );
 			}
-			if jack::jack_set_sync_callback( this.jack, Player::sync_callback, &mut *this ) != 0 {
+			if (this.lib.set_sync_callback)( this.jack, Player::sync_callback, &*this ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_sync_callback()." ) );
 			}
 
-			if jack::jack_activate( this.jack ) != 0 {
+			if (this.lib.activate)( this.jack ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_activate()." ) );
 			}
 
@@ -74,7 +78,7 @@ impl Player {
 
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			if jack::jack_connect( self.jack, jack::jack_port_name( self.port ), c_str!( "{}", port ) ) != 0 {
+			if (self.lib.connect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_connect()." ) );
 			}
 		}
@@ -83,14 +87,14 @@ impl Player {
 
 	pub fn play( &self ) -> io::Result<()> {
 		unsafe {
-			jack::jack_transport_start( self.jack );
+			(self.lib.transport_start)( self.jack );
 		}
 		Ok( () )
 	}
 
 	pub fn stop( &self ) -> io::Result<()> {
 		unsafe {
-			jack::jack_transport_stop( self.jack );
+			(self.lib.transport_stop)( self.jack );
 		}
 		let mut shared = self.shared.lock().unwrap();
 		shared.changed = true;
@@ -101,8 +105,8 @@ impl Player {
 		debug_assert!( time >= 0.0 );
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
-			jack::jack_transport_query( self.jack, &mut pos );
-			jack::jack_transport_locate( self.jack, (time * pos.frame_rate as f64) as u32 );
+			(self.lib.transport_query)( self.jack, &mut pos );
+			(self.lib.transport_locate)( self.jack, (time * pos.frame_rate as f64) as u32 );
 		}
 		Ok( () )
 	}
@@ -110,11 +114,11 @@ impl Player {
 	pub fn location( &self ) -> ratio::Ratio {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
-			jack::jack_transport_query( self.jack, &mut pos );
+			(self.lib.transport_query)( self.jack, &mut pos );
 			// the resolution of jack_position_t::frame is per process cycles.
 			// jack_get_current_transport_frame() estimates the current
 			// position more accurately.
-			let frame = jack::jack_get_current_transport_frame( self.jack );
+			let frame = (self.lib.get_current_transport_frame)( self.jack );
 			ratio::Ratio::new( frame as i64, pos.frame_rate as i64 )
 		}
 	}
@@ -122,19 +126,19 @@ impl Player {
 	pub fn is_playing( &self ) -> bool {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
-			match jack::jack_transport_query( self.jack, &mut pos ) {
+			match (self.lib.transport_query)( self.jack, &mut pos ) {
 				jack::TransportState::Stopped => false,
 				_                             => true,
 			}
 		}
 	}
 
-	extern fn process_callback( size: u32, this: *mut any::Any ) -> i32 {
+	extern fn process_callback( size: u32, this: *const any::Any ) -> i32 {
 		unsafe {
-			let this = &mut *(this as *mut Player);
+			let this = &*(this as *const Player);
 
-			let buf = jack::jack_port_get_buffer( this.port, size );
-			jack::jack_midi_clear_buffer( buf );
+			let buf = (this.lib.port_get_buffer)( this.port, size );
+			(this.lib.midi_clear_buffer)( buf );
 
 			let mut shared = match this.shared.try_lock() {
 				Err( _ ) => return 0,
@@ -142,12 +146,12 @@ impl Player {
 			};
 
 			if shared.changed {
-				Self::write_all_note_off( buf, 0 );
+				this.write_all_note_off( buf, 0 );
 				shared.changed = false;
 			}
 
 			let mut pos: jack::Position = mem::uninitialized();
-			match jack::jack_transport_query( this.jack, &mut pos ) {
+			match (this.lib.transport_query)( this.jack, &mut pos ) {
 				jack::TransportState::Rolling => (),
 				_ => return 0,
 			}
@@ -156,27 +160,27 @@ impl Player {
 			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (0.0  as f64, i16::MIN) );
 			let iend = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (size as f64, i16::MIN) );
 			for ev in shared.events[ibgn .. iend].iter() {
-				jack::jack_midi_event_write( buf, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
+				(this.lib.midi_event_write)( buf, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
 			}
 
 			if ibgn == shared.events.len() {
-				jack::jack_transport_stop( this.jack );
+				(this.lib.transport_stop)( this.jack );
 				shared.changed = true;
 			}
 		}
 		0
 	}
 
-	unsafe fn write_all_note_off( buf: *mut jack::PortBuffer, frame: u32 ) {
+	unsafe fn write_all_note_off( &self, buf: *mut jack::PortBuffer, frame: u32 ) {
 		for ch in 0 .. 16 {
 			let msg: [u8; 3] = [ 0xb0 + ch, 0x7b, 0x00 ];
-			jack::jack_midi_event_write( buf, frame, msg.as_ptr(), msg.len() );
+			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
 		}
 	}
 
-	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *mut any::Any ) -> i32 {
+	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const any::Any ) -> i32 {
 		unsafe {
-			let this = &mut *(this as *mut Player);
+			let this = &*(this as *const Player);
 
 			let mut shared = match this.shared.try_lock() {
 				Err( _ ) => return 0,

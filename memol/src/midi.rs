@@ -101,6 +101,21 @@ impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
 		}
 	}
 
+	pub fn add_pitch( &mut self, ch: usize, ir: &valuegen::Ir ) {
+		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
+		let mut prev_v = 0;
+		for i in self.bgn .. self.end {
+			let t = Ratio::new( i, self.tick );
+			let v = (evaluator.eval( ir, t ) * 8192.0 + 8192.0).round().max( 0.0 ).min( 16383.0 ) as u32;
+			if v != prev_v {
+				let lsb = ((v >> 0) & 0x7f) as u8;
+				let msb = ((v >> 7) & 0x7f) as u8;
+				self.events.push( Event::new( t.to_float(), 0, &[ (0xe0 + ch) as u8, lsb, msb ] ) );
+				prev_v = v;
+			}
+		}
+	}
+
 	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &valuegen::Ir ) {
 		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 255;

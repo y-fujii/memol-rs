@@ -52,6 +52,7 @@ pub struct Channel {
 	pub velocity: valuegen::Ir,
 	pub offset: valuegen::Ir,
 	pub duration: valuegen::Ir,
+	pub pitch: valuegen::Ir,
 	pub ccs: Vec<(usize, valuegen::Ir)>,
 }
 
@@ -96,29 +97,43 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 
 	let mut channels = Vec::new();
 	for (ch, score) in scores.into_iter() {
-		let vel = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
+		let velocity = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
 			.unwrap_or( valuegen::Ir::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::new( 5, 8 ),
 				ratio::Ratio::new( 5, 8 ),
 			) );
-		let ofs = value_gen.generate( &format!( "out.{}.offset", ch ) )?
+		let offset = value_gen.generate( &format!( "out.{}.offset", ch ) )?
 			.unwrap_or( valuegen::Ir::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::new( 0, 1 ),
 				ratio::Ratio::new( 0, 1 ),
 			) );
-		let dur = value_gen.generate( &format!( "out.{}.duration", ch ) )?
+		let duration = value_gen.generate( &format!( "out.{}.duration", ch ) )?
 			.unwrap_or( valuegen::Ir::Symbol( "note.len".into() ) );
+		let pitch = value_gen.generate( &format!( "out.{}.pitch", ch ) )?
+			.unwrap_or( valuegen::Ir::Value(
+				ratio::Ratio::zero(),
+				ratio::Ratio::one(),
+				ratio::Ratio::new( 0, 1 ),
+				ratio::Ratio::new( 0, 1 ),
+			) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
 			if let Some( ir ) = value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
 				ccs.push( (cc, ir) );
 			}
 		}
-		channels.push( (ch, Channel{ score: score, velocity: vel, offset: ofs, duration: dur, ccs: ccs }) );
+		channels.push( (ch, Channel{
+			score: score,
+			velocity: velocity,
+			offset: offset,
+			duration: duration,
+			pitch: pitch,
+			ccs: ccs,
+		}) );
 	}
 
 	let tempo = value_gen.generate( "out.tempo" )?
@@ -162,6 +177,7 @@ pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
 	let mut migen = midi::Generator::new( &mut rng, bgn, end, TICK );
 	for &(ch, ref irs) in src.channels.iter() {
 		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset, &irs.duration );
+		migen.add_pitch( ch, &irs.pitch );
 		for &(cc, ref ir) in irs.ccs.iter() {
 			migen.add_cc( ch, cc, &ir );
 		}

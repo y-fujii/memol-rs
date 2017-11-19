@@ -61,25 +61,25 @@
 <body>
 
 <h1>memol language overview</h1>
-<p><strong>WARNING: The documentation is curently very unkind, incomplete and
-already has many differences from the latest implementation.</strong>
+<p><strong style="color: #e02020">WARNING: The documentation is very incomplete
+and different from the latest implementation.</strong>
 
 <p>memol is a music description language which features:
 <dl>
-    <dt>Well-structured
+	<dt>Well-structured
 	<dd>Essentially, memol describes a score as recursive composition of two
 	constructs only: group <code>"[...]"</code> and chord <code>"(...)"</code>.
-    <dt>Orthogonal
+	<dt>Orthogonal
 	<dd>Some musical elements like scale, chord and backing pattern can be
 	described independently and composite them each other.  <code>"with"</code>
 	syntax enables (some of) them in a unified form.  Expressions (note
 	velocity, control change, ...) are also described separately.
-    <dt>Focused on musical composition
+	<dt>Focused on musical composition
 	<dd>Language design and implementation help trial-and-error of musical
 	composition well (in the future).  Unlike score typesetting languages,
 	memol also focused on describing time-dependent value used for MIDI control
 	changes, etc.
-    <dt>Extendable with ordinal programming languages
+	<dt>Extendable with ordinal programming languages
 	<dd>(Planned. Not implemented yet.)
 </dl>
 <p>memol does <strong>not</strong> aim to have:
@@ -113,42 +113,40 @@ features for practical use.
 
 <h2>Build, install and run</h2>
 
-<p>Although any platform that run Rust and JACK are potentially supported, the
-main development platform is Linux.  Please make sure that following programs
-are installed before building.
+<p>Although memol can run potentially on any platforms which support Rust and
+JACK, I develop it primary on Linux and sometimes test it on Windows
+(<code>x86_64-pc-windows-gnu</code> target).  Please make sure that following
+programs are installed.
 <ul>
-    <li><a href="http://rust-lang.org/">Rust</a>
-    <li><a href="http://jackaudio.org/">JACK</a>
+	<li><a href="http://rust-lang.org/">Rust</a> (build dependency)
+	<li><a href="http://jackaudio.org/">JACK</a> (runtime dependency)
 </ul>
-<p>Using <a href="https://www.rustup.rs/">rustup</a> is an easiest way to
-install Rust.  Building and installing memol are quite simple thanks to Cargo;
-Just type
+<p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
 hg clone <a href="https://bitbucket.org/ysfujii/memol-rs/">https://bitbucket.org/ysfujii/memol-rs/</a>
 cd memol-rs/memol
 cargo install
 </pre>
-<p>and everything should be done. Note that Windows target must be
-<code>*-gnu</code>, not <code>*-msvc</code> due to JACK DLL linking issue.
-Alternatively, you can download the pre-compiled binaries from
-<code><a href="http://mimosa-pudica.net/memol/bin/">http://mimosa-pudica.net/memol/bin/</a></code>.</p>
+<p>and everything should be done.  Alternatively, you can download the
+pre-compiled binaries from
+<code><a href="http://mimosa-pudica.net/memol/bin/">http://mimosa-pudica.net/memol/bin/</a></code>.
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK.
 <pre>
 memol [-c JACK_PORT] FILE
 </pre>
+<p>JACK_PORT can be specified multiple times and then the memol output port is
+being connected to them.
 <p>memol keeps watching the change of the file and reflects it immediately.  If
 <code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
 <p>Since memol supports JACK transport, start/stop/seek operations are synced
-with other JACK clients (Currently Timebase is not supported).  Personally I
+with other JACK clients.  Personally I
 use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage JACK
-connections, LinuxSampler, LV2 plugins, etc.  Many JACK supported DAW like
+connections, plugins, etc.  Many JACK supported DAW like
 <a href="http://ardour.org/">Ardour</a> can be used, of course.
-<p>JACK_PORT can be specified multiple times and then the memol output port is
-being connected to them.
-<p>Recent version of memol has highly-experimental GUI mostly for my debugging
-purpose.  You can build &amp; run it by typing the commands below.</p>
+<p>Recent version of memol has experimental GUI program.
+<a href="https://clang.llvm.org/">clang</a> must be installed to build one.
 <pre>
 cd memol-rs/memol_gui
 cargo install
@@ -162,7 +160,7 @@ memol_gui &
 score $out.0() = { c c G G | A A g _ | f f e e | d d c _ }
 </pre>
 <lilypond relative="1">
-    { c c g' g a a g r f f e e d d c r }
+	{ c c g' g a a g r f f e e d d c r }
 </lilypond>
 <p>memol language structure is roughly divided into two layers: inside
 <code>{...}</code> and outside.  Both layers have similar syntax and similar
@@ -197,7 +195,7 @@ respectively.
 score $out.0() = { c D E d | &gt; D E &lt; c _ }
 </pre>
 <lilypond relative="1">
-    { c d e d d' e c, r }
+	{ c d e d d' e c, r }
 </lilypond>
 
 <h2>Accidental</h2>
@@ -208,7 +206,7 @@ specified with <code>"with"</code> syntax explained later.
 score $out.0() = { c D+ E++ F- }
 </pre>
 <lilypond relative="1">
-    { c dis eisis fes }
+	{ c dis eisis fes }
 </lilypond>
 
 <h2>Group</h2>
@@ -223,7 +221,7 @@ ratio.  For example, <code>"[3e 2c]"</code> gives the duration 3/5 to "e" and
 score $out.0() = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
 </pre>
 <lilypond relative="1">
-    { c1 c2 c2 \tuplet 3/2 { c2 c2 c2 } c4 c16 c16 c16 c16 c8. c16 \tuplet 3/2 { c8 c8. c32 c32 } }
+	{ c1 c2 c2 \tuplet 3/2 { c2 c2 c2 } c4 c16 c16 c16 c16 c8. c16 \tuplet 3/2 { c8 c8. c32 c32 } }
 </lilypond>
 
 <h2>Chord</h2>
@@ -291,7 +289,7 @@ causes error.
 <pre>
 score $part_a() = { e F G A }
 score $part_b() = { c D E F }
-score $out.0()  = ($part_a $part_b)
+score $out.0()  = ( $part_a() $part_b() )
 </pre>
 
 <h2><code>"with"</code> syntax</h2>
@@ -315,7 +313,7 @@ score $out.0()   = { ... } with _ = $a_major()
 </pre>
 
 <h2>Value track</h2>
-<p>Value track has the similar syntax to score track but it describes the
+<p>Value track has the similar syntax to score track and it describes the
 time-dependent value.
 <p>XXX
 <p>Outside <code>"{...}"</code>, arithmetic operation can be applied.
@@ -330,17 +328,6 @@ value $out.0.cc11()     = { 3..4 | 3..1 } / 4
 <p>There are some special symbols: <code>$note.len(), $note.cnt(), $note.nth()</code>.
 <p>XXX
 
-<h2>Articulation, arpeggio, sustain pedal</h2>
-<p>XXX: Not implemented yet.
-<p>Some special syntax for articulation, arpeggio, sustain pedal may be added
-in the future.
-<pre>
-  !N(XXX) : arpeggio
-       X~ : legato
-(default) : non-legato
-       X' : staccato
-</pre>
-
 <h2>MIDI channels</h2>
 <p>WARNING: This specification will be changed.
 <p>Although this is out of the language specification, current implementation
@@ -350,8 +337,8 @@ maps the score to MIDI outputs by variable names: <code>$out.0</code> ..
 <h2>Begin/end position</h2>
 <p>XXX
 <pre>
-value $out.begin() = { 0}
-value $out.end()   = {24}
+value $out.begin() =  0
+value $out.end()   = 24
 </pre>
 
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>

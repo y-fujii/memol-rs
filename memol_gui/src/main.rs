@@ -35,6 +35,7 @@ struct Ui {
 	piano_roll: pianoroll::PianoRoll,
 	channel: i32,
 	follow: bool,
+	autoplay: bool,
 }
 
 impl window::Ui<UiMessage> for Ui {
@@ -72,7 +73,7 @@ impl window::Ui<UiMessage> for Ui {
 				None       => 0.0,
 			};
 			player.set_data( mem::replace( &mut self.events, Vec::new() ) );
-			if !player.is_playing() {
+			if self.autoplay && !player.is_playing() {
 				player.seek( bgn ).unwrap_or( () );
 				player.play().unwrap_or( () );
 			}
@@ -94,6 +95,7 @@ impl Ui {
 			piano_roll: pianoroll::PianoRoll::new(),
 			channel: 0,
 			follow: true,
+			autoplay: true,
 		}
 	}
 
@@ -181,6 +183,8 @@ impl Ui {
 
 			SameLine( 0.0, -1.0 );
 			Checkbox( c_str!( "Follow" ), &mut self.follow );
+			SameLine( 0.0, -1.0 );
+			Checkbox( c_str!( "Autoplay" ), &mut self.autoplay );
 
 			for (i, &(ch, _)) in self.assembly.channels.iter().enumerate() {
 				SameLine( 0.0, -1.0 );

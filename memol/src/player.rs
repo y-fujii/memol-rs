@@ -39,7 +39,7 @@ impl Player {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_client_open()." ) );
 			}
 
-			let port = (lib.port_register)( jack, "out\0".as_ptr(), jack::JACK_DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
+			let port = (lib.port_register)( jack, "out\0".as_ptr(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
 			if port.is_null() {
 				(lib.client_close)( jack );
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_port_register()." ) );
@@ -76,10 +76,44 @@ impl Player {
 		shared.changed = true;
 	}
 
+	pub fn ports( &self ) -> io::Result<Vec<(String, bool)>> {
+		unsafe {
+			let mut c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT );
+			if c_result.is_null() {
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_get_ports()." ) );
+			}
+			let mut r_result = Vec::new();
+			while !(*c_result).is_null() {
+				match ffi::CStr::from_ptr( *c_result as *const _ ).to_str() {
+					Ok( v ) => {
+						let is_conn = (self.lib.port_connected_to)( self.port, format!( "{}\0", v ).as_ptr() );
+						r_result.push( (v.into(), is_conn != 0) );
+					},
+					Err( _ ) => {
+						(self.lib.free)( c_result );
+						return Err( io::Error::new( io::ErrorKind::Other, "jack_get_ports()." ) );
+					},
+				}
+				c_result = c_result.offset( 1 );
+			}
+			(self.lib.free)( c_result );
+			Ok( r_result )
+		}
+	}
+
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
 			if (self.lib.connect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
 				return Err( io::Error::new( io::ErrorKind::Other, "jack_connect()." ) );
+			}
+		}
+		Ok( () )
+	}
+
+	pub fn disconnect( &self, port: &str ) -> io::Result<()> {
+		unsafe {
+			if (self.lib.disconnect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
+				return Err( io::Error::new( io::ErrorKind::Other, "jack_disconnect()." ) );
 			}
 		}
 		Ok( () )

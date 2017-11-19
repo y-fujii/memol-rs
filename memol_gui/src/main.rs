@@ -36,6 +36,7 @@ struct Ui {
 	channel: i32,
 	follow: bool,
 	autoplay: bool,
+	ports: Vec<(String, bool)>,
 }
 
 impl window::Ui<UiMessage> for Ui {
@@ -96,6 +97,7 @@ impl Ui {
 			channel: 0,
 			follow: true,
 			autoplay: true,
+			ports: Vec::new(),
 		}
 	}
 
@@ -185,6 +187,25 @@ impl Ui {
 			Checkbox( c_str!( "Follow" ), &mut self.follow );
 			SameLine( 0.0, -1.0 );
 			Checkbox( c_str!( "Autoplay" ), &mut self.autoplay );
+
+			SameLine( 0.0, -1.0 );
+			if Button( c_str!( "Ports..." ), &ImVec2::zero() ) {
+				OpenPopup( c_str!( "ports" ) );
+				self.ports = player.ports()?;
+			}
+			if BeginPopup( c_str!( "ports" ) ) {
+				for &mut (ref port, ref mut is_conn) in self.ports.iter_mut() {
+					if Checkbox( c_str!( "{}", port ), is_conn ) {
+						*is_conn = if *is_conn {
+							player.connect( port ).is_ok()
+						}
+						else {
+							player.disconnect( port ).is_err()
+						}
+					}
+				}
+				EndPopup();
+			}
 
 			for (i, &(ch, _)) in self.assembly.channels.iter().enumerate() {
 				SameLine( 0.0, -1.0 );

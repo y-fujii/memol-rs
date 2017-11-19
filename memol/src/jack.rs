@@ -4,8 +4,9 @@ use std::*;
 use libloading;
 
 
+pub const PORT_IS_INPUT: usize = 1;
 pub const PORT_IS_OUTPUT: usize = 2;
-pub const JACK_DEFAULT_MIDI_TYPE: *const u8 = b"8 bit raw midi\0" as *const _;
+pub const DEFAULT_MIDI_TYPE: *const u8 = b"8 bit raw midi\0" as *const _;
 
 #[repr( C )]
 pub enum TransportState {
@@ -47,22 +48,26 @@ pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *const 
 
 pub struct Library {
 	_lib: libloading::Library,
-	pub activate:                    unsafe extern "C" fn ( *mut Client ) -> i32,
-	pub client_close:                unsafe extern "C" fn ( *mut Client ) -> i32,
-	pub client_open:                 unsafe extern "C" fn ( *const u8, u32, *mut u32, ... ) -> *mut Client,
-	pub connect:                     unsafe extern "C" fn ( *mut Client, *const u8, *const u8 ) -> i32,
-	pub get_current_transport_frame: unsafe extern "C" fn ( *const Client ) -> u32,
-	pub midi_clear_buffer:           unsafe extern "C" fn ( *mut PortBuffer ) -> (),
-	pub midi_event_write:            unsafe extern "C" fn ( *mut PortBuffer, u32, *const u8, usize ) -> i32,
-	pub port_get_buffer:             unsafe extern "C" fn ( *mut Port, u32 ) -> *mut PortBuffer,
-	pub port_name:                   unsafe extern "C" fn ( *const Port ) -> *const u8,
-	pub port_register:               unsafe extern "C" fn ( *mut Client, *const u8, *const u8, usize, usize ) -> *mut Port,
-	pub set_process_callback:        unsafe extern "C" fn ( *mut Client, ProcessCallback, *const any::Any ) -> i32,
-	pub set_sync_callback:           unsafe extern "C" fn ( *mut Client, SyncCallback, *const any::Any ) -> i32,
-	pub transport_locate:            unsafe extern "C" fn ( *mut Client, u32 ) -> i32,
-	pub transport_query:             unsafe extern "C" fn ( *const Client, *mut Position ) -> TransportState,
-	pub transport_start:             unsafe extern "C" fn ( *mut Client ) -> (),
-	pub transport_stop:              unsafe extern "C" fn ( *mut Client ) -> (),
+	pub activate:                    unsafe extern "C" fn( *mut Client ) -> i32,
+	pub client_close:                unsafe extern "C" fn( *mut Client ) -> i32,
+	pub client_open:                 unsafe extern "C" fn( *const u8, u32, *mut u32, ... ) -> *mut Client,
+	pub connect:                     unsafe extern "C" fn( *mut Client, *const u8, *const u8 ) -> i32,
+	pub disconnect:                  unsafe extern "C" fn( *mut Client, *const u8, *const u8 ) -> i32,
+	pub free:                        unsafe extern "C" fn( *const any::Any ) -> (),
+	pub get_current_transport_frame: unsafe extern "C" fn( *const Client ) -> u32,
+	pub get_ports:                   unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize ) -> *const *const u8,
+	pub midi_clear_buffer:           unsafe extern "C" fn( *mut PortBuffer ) -> (),
+	pub midi_event_write:            unsafe extern "C" fn( *mut PortBuffer, u32, *const u8, usize ) -> i32,
+	pub port_connected_to:           unsafe extern "C" fn( *const Port, *const u8 ) -> i32,
+	pub port_get_buffer:             unsafe extern "C" fn( *mut Port, u32 ) -> *mut PortBuffer,
+	pub port_name:                   unsafe extern "C" fn( *const Port ) -> *const u8,
+	pub port_register:               unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize, usize ) -> *mut Port,
+	pub set_process_callback:        unsafe extern "C" fn( *mut Client, ProcessCallback, *const any::Any ) -> i32,
+	pub set_sync_callback:           unsafe extern "C" fn( *mut Client, SyncCallback, *const any::Any ) -> i32,
+	pub transport_locate:            unsafe extern "C" fn( *mut Client, u32 ) -> i32,
+	pub transport_query:             unsafe extern "C" fn( *const Client, *mut Position ) -> TransportState,
+	pub transport_start:             unsafe extern "C" fn( *mut Client ) -> (),
+	pub transport_stop:              unsafe extern "C" fn( *mut Client ) -> (),
 }
 
 impl Library {
@@ -82,9 +87,13 @@ impl Library {
 			client_close:                *lib.get( b"jack_client_close\0" )?,
 			client_open:                 *lib.get( b"jack_client_open\0" )?,
 			connect:                     *lib.get( b"jack_connect\0" )?,
+			disconnect:                  *lib.get( b"jack_disconnect\0" )?,
+			free:                        *lib.get( b"jack_free\0" )?,
 			get_current_transport_frame: *lib.get( b"jack_get_current_transport_frame\0" )?,
+			get_ports:                   *lib.get( b"jack_get_ports\0" )?,
 			midi_clear_buffer:           *lib.get( b"jack_midi_clear_buffer\0" )?,
 			midi_event_write:            *lib.get( b"jack_midi_event_write\0" )?,
+			port_connected_to:           *lib.get( b"jack_port_connected_to\0" )?,
 			port_get_buffer:             *lib.get( b"jack_port_get_buffer\0" )?,
 			port_name:                   *lib.get( b"jack_port_name\0" )?,
 			port_register:               *lib.get( b"jack_port_register\0" )?,

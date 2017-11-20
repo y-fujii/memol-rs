@@ -41,7 +41,7 @@ struct Ui {
 
 impl window::Ui<UiMessage> for Ui {
 	fn on_draw( &mut self ) -> i32 {
-		unsafe { self.draw_all().unwrap() }
+		unsafe { self.draw_all() }
 	}
 
 	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
@@ -75,8 +75,8 @@ impl window::Ui<UiMessage> for Ui {
 			};
 			player.set_data( mem::replace( &mut self.events, Vec::new() ) );
 			if self.autoplay && !player.is_playing() {
-				player.seek( bgn ).unwrap_or( () );
-				player.play().unwrap_or( () );
+				player.seek( bgn ).unwrap_or_default();
+				player.play().unwrap_or_default();
 			}
 		}
 
@@ -101,7 +101,7 @@ impl Ui {
 		}
 	}
 
-	unsafe fn draw_all( &mut self ) -> Result<i32, Box<error::Error>> {
+	unsafe fn draw_all( &mut self ) -> i32 {
 		use imgui::*;
 
 		let is_playing;
@@ -121,7 +121,7 @@ impl Ui {
 			imutil::message_dialog( "Message", text );
 		}
 
-		let mut changed = self.draw_transport()?;
+		let mut changed = self.draw_transport();
 
 		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
 		imutil::root_begin( 0 );
@@ -131,25 +131,24 @@ impl Ui {
 				(location.to_float() * self.tempo) as f32,
 				is_playing && self.follow,
 				GetWindowSize(),
-			)?;
+			);
 			if let (&Some( ref player ), Some( loc )) = (&self.player, result) {
-				player.seek( f64::max( loc as f64, 0.0 ) / self.tempo )?;
+				player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
 				changed = true;
 			}
 		}
 		imutil::root_end();
 		PopStyleColor( 1 );
 
-		let count = if changed { JACK_FRAME_WAIT } else if is_playing { 1 } else { 0 };
-		Ok( count )
+		if changed { JACK_FRAME_WAIT } else if is_playing { 1 } else { 0 }
 	}
 
-	unsafe fn draw_transport( &mut self ) -> Result<bool, Box<error::Error>> {
+	unsafe fn draw_transport( &mut self ) -> bool {
 		use imgui::*;
 
 		let player = match self.player {
 			Some( ref v ) => v,
-			None          => return Ok( false ),
+			None          => return false,
 		};
 		let mut changed = false;
 
@@ -164,22 +163,22 @@ impl Ui {
 		);
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
-				player.seek( 0.0 )?;
+				player.seek( 0.0 ).unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04b}" ), &size ) {
-				player.play()?;
+				player.play().unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04d}" ), &size ) {
-				player.stop()?;
+				player.stop().unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
-				player.seek( self.assembly.len.to_float() / self.tempo )?;
+				player.seek( self.assembly.len.to_float() / self.tempo ).unwrap_or_default();
 				changed = true;
 			}
 
@@ -191,7 +190,7 @@ impl Ui {
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "Ports..." ), &ImVec2::zero() ) {
 				OpenPopup( c_str!( "ports" ) );
-				self.ports = player.ports()?;
+				self.ports = player.ports().unwrap_or_default();
 			}
 			if BeginPopup( c_str!( "ports" ) ) {
 				for &mut (ref port, ref mut is_conn) in self.ports.iter_mut() {
@@ -214,7 +213,7 @@ impl Ui {
 		End();
 		PopStyleVar( 2 );
 
-		Ok( changed )
+		changed
 	}
 }
 

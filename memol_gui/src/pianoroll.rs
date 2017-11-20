@@ -28,7 +28,7 @@ impl PianoRoll {
 		}
 	}
 
-	pub unsafe fn draw( &mut self, ir: &scoregen::Ir, time_len: f32, time_cur: f32, follow: bool, size: ImVec2 ) -> Result<Option<f32>, Box<error::Error>> {
+	pub unsafe fn draw( &mut self, ir: &scoregen::Ir, time_len: f32, time_cur: f32, follow: bool, size: ImVec2 ) -> Option<f32> {
 		let content_h = size.y - get_style().ScrollbarSize;
 		let unit = content_h / 128.0;
 		let content_w = unit * self.time_scale * (time_len + 1.0);
@@ -63,7 +63,7 @@ impl PianoRoll {
 			self.draw_time_bar( &mut ctx, time_cur );
 		EndChild();
 
-		Ok( seek )
+		seek
 	}
 
 	unsafe fn draw_background( &self, ctx: &mut imutil::DrawContext, time_len: f32 ) {

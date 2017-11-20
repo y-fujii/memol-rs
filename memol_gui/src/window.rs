@@ -71,7 +71,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 		unsafe {
 			window.make_current()?;
 			gl::load_with( |s| window.get_proc_address( s ) as *const os::raw::c_void );
-			gl::ClearColor( 1.0, 1.0, 1.0, 1.0 );
 		}
 		let renderer = renderer::Renderer::new( window.get_api() != glutin::Api::OpenGl );
 
@@ -130,7 +129,6 @@ impl<T, U: Ui<T>> Window<T, U> {
 				n = cmp::max( n, ui.on_draw() + 1 );
 				unsafe { imgui::Render() };
 
-				unsafe { gl::Clear( gl::COLOR_BUFFER_BIT ); }
 				self.renderer.render();
 				self.window.swap_buffers()?;
 

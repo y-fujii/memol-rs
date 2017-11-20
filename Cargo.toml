@@ -3,4 +3,3 @@ members = ["memol", "memol_gui", "memol_vst"]
 
 [profile.release]
 lto = true
-panic = "abort"

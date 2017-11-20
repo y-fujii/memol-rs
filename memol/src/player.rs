@@ -36,13 +36,13 @@ impl Player {
 
 			let jack = (lib.client_open)( format!( "{}\0", name ).as_ptr(), 0, ptr::null_mut() );
 			if jack.is_null() {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_client_open()." ) );
+				return Self::error( "jack_client_open()." );
 			}
 
 			let port = (lib.port_register)( jack, "out\0".as_ptr(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
 			if port.is_null() {
 				(lib.client_close)( jack );
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_port_register()." ) );
+				return Self::error( "jack_port_register()." );
 			}
 
 			let this = Box::new( Player{
@@ -56,14 +56,14 @@ impl Player {
 			} );
 
 			if (this.lib.set_process_callback)( this.jack, Player::process_callback, &*this ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_process_callback()." ) );
+				return Self::error( "jack_set_process_callback()." );
 			}
 			if (this.lib.set_sync_callback)( this.jack, Player::sync_callback, &*this ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_set_sync_callback()." ) );
+				return Self::error( "jack_set_sync_callback()." );
 			}
 
 			if (this.lib.activate)( this.jack ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_activate()." ) );
+				return Self::error( "jack_activate()." );
 			}
 
 			Ok( this )
@@ -80,7 +80,7 @@ impl Player {
 		unsafe {
 			let mut c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT );
 			if c_result.is_null() {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_get_ports()." ) );
+				return Self::error( "jack_get_ports()." );
 			}
 			let mut r_result = Vec::new();
 			while !(*c_result).is_null() {
@@ -91,7 +91,7 @@ impl Player {
 					},
 					Err( _ ) => {
 						(self.lib.free)( c_result );
-						return Err( io::Error::new( io::ErrorKind::Other, "jack_get_ports()." ) );
+						return Self::error( "jack_get_ports()." );
 					},
 				}
 				c_result = c_result.offset( 1 );
@@ -104,7 +104,7 @@ impl Player {
 	pub fn connect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
 			if (self.lib.connect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_connect()." ) );
+				return Self::error( "jack_connect()." );
 			}
 		}
 		Ok( () )
@@ -113,7 +113,7 @@ impl Player {
 	pub fn disconnect( &self, port: &str ) -> io::Result<()> {
 		unsafe {
 			if (self.lib.disconnect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
-				return Err( io::Error::new( io::ErrorKind::Other, "jack_disconnect()." ) );
+				return Self::error( "jack_disconnect()." );
 			}
 		}
 		Ok( () )
@@ -165,6 +165,10 @@ impl Player {
 				_                             => true,
 			}
 		}
+	}
+
+	fn error<T>( text: &str ) -> io::Result<T> {
+		Err( io::Error::new( io::ErrorKind::Other, text ) )
 	}
 
 	extern fn process_callback( size: u32, this: *const any::Any ) -> i32 {

@@ -61,6 +61,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 		let looper = glutin::EventsLoop::new();
 		let builder = glutin::WindowBuilder::new();
 		let context = glutin::ContextBuilder::new()
+			.with_gl( glutin::GlRequest::GlThenGles{
+				opengl_version:   (3, 3),
+				opengles_version: (3, 0),
+			} )
 			.with_gl_profile( glutin::GlProfile::Core )
 			.with_vsync( true );
 		let window = glutin::GlWindow::new( builder, context, &looper )?;
@@ -69,12 +73,13 @@ impl<T, U: Ui<T>> Window<T, U> {
 			gl::load_with( |s| window.get_proc_address( s ) as *const os::raw::c_void );
 			gl::ClearColor( 1.0, 1.0, 1.0, 1.0 );
 		}
+		let renderer = renderer::Renderer::new( window.get_api() != glutin::Api::OpenGl );
 
 		let (tx, rx) = sync::mpsc::channel();
 		Ok( Window {
 			looper: looper,
 			window: window,
-			renderer: renderer::Renderer::new(),
+			renderer: renderer,
 			timer: time::SystemTime::now(),
 			ui: ui,
 			tx: tx,

@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
-use std::os::raw::{ c_void, c_char };
 use gl;
 use imgui;
 
@@ -37,7 +36,6 @@ impl Drop for Renderer {
 }
 
 const VERT_SHADER_CODE: &'static str = r#"
-	#version 330
 	uniform vec2 Scale;
 	layout( location = 0 ) in vec2 pos;
 	layout( location = 1 ) in vec2 uv;
@@ -53,7 +51,6 @@ const VERT_SHADER_CODE: &'static str = r#"
 "#;
 
 const FRAG_SHADER_CODE: &'static str = r#"
-	#version 330
 	uniform sampler2D Texture;
 	in vec2 frag_uv;
 	in vec4 frag_color;
@@ -64,20 +61,20 @@ const FRAG_SHADER_CODE: &'static str = r#"
 	}
 "#;
 
-unsafe fn compile_shader( ty: u32, code: &str ) -> u32 {
+unsafe fn compile_shader( ty: u32, code: &[&str] ) -> u32 {
 	let shader = gl::CreateShader( ty );
-	let ptr = code.as_ptr() as *const i8;
-	let len = code.len() as i32;
-	gl::ShaderSource( shader, 1, &ptr, &len );
+	let ptrs: Vec<_> = code.iter().map( |e| e.as_ptr() as *const i8 ).collect();
+	let lens: Vec<_> = code.iter().map( |e| e.len()    as i32       ).collect();
+	gl::ShaderSource( shader, code.len() as i32, ptrs.as_ptr(), lens.as_ptr() );
 	gl::CompileShader( shader );
-	let mut is_compiled = 0;
-	gl::GetShaderiv( shader, gl::COMPILE_STATUS, &mut is_compiled );
-	assert!( is_compiled != 0 );
+	let mut success = 0;
+	gl::GetShaderiv( shader, gl::COMPILE_STATUS, &mut success );
+	assert!( success != 0 );
 	shader
 }
 
 impl Renderer {
-	pub fn new() -> Self {
+	pub fn new( es_profile: bool ) -> Self {
 		unsafe {
 			let io = imgui::get_io();
 
@@ -92,19 +89,20 @@ impl Renderer {
 			gl::BindTexture( gl::TEXTURE_2D, tex );
 			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32 );
 			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32 );
-			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::R8 as i32, w, h, 0, gl::RED, gl::UNSIGNED_BYTE, data as *const c_void );
-			(*io.Fonts).TexID = mem::transmute( tex as usize );
+			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::R8 as i32, w, h, 0, gl::RED, gl::UNSIGNED_BYTE, data as *const _ );
+			(*io.Fonts).TexID = tex as *mut _;
 
 			// shader program.
-			let vert = compile_shader( gl::VERTEX_SHADER,   VERT_SHADER_CODE );
-			let frag = compile_shader( gl::FRAGMENT_SHADER, FRAG_SHADER_CODE );
+			let version = if es_profile { "#version 300 es\n" } else { "#version 330\n" };
+			let vert = compile_shader( gl::VERTEX_SHADER,   &[ version, VERT_SHADER_CODE ] );
+			let frag = compile_shader( gl::FRAGMENT_SHADER, &[ version, FRAG_SHADER_CODE ] );
 			let prog = gl::CreateProgram();
 			gl::AttachShader( prog, vert );
 			gl::AttachShader( prog, frag );
 			gl::LinkProgram( prog );
 
-			gl::Uniform1i( gl::GetUniformLocation( prog, "Texture\0".as_ptr() as *const c_char ), 0 );
-			let loc_scale = gl::GetUniformLocation( prog, "Scale\0".as_ptr() as *const c_char );
+			gl::Uniform1i( gl::GetUniformLocation( prog, c_str!( "Texture" ) ), 0 );
+			let loc_scale = gl::GetUniformLocation( prog, c_str!( "Scale" ) );
 
 			// vertex objects.
 			let mut vao = 0;
@@ -124,9 +122,9 @@ impl Renderer {
 			gl::EnableVertexAttribArray( 2 );
 
 			let size = mem::size_of::<imgui::ImDrawVert>() as i32;
-			gl::VertexAttribPointer( 0, 2, gl::FLOAT,         gl::FALSE, size,  0 as *const c_void );
-			gl::VertexAttribPointer( 1, 2, gl::FLOAT,         gl::FALSE, size,  8 as *const c_void );
-			gl::VertexAttribPointer( 2, 4, gl::UNSIGNED_BYTE, gl::TRUE,  size, 16 as *const c_void );
+			gl::VertexAttribPointer( 0, 2, gl::FLOAT,         gl::FALSE, size,  0 as *const _ );
+			gl::VertexAttribPointer( 1, 2, gl::FLOAT,         gl::FALSE, size,  8 as *const _ );
+			gl::VertexAttribPointer( 2, 4, gl::UNSIGNED_BYTE, gl::TRUE,  size, 16 as *const _ );
 
 			// unbind.
 			gl::BindTexture( gl::TEXTURE_2D, 0 );
@@ -173,7 +171,7 @@ impl Renderer {
 				gl::BufferData(
 					gl::ARRAY_BUFFER,
 					cmd_list.VtxBuffer.Size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
-					cmd_list.VtxBuffer.Data as *const c_void,
+					cmd_list.VtxBuffer.Data as *const _,
 					gl::STREAM_DRAW,
 				);
 
@@ -181,7 +179,7 @@ impl Renderer {
 				gl::BufferData(
 					gl::ELEMENT_ARRAY_BUFFER,
 					cmd_list.IdxBuffer.Size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,
-					cmd_list.IdxBuffer.Data as *const c_void,
+					cmd_list.IdxBuffer.Data as *const _,
 					gl::STREAM_DRAW,
 				);
 
@@ -200,7 +198,7 @@ impl Renderer {
 							(io.DisplayFramebufferScale.y * (cmd.ClipRect.w   - cmd.ClipRect.y)) as i32,
 						);
 						debug_assert!( mem::size_of::<imgui::ImDrawIdx>() == 2 );
-						gl::DrawElements( gl::TRIANGLES, cmd.ElemCount as i32, gl::UNSIGNED_SHORT, offset as *const c_void );
+						gl::DrawElements( gl::TRIANGLES, cmd.ElemCount as i32, gl::UNSIGNED_SHORT, offset as *const _ );
 					}
 					offset += cmd.ElemCount as usize * mem::size_of::<imgui::ImDrawIdx>();
 				}

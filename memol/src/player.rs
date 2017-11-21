@@ -78,13 +78,14 @@ impl Player {
 
 	pub fn ports( &self ) -> io::Result<Vec<(String, bool)>> {
 		unsafe {
-			let mut c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT );
+			let c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT );
 			if c_result.is_null() {
 				return Self::error( "jack_get_ports()." );
 			}
 			let mut r_result = Vec::new();
-			while !(*c_result).is_null() {
-				match ffi::CStr::from_ptr( *c_result as *const _ ).to_str() {
+			let mut it = c_result;
+			while !(*it).is_null() {
+				match ffi::CStr::from_ptr( *it as *const _ ).to_str() {
 					Ok( v ) => {
 						let is_conn = (self.lib.port_connected_to)( self.port, format!( "{}\0", v ).as_ptr() );
 						r_result.push( (v.into(), is_conn != 0) );
@@ -94,7 +95,7 @@ impl Player {
 						return Self::error( "jack_get_ports()." );
 					},
 				}
-				c_result = c_result.offset( 1 );
+				it = it.offset( 1 );
 			}
 			(self.lib.free)( c_result );
 			Ok( r_result )
@@ -171,7 +172,7 @@ impl Player {
 		Err( io::Error::new( io::ErrorKind::Other, text ) )
 	}
 
-	extern fn process_callback( size: u32, this: *const any::Any ) -> i32 {
+	extern "C" fn process_callback( size: u32, this: *const any::Any ) -> i32 {
 		unsafe {
 			let this = &*(this as *const Player);
 
@@ -216,7 +217,7 @@ impl Player {
 		}
 	}
 
-	extern fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const any::Any ) -> i32 {
+	extern "C" fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const any::Any ) -> i32 {
 		unsafe {
 			let this = &*(this as *const Player);
 

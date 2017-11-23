@@ -1,8 +1,7 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
-use rand;
-use rand::Rand;
 use misc;
+use random;
 use ratio;
 use ast;
 
@@ -178,9 +177,9 @@ impl<'a> Evaluator<'a> {
 		this
 	}
 
-	pub fn new_with_random<T: 'a + rand::Rng>( rng: &'a mut T ) -> Self {
+	pub fn new_with_random( rng: &'a mut random::Generator ) -> Self {
 		let mut this = Self::new();
-		this.add_symbol( "gaussian".into(), move |_| rand::distributions::normal::StandardNormal::rand( rng ).0 );
+		this.add_symbol( "gaussian".into(), move |_| rng.next_gauss() );
 		this
 	}
 

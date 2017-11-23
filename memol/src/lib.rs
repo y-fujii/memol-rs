@@ -1,10 +1,10 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
-extern crate rand;
 extern crate regex;
 extern crate lalrpop_util;
 extern crate libloading;
 #[macro_use]
 pub mod misc;
+pub mod random;
 pub mod ratio;
 pub mod ast;
 //pub mod parser;
@@ -170,7 +170,7 @@ pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
 }
 
 pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
-	let mut rng = rand::ChaChaRng::new_unseeded();
+	let mut rng = random::Generator::new();
 
 	let bgn = (src.bgn * TICK).round();
 	let end = (src.end * TICK).round();

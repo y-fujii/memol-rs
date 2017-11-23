@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 use std::*;
-use rand;
 use misc;
+use random;
 use ratio::Ratio;
 use scoregen;
 use valuegen;
@@ -28,9 +28,8 @@ impl Event {
 	}
 }
 
-#[derive(Debug)]
-pub struct Generator<'a, T: 'a + rand::Rng> {
-	rng: &'a mut T,
+pub struct Generator<'a> {
+	rng: &'a mut random::Generator,
 	events: Vec<Event>,
 	timeline: Vec<f64>,
 	bgn: i64,
@@ -38,8 +37,8 @@ pub struct Generator<'a, T: 'a + rand::Rng> {
 	tick: i64,
 }
 
-impl<'a, T: 'a + rand::Rng> Generator<'a, T> {
-	pub fn new( rng: &'a mut T, bgn: i64, end: i64, tick: i64 ) -> Self {
+impl<'a> Generator<'a> {
+	pub fn new( rng: &'a mut random::Generator, bgn: i64, end: i64, tick: i64 ) -> Self {
 		Generator{
 			rng: rng,
 			events: Vec::new(),

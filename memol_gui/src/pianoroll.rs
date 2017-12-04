@@ -36,7 +36,6 @@ impl PianoRoll {
 
 		SetNextWindowContentSize( &content_size );
 		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_HorizontalScrollbar as i32 );
-			let origin = GetCursorScreenPos();
 			let clicked = InvisibleButton( c_str!( "background" ), &content_size );
 
 			self.dragging |= IsItemActive() && IsMouseDragging( 0, -1.0 );
@@ -46,7 +45,7 @@ impl PianoRoll {
 				SetScrollX( GetScrollX() + 0.25 * GetMouseDragDelta( 0, -1.0 ).x );
 			}
 			else if clicked {
-				let x = (GetMousePos().x - origin.x) / (unit * self.time_scale) - 0.5;
+				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 				seek = Some( x );
 			}
 			else if follow {
@@ -56,8 +55,7 @@ impl PianoRoll {
 
 			self.dragging &= !IsMouseReleased( 0 );
 
-			let mut ctx = imutil::DrawContext::new( origin, origin + content_size );
-			ctx.set_transform( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
+			let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
 			self.draw_background( &mut ctx, time_len );
 			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );

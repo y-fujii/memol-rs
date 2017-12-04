@@ -12,21 +12,19 @@ pub struct DrawContext<'a> {
 }
 
 impl<'a> DrawContext<'a> {
-	pub fn new( v0: ImVec2, v1: ImVec2 ) -> DrawContext<'static> {
+	pub fn new( a: f32, b: ImVec2 ) -> DrawContext<'static> {
 		unsafe {
 			DrawContext{
 				draw_list: &mut *GetWindowDrawList(),
-				a: ImVec2::new( 1.0, -1.0 ),
-				b: ImVec2::new( v0.x, v1.y ),
-				clip_min: v0,
-				clip_max: v1,
+				a: ImVec2::new( a, -a ),
+				b: ImVec2::new(
+					GetWindowContentRegionMin().x + b.x,
+					GetWindowContentRegionMax().y - b.y,
+				),
+				clip_min: GetWindowPos(),
+				clip_max: GetWindowPos() + GetWindowSize(),
 			}
 		}
-	}
-
-	pub fn set_transform( &mut self, a: f32, b: ImVec2 ) {
-		self.a = ImVec2::new( a, -a );
-		self.b = ImVec2::new( self.clip_min.x, self.clip_max.y ) + b;
 	}
 
 	pub fn add_line( &mut self, v0: ImVec2, v1: ImVec2, col: u32, thickness: f32 ) {

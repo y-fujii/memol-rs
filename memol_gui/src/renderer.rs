@@ -162,20 +162,19 @@ impl Renderer {
 			);
 			gl::UseProgram( self.program );
 			gl::Uniform2f( self.loc_scale, 2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
+			gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
+			gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
 			gl::BindVertexArray( self.vao );
 
 			for i in 0 .. draw_data.CmdListsCount {
 				let cmd_list = &**draw_data.CmdLists.offset( i as isize );
 
-				gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
 				gl::BufferData(
 					gl::ARRAY_BUFFER,
 					cmd_list.VtxBuffer.Size as isize * mem::size_of::<imgui::ImDrawVert>() as isize,
 					cmd_list.VtxBuffer.Data as *const _,
 					gl::STREAM_DRAW,
 				);
-
-				gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
 				gl::BufferData(
 					gl::ELEMENT_ARRAY_BUFFER,
 					cmd_list.IdxBuffer.Size as isize * mem::size_of::<imgui::ImDrawIdx>() as isize,

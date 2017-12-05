@@ -6,6 +6,7 @@ use memol::*;
 
 
 pub struct PianoRoll {
+	pub scroll: f32,
 	dragging: bool,
 	time_scale: f32,
 	line_width: f32,
@@ -18,6 +19,7 @@ pub struct PianoRoll {
 impl PianoRoll {
 	pub fn new() -> Self {
 		Self {
+			scroll: 0.0,
 			dragging: false,
 			time_scale: 24.0,
 			line_width: 0.25,
@@ -59,6 +61,8 @@ impl PianoRoll {
 			self.draw_background( &mut ctx, time_len );
 			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
+
+			self.scroll = GetScrollX() / GetScrollMaxX();
 		EndChild();
 
 		seek

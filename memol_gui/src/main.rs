@@ -3,6 +3,7 @@
 extern crate getopts;
 extern crate gl;
 extern crate glutin;
+extern crate image;
 #[macro_use]
 extern crate memol;
 mod imgui;
@@ -37,6 +38,7 @@ struct Ui {
 	follow: bool,
 	autoplay: bool,
 	ports: Vec<(String, bool)>,
+	wallpaper: Option<renderer::Texture>,
 }
 
 impl window::Ui<UiMessage> for Ui {
@@ -98,6 +100,7 @@ impl Ui {
 			follow: true,
 			autoplay: true,
 			ports: Vec::new(),
+			wallpaper: None,
 		}
 	}
 
@@ -125,18 +128,28 @@ impl Ui {
 
 		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
 		imutil::root_begin( 0 );
-		if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
-			let result = self.piano_roll.draw(
-				&ch.score, self.assembly.len.to_float() as f32,
-				(location.to_float() * self.tempo) as f32,
-				is_playing && self.follow,
-				GetWindowSize(),
-			);
-			if let (&Some( ref player ), Some( loc )) = (&self.player, result) {
-				player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
-				changed = true;
+			let size = GetWindowSize();
+			if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
+				let result = self.piano_roll.draw(
+					&ch.score, self.assembly.len.to_float() as f32,
+					(location.to_float() * self.tempo) as f32,
+					is_playing && self.follow, size,
+				);
+				if let (&Some( ref player ), Some( loc )) = (&self.player, result) {
+					player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
+					changed = true;
+				}
 			}
-		}
+			if let Some( ref wallpaper ) = self.wallpaper {
+				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
+				let wsize = ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 ) * scale;
+				let x = (size.x - wsize.x) * self.piano_roll.scroll;
+				let v0 = GetWindowPos() + ImVec2::new( 0.0     + x, (size.y - wsize.y) * 0.5 );
+				let v1 = GetWindowPos() + ImVec2::new( wsize.x + x, (size.y + wsize.y) * 0.5 );
+				(*GetWindowDrawList()).AddImage(
+					wallpaper.id as _, &v0, &v1, &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
+				);
+			}
 		imutil::root_end();
 		PopStyleColor( 1 );
 
@@ -304,6 +317,13 @@ fn main() {
 		init_imgui( 2.0 );
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
+
+		if let Ok( img ) = image::open( "wallpaper.png" ) {
+			let img = img.to_rgba();
+			let mut wallpaper = renderer::Texture::new();
+			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
+			window.ui_mut().wallpaper = Some( wallpaper );
+		}
 
 		let window_tx = window.create_sender();
 		thread::spawn( move || compile_task( compile_rx, window_tx ) );

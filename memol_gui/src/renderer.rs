@@ -4,13 +4,69 @@ use gl;
 use imgui;
 
 
+pub struct Texture {
+	pub id: u32,
+	pub size: (i32, i32),
+}
+
+impl Drop for Texture {
+	fn drop( &mut self ) {
+		unsafe {
+			gl::DeleteTextures( 1, &self.id );
+		}
+	}
+}
+
+impl Texture {
+	pub fn new() -> Self {
+		unsafe {
+			let mut id = 0;
+			gl::GenTextures( 1, &mut id );
+			let this = Texture{
+				id: id,
+				size: (0, 0),
+			};
+			this.bind();
+			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32 );
+			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32 );
+			this
+		}
+	}
+
+	pub fn bind( &self ) {
+		unsafe {
+			gl::BindTexture( gl::TEXTURE_2D, self.id );
+		}
+	}
+
+	pub fn upload_a8( &mut self, data: *const u8, w: i32, h: i32 ) {
+		self.size = (w, h);
+		self.bind();
+		unsafe {
+			let swizzle = [ gl::ONE as i32, gl::ONE as i32, gl::ONE as i32, gl::RED as i32 ];
+			gl::TexParameteriv( gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr() );
+			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::R8 as i32, w, h, 0, gl::RED, gl::UNSIGNED_BYTE, data as *const _ );
+		}
+	}
+
+	pub fn upload_u32( &mut self, data: *const u8, w: i32, h: i32 ) {
+		self.size = (w, h);
+		self.bind();
+		unsafe {
+			let swizzle = [ gl::RED as i32, gl::GREEN as i32, gl::BLUE as i32, gl::ALPHA as i32 ];
+			gl::TexParameteriv( gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr() );
+			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::RGBA8 as i32, w, h, 0, gl::RGBA, gl::UNSIGNED_BYTE, data as *const _ );
+		}
+	}
+}
+
 pub struct Renderer {
-	pub font_texture: u32,
-	pub program: u32,
-	pub loc_scale: i32,
-	pub vao: u32,
-	pub vbo: u32,
-	pub ebo: u32,
+	program: u32,
+	loc_scale: i32,
+	vao: u32,
+	vbo: u32,
+	ebo: u32,
+	_tex_font: Texture,
 }
 
 impl Drop for Renderer {
@@ -26,8 +82,6 @@ impl Drop for Renderer {
 			for s in shaders.iter() {
 				gl::DeleteShader( *s );
 			}
-
-			gl::DeleteTextures( 1, &self.font_texture );
 
 			(*imgui::get_io().Fonts).TexID = ptr::null_mut();
 			imgui::Shutdown();
@@ -57,7 +111,7 @@ const FRAG_SHADER_CODE: &'static str = r#"
 	out vec4 out_color;
 
 	void main() {
-		out_color = vec4( frag_color.xyz, frag_color.w * texture( Texture, frag_uv ).x );
+		out_color = frag_color * texture( Texture, frag_uv );
 	}
 "#;
 
@@ -78,19 +132,15 @@ impl Renderer {
 		unsafe {
 			let io = imgui::get_io();
 
+			// font texture.
 			let mut data = ptr::null_mut();
 			let mut w = 0;
 			let mut h = 0;
 			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() );
 
-			// font texture.
-			let mut tex = 0;
-			gl::GenTextures( 1, &mut tex );
-			gl::BindTexture( gl::TEXTURE_2D, tex );
-			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32 );
-			gl::TexParameteri( gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32 );
-			gl::TexImage2D( gl::TEXTURE_2D, 0, gl::R8 as i32, w, h, 0, gl::RED, gl::UNSIGNED_BYTE, data as *const _ );
-			(*io.Fonts).TexID = tex as *mut _;
+			let mut tex_font = Texture::new();
+			tex_font.upload_a8( data, w, h );
+			(*io.Fonts).TexID = tex_font.id as *mut _;
 
 			// shader program.
 			let version = if es_profile { "#version 300 es\n" } else { "#version 330\n" };
@@ -133,12 +183,12 @@ impl Renderer {
 			gl::BindBuffer( gl::ARRAY_BUFFER, 0 );
 
 			Renderer {
-				font_texture: tex,
 				program: prog,
 				loc_scale: loc_scale,
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
+				_tex_font: tex_font,
 			}
 		}
 	}
@@ -149,6 +199,7 @@ impl Renderer {
 			let draw_data = imgui::get_draw_data();
 
 			gl::Enable( gl::BLEND );
+			// XXX: premultiplied alpha is better for interpolation.
 			gl::BlendEquation( gl::FUNC_ADD );
 			gl::BlendFunc( gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA );
 			gl::Disable( gl::CULL_FACE );

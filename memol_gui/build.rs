@@ -10,7 +10,7 @@ fn main() {
 	bindgen::Builder::default()
 		.clang_arg( "-x" )
 		.clang_arg( "c++" )
-		.clang_arg( "-std=c++14" )
+		.clang_arg( "-std=gnu++14" )
 		.enable_cxx_namespaces()
 		.header( "imgui/imgui.h" )
 		.whitelist_function( "Im.*" )

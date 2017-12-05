@@ -86,6 +86,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 		} )
 	}
 
+	pub fn ui_mut( &mut self ) -> &mut U {
+		&mut self.ui
+	}
+
 	pub fn create_sender( &self ) -> MessageSender<T> {
 		MessageSender{
 			tx: self.tx.clone(),
@@ -186,7 +190,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 				WindowEvent::MouseWheel{ delta: MouseScrollDelta::PixelDelta( _, y ), phase: TouchPhase::Moved, .. } => {
 					io.MouseWheel = y;
 				},
-				WindowEvent::MouseMoved{ position: ref pos, .. } => {
+				WindowEvent::CursorMoved{ position: ref pos, .. } => {
 					io.MousePos = imgui::ImVec2::new(
 						pos.0 as f32 / io.DisplayFramebufferScale.x,
 						pos.1 as f32 / io.DisplayFramebufferScale.y

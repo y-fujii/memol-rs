@@ -143,11 +143,9 @@ impl Ui {
 			if let Some( ref wallpaper ) = self.wallpaper {
 				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
 				let wsize = ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 ) * scale;
-				let x = (size.x - wsize.x) * self.piano_roll.scroll;
-				let v0 = GetWindowPos() + ImVec2::new( 0.0     + x, (size.y - wsize.y) * 0.5 );
-				let v1 = GetWindowPos() + ImVec2::new( wsize.x + x, (size.y + wsize.y) * 0.5 );
+				let v0 = GetWindowPos() + (size - wsize) * self.piano_roll.scroll;
 				(*GetWindowDrawList()).AddImage(
-					wallpaper.id as _, &v0, &v1, &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
+					wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
 				);
 			}
 		imutil::root_end();

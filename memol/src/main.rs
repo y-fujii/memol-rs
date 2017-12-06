@@ -9,10 +9,11 @@ use memol::*;
 fn main() {
 	let f = || -> Result<(), Box<error::Error>> {
 		let mut opts = getopts::Options::new();
-		opts.optmulti( "c", "connect", "", "" );
+		opts.optmulti( "c", "", "", "" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
-			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
+			println!( "Usage: memol (-c JACK_PORT)* FILE" );
+			return Ok( () );
 		}
 
 		let player = player::Player::new( "memol" )?;
@@ -27,8 +28,8 @@ fn main() {
 			let timer = time::SystemTime::now();
 			let result = compile( &buf ).and_then( |e| assemble( &e ) );
 			let elapsed = timer.elapsed()?;
-			println!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
-			println!( " event count: {}", result.as_ref().map( |evs| evs.len() ).unwrap_or( 0 ) );
+			eprintln!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );
+			eprintln!( " event count: {}", result.as_ref().map( |evs| evs.len() ).unwrap_or( 0 ) );
 			match result {
 				Err( e ) => {
 					let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );

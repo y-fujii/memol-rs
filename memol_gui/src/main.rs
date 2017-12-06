@@ -306,18 +306,28 @@ fn main() {
 			set_process_dpi_aware();
 		}
 
-		let opts = getopts::Options::new();
-		let args = opts.parse( env::args().skip( 1 ) )?;
+		let mut opts = getopts::Options::new();
+		opts.optopt( "s", "", "", "" );
+		opts.optopt( "b", "", "", "" );
+		opts.optmulti( "c", "", "", "" );
+		let args = match opts.parse( env::args().skip( 1 ) ) {
+			Ok ( v ) => v,
+			Err( _ ) => {
+				println!( "Usage: memol_gui (-s SCALING_FACTOR)? (-b BACKGROUND_IMAGE)? (-c JACK_PORT)* (FILE)?" );
+				return Ok( () );
+			},
+		};
 		if args.free.len() > 1 {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
-		init_imgui( 2.0 );
+		let scaling = args.opt_str( "s" ).map( |e| e.parse() ).unwrap_or( Ok( 2.0 ) )?;
+		init_imgui( scaling );
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
 
-		if let Ok( img ) = image::open( "wallpaper.png" ) {
-			let img = img.to_rgba();
+		if let Some( path ) = args.opt_str( "b" ) {
+			let img = image::open( path )?.to_rgba();
 			let mut wallpaper = renderer::Texture::new();
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
 			window.ui_mut().wallpaper = Some( wallpaper );
@@ -326,13 +336,23 @@ fn main() {
 		let window_tx = window.create_sender();
 		thread::spawn( move || compile_task( compile_rx, window_tx ) );
 
+		let ports = args.opt_strs( "c" );
 		let window_tx = window.create_sender();
 		thread::spawn( move || {
-			let msg = match player::Player::new( "memol" ) {
-				Ok ( v ) => UiMessage::Player( v ),
-				Err( v ) => UiMessage::Text( format!( "Error: {}", v.description() ) ),
+			let player = match player::Player::new( "memol" ) {
+				Ok ( v ) => v,
+				Err( v ) => {
+					window_tx.send( UiMessage::Text( format!( "Error: {}", v.description() ) ) );
+					return;
+				},
 			};
-			window_tx.send( msg );
+			for port in ports {
+				if let Err( v ) = player.connect( &port ) {
+					window_tx.send( UiMessage::Text( format!( "Error: {}", v.description() ) ) );
+					return;
+				}
+			}
+			window_tx.send( UiMessage::Player( player ) );
 		} );
 
 		if let Some( path ) = args.free.first() {

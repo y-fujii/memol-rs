@@ -62,7 +62,7 @@ impl PianoRoll {
 			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
 
-			self.scroll = GetScrollX() / GetScrollMaxX();
+			self.scroll = if GetScrollMaxX() > 0.0 { GetScrollX() / GetScrollMaxX() } else { 0.5 };
 		EndChild();
 
 		seek

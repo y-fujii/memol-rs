@@ -142,8 +142,8 @@ impl Ui {
 			}
 			if let Some( ref wallpaper ) = self.wallpaper {
 				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
-				let wsize = ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 ) * scale;
-				let v0 = GetWindowPos() + (size - wsize) * self.piano_roll.scroll;
+				let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
+				let v0 = GetWindowPos() + self.piano_roll.scroll * (size - wsize);
 				(*GetWindowDrawList()).AddImage(
 					wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
 				);
@@ -165,7 +165,7 @@ impl Ui {
 
 		let padding = get_style().WindowPadding;
 		PushStyleVar1( ImGuiStyleVar_WindowMinSize as i32, &ImVec2::zero() );
-		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(padding * 0.5).round() );
+		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(0.5 * padding).round() );
 		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32, &ImVec2::zero() );
 		Begin(
 			c_str!( "Transport" ), ptr::null_mut(),
@@ -296,6 +296,25 @@ pub fn init_imgui( scale: f32 ) {
 	}
 }
 
+fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
+	for px in img.pixels_mut() {
+		let rgb = imgui::ImVec4::new( px[0] as f32, px[1] as f32, px[2] as f32, 0.0 );
+		let rgb = imutil::srgb_gamma_to_linear( (1.0 / 255.0) * rgb );
+		let ys = rgb.dot( &imgui::ImVec4::new( 0.2126, 0.7152, 0.0722, 0.0 ) );
+		let yd = (1.0 - ratio) + ratio * ys;
+		let rgb_min = f32::min( f32::min( rgb.x, rgb.y ), rgb.z );
+		let rgb_max = f32::max( f32::max( rgb.x, rgb.y ), rgb.z );
+		let a = 1.0;
+		let a = f32::min( a, (yd - 0.0 + f32::MIN_POSITIVE) / f32::max(  f32::MIN_POSITIVE, ys - rgb_min ) );
+		let a = f32::min( a, (yd - 1.0 - f32::MIN_POSITIVE) / f32::min( -f32::MIN_POSITIVE, ys - rgb_max ) );
+		let rgb = a * rgb + imgui::ImVec4::constant( yd - a * ys );
+		let rgb = 255.0 * imutil::srgb_linear_to_gamma( rgb ) + imgui::ImVec4::constant( 0.5 );
+		px[0] = rgb.x as u8;
+		px[1] = rgb.y as u8;
+		px[2] = rgb.z as u8;
+	}
+}
+
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
 		#[cfg( windows )]
@@ -326,13 +345,6 @@ fn main() {
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
 
-		if let Some( path ) = args.opt_str( "b" ) {
-			let img = image::open( path )?.to_rgba();
-			let mut wallpaper = renderer::Texture::new();
-			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
-			window.ui_mut().wallpaper = Some( wallpaper );
-		}
-
 		let window_tx = window.create_sender();
 		thread::spawn( move || compile_task( compile_rx, window_tx ) );
 
@@ -362,6 +374,14 @@ fn main() {
 			window.create_sender().send( UiMessage::Text(
 				"Drag and drop to open a file.".into()
 			) );
+		}
+
+		if let Some( path ) = args.opt_str( "b" ) {
+			let mut wallpaper = renderer::Texture::new();
+			let mut img = image::open( path )?.to_rgba();
+			lighten_image( &mut img, 0.5 );
+			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
+			window.ui_mut().wallpaper = Some( wallpaper );
 		}
 
 		window.event_loop()

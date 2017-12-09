@@ -63,11 +63,20 @@ impl<'a> DrawContext<'a> {
 	}
 }
 
-pub fn srgb_gamma( col: ImVec4 ) -> ImVec4 {
+pub fn srgb_linear_to_gamma( col: ImVec4 ) -> ImVec4 {
 	let f = |x: f32| if x <= 0.0031308 {
 		12.92 * x
 	} else {
-		1.055 * x.powf( 1.0 / 2.4 ) - 0.055
+		1.055 * f32::powf( x, 1.0 / 2.4 ) - 0.055
+	};
+	ImVec4::new( f( col.x ), f( col.y ), f( col.z ), col.w )
+}
+
+pub fn srgb_gamma_to_linear( col: ImVec4 ) -> ImVec4 {
+	let f = |x: f32| if x <= 0.04045 {
+		(1.0 / 12.92) * x
+	} else {
+		f32::powf( (1.0 / 1.055) * (x + 0.055), 2.4 )
 	};
 	ImVec4::new( f( col.x ), f( col.y ), f( col.z ), col.w )
 }
@@ -79,24 +88,24 @@ pub fn pack_color( col: ImVec4 ) -> u32 {
 
 pub fn set_scale( s: f32 ) {
 	let style = get_style();
-	style.WindowPadding          = (style.WindowPadding          * s).round();
-	style.WindowMinSize          = (style.WindowMinSize          * s).round();
-	style.WindowRounding         = (style.WindowRounding         * s).round();
-	style.ChildWindowRounding    = (style.ChildWindowRounding    * s).round();
-	style.FramePadding           = (style.FramePadding           * s).round();
-	style.FrameRounding          = (style.FrameRounding          * s).round();
-	style.ItemSpacing            = (style.ItemSpacing            * s).round();
-	style.ItemInnerSpacing       = (style.ItemInnerSpacing       * s).round();
-	style.TouchExtraPadding      = (style.TouchExtraPadding      * s).round();
-	style.IndentSpacing          = (style.IndentSpacing          * s).round();
-	style.ColumnsMinSpacing      = (style.ColumnsMinSpacing      * s).round();
-	style.ScrollbarSize          = (style.ScrollbarSize          * s).round();
-	style.ScrollbarRounding      = (style.ScrollbarRounding      * s).round();
-	style.GrabMinSize            = (style.GrabMinSize            * s).round();
-	style.GrabRounding           = (style.GrabRounding           * s).round();
-	style.DisplayWindowPadding   = (style.DisplayWindowPadding   * s).round();
-	style.DisplaySafeAreaPadding = (style.DisplaySafeAreaPadding * s).round();
-	style.CurveTessellationTol   = (style.CurveTessellationTol   * s).round();
+	style.WindowPadding          = (s * style.WindowPadding         ).round();
+	style.WindowMinSize          = (s * style.WindowMinSize         ).round();
+	style.WindowRounding         = (s * style.WindowRounding        ).round();
+	style.ChildWindowRounding    = (s * style.ChildWindowRounding   ).round();
+	style.FramePadding           = (s * style.FramePadding          ).round();
+	style.FrameRounding          = (s * style.FrameRounding         ).round();
+	style.ItemSpacing            = (s * style.ItemSpacing           ).round();
+	style.ItemInnerSpacing       = (s * style.ItemInnerSpacing      ).round();
+	style.TouchExtraPadding      = (s * style.TouchExtraPadding     ).round();
+	style.IndentSpacing          = (s * style.IndentSpacing         ).round();
+	style.ColumnsMinSpacing      = (s * style.ColumnsMinSpacing     ).round();
+	style.ScrollbarSize          = (s * style.ScrollbarSize         ).round();
+	style.ScrollbarRounding      = (s * style.ScrollbarRounding     ).round();
+	style.GrabMinSize            = (s * style.GrabMinSize           ).round();
+	style.GrabRounding           = (s * style.GrabRounding          ).round();
+	style.DisplayWindowPadding   = (s * style.DisplayWindowPadding  ).round();
+	style.DisplaySafeAreaPadding = (s * style.DisplaySafeAreaPadding).round();
+	style.CurveTessellationTol   = (s * style.CurveTessellationTol  ).round();
 }
 
 pub fn root_size() -> ImVec2 {
@@ -140,7 +149,7 @@ pub fn show_text( text: &str ) {
 
 pub fn message_dialog( title: &str, text: &str ) {
 	unsafe {
-		let pos = get_io().DisplaySize * 0.5;
+		let pos = 0.5 * get_io().DisplaySize;
 		SetNextWindowPos( &pos, ImGuiSetCond_Always as i32, &ImVec2::new( 0.5, 0.5 ) );
 		Begin(
 			c_str!( "{}", title ), ptr::null_mut(),
@@ -152,11 +161,11 @@ pub fn message_dialog( title: &str, text: &str ) {
 }
 
 pub fn set_theme( base: ImVec4, fg: ImVec4, bg: ImVec4 ) {
-	let normal  = srgb_gamma( base );
-	let hovered = srgb_gamma( base * 0.8 + fg * 0.2 );
-	let active  = srgb_gamma( base * 0.6 + fg * 0.4 );
-	let fg      = srgb_gamma( fg );
-	let bg      = srgb_gamma( bg );
+	let normal  = srgb_linear_to_gamma( base );
+	let hovered = srgb_linear_to_gamma( 0.8 * base + 0.2 * fg );
+	let active  = srgb_linear_to_gamma( 0.6 * base + 0.4 * fg );
+	let fg      = srgb_linear_to_gamma( fg );
+	let bg      = srgb_linear_to_gamma( bg );
 
 	let style = get_style();
 	style.WindowRounding      = 0.0;

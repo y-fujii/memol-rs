@@ -47,6 +47,7 @@
 				background-color: #f8f8f8;
 			}
 			pre {
+				text-align: left;
 				padding: 0.25rem 0.5rem;
 				border: solid 1px #e0e0e0;
 			}

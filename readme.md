@@ -1,5 +1,7 @@
 # memol - a music markup language
 
+[![Build Status](https://travis-ci.org/y-fujii/memol-rs.svg?branch=master)](https://travis-ci.org/y-fujii/memol-rs)
+
 memol is a music description language which features:
 
 * **Well-structured**

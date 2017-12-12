@@ -1,0 +1,49 @@
+language: rust
+
+matrix:
+    include:
+        - os: linux
+          env: >-
+              CC=clang-5.0
+              CXX=clang++-5.0
+              STRIP=strip
+              TARGET=x86_64-unknown-linux-gnu
+              EXEC_SUFFIX=
+        - os: linux
+          env: >-
+              CC=clang-5.0
+              CXX=clang++-5.0
+              STRIP=x86_64-w64-mingw32-strip
+              TARGET=x86_64-pc-windows-gnu
+              EXEC_SUFFIX=.exe
+        - os: osx
+          env: >-
+              CC=clang
+              CXX=clang++
+              STRIP=strip
+              TARGET=x86_64-apple-darwin
+              EXEC_SUFFIX=
+    allow_failures:
+        - os: osx
+
+addons:
+    apt:
+        sources:
+            - llvm-toolchain-trusty-5.0
+        packages:
+            - clang-5.0
+            - gcc-mingw-w64-x86-64
+            - p7zip-full
+            - curl
+
+script:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install p7zip curl; fi
+    - rustup target add x86_64-pc-windows-gnu
+
+    - cargo build --release --target=${TARGET}
+    - cd target/${TARGET}/release
+    - ${STRIP} --strip-all memol${EXEC_SUFFIX}
+    - ${STRIP} --strip-all memol_gui${EXEC_SUFFIX}
+    - 7z a memol-${TARGET}.zip memol${EXEC_SUFFIX} memol_gui${EXEC_SUFFIX}
+
+    - curl --upload-file memol-${TARGET}.zip https://transfer.sh/memol-${TARGET}.zip

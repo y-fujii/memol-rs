@@ -92,7 +92,7 @@ and different from the latest implementation.</strong>
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
 <p>You can see the example written in (current) memol language at
-<code><a href="https://bitbucket.org/ysfujii/memol-rs/raw/tip/examples/gymnopedie.mol">examples/gymnopedie.mol</a></code>
+<code><a href="https://github.com/y-fujii/memol-rs/blob/master/examples/gymnopedie.mol">examples/gymnopedie.mol</a></code>
 .
 <p>Although the core idea of the language is considered for many years,
 the development begun recently so both the language specification and the
@@ -112,8 +112,15 @@ features for practical use.
 <li>10% of non-language features are implemented.
 </ul>
 
-<h2>Build, install and run</h2>
+<h2>Download pre-built binaries</h2>
+<ul>
+	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux)
+	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows)
+	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS)
+</ul>
+<p>Note that macOS binaries are NEVER TESTED since I don't have a Mac...
 
+<h2>Build and install</h2>
 <p>Although memol can run potentially on any platforms which support Rust and
 JACK, I develop it primary on Linux and sometimes test it on Windows
 (<code>x86_64-pc-windows-gnu</code> target).  Please make sure that following
@@ -124,20 +131,28 @@ programs are installed.
 </ul>
 <p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
-hg clone <a href="https://bitbucket.org/ysfujii/memol-rs/">https://bitbucket.org/ysfujii/memol-rs/</a>
+git clone --recursive <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a>
 cd memol-rs/memol
 cargo install
 </pre>
-<p>and everything should be done.  Alternatively, you can download the
-pre-compiled binaries from
-<code><a href="http://mimosa-pudica.net/memol/bin/">http://mimosa-pudica.net/memol/bin/</a></code>.
+<p>and everything should be done.
+<p>Recent version of memol has experimental GUI program.
+<a href="https://clang.llvm.org/">clang</a> must be installed to build one.
+<pre>
+cd memol-rs/memol_gui
+cargo install
+</pre>
+<p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
+
+<h2>Run</h2>
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK.
 <pre>
 memol [-c JACK_PORT] FILE
 </pre>
 <p>JACK_PORT can be specified multiple times and then the memol output port is
-being connected to them.
+being connected to them.  Experimental GUI (memol_gui) can be launched without
+command line arguments.
 <p>memol keeps watching the change of the file and reflects it immediately.  If
 <code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
@@ -146,14 +161,6 @@ with other JACK clients.  Personally I
 use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage JACK
 connections, plugins, etc.  Many JACK supported DAW like
 <a href="http://ardour.org/">Ardour</a> can be used, of course.
-<p>Recent version of memol has experimental GUI program.
-<a href="https://clang.llvm.org/">clang</a> must be installed to build one.
-<pre>
-cd memol-rs/memol_gui
-cargo install
-memol_gui &amp;
-</pre>
-<p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
 
 <h2>Hello, twinkle little star</h2>
 
@@ -163,8 +170,8 @@ score $out.0() = { c c G G | A A g _ | f f e e | d d c _ }
 <lilypond relative="1">
 	{ c c g' g a a g r f f e e d d c r }
 </lilypond>
-<p>memol language structure is roughly divided into two layers: inside
-<code>{...}</code> and outside.  Both layers have similar syntax and similar
+<p>memol language structure is roughly divided into two layers: inside of
+<code>{...}</code> and outside of.  Both layers have similar syntax and similar
 semantics, but different.  Inside <code>{...}</code>, sequence is splitted by
 <code>"|"</code> and each part gets the unit time length regardless of the
 number of the elements.
@@ -317,7 +324,11 @@ score $out.0()   = { ... } with _ = $a_major()
 <p>Value track has the similar syntax to score track and it describes the
 time-dependent value.
 <p>XXX
-<p>Outside <code>"{...}"</code>, arithmetic operation can be applied.
+<p>Outside <code>"{...}"</code>, arithmetic operators
+(<code>+, -, *, /</code>), comparison operators
+(<code>==, !=, &lt;=, &gt;=</code>), logical operators
+(<code>||, &amp;&amp;, !</code>) and a branch syntax
+(<code>"if A then B else C"</code>) can be applied.
 <p>XXX
 <pre>
 value $out.tempo()      = 1 / 2

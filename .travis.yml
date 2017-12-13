@@ -1,32 +1,26 @@
+group: travis_latest
+
 language: rust
 
 matrix:
     include:
         - os: linux
           env: >-
-              CC=clang-5.0
-              CXX=clang++-5.0
               STRIP=strip
               TARGET=x86_64-unknown-linux-gnu
               EXEC_SUFFIX=
         - os: linux
           env: >-
-              CC=clang-5.0
-              CXX=clang++-5.0
               STRIP=aarch64-linux-gnu-strip
               TARGET=aarch64-unknown-linux-gnu
               EXEC_SUFFIX=
         - os: linux
           env: >-
-              CC=clang-5.0
-              CXX=clang++-5.0
               STRIP=x86_64-w64-mingw32-strip
               TARGET=x86_64-pc-windows-gnu
               EXEC_SUFFIX=.exe
         - os: osx
           env: >-
-              CC=clang
-              CXX=clang++
               STRIP=strip
               TARGET=x86_64-apple-darwin
               EXEC_SUFFIX=
@@ -35,10 +29,7 @@ matrix:
 
 addons:
     apt:
-        sources:
-            - llvm-toolchain-trusty-5.0
         packages:
-            - clang-5.0
             - gcc-mingw-w64-x86-64
             - gcc-aarch64-linux-gnu
             - libc-dev-arm64-cross
@@ -50,7 +41,7 @@ script:
     - rustup target add aarch64-unknown-linux-gnu
     - rustup target add x86_64-pc-windows-gnu
 
-    - cargo build --release --target=${TARGET}
+    - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
     - cd target/${TARGET}/release
     - ${STRIP} --strip-all memol${EXEC_SUFFIX}
     - ${STRIP} --strip-all memol_gui${EXEC_SUFFIX}

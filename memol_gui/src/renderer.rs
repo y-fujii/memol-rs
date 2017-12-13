@@ -117,8 +117,8 @@ const FRAG_SHADER_CODE: &'static str = r#"
 
 unsafe fn compile_shader( ty: u32, code: &[&str] ) -> u32 {
 	let shader = gl::CreateShader( ty );
-	let ptrs: Vec<_> = code.iter().map( |e| e.as_ptr() as *const i8 ).collect();
-	let lens: Vec<_> = code.iter().map( |e| e.len()    as i32       ).collect();
+	let ptrs: Vec<_> = code.iter().map( |e| e.as_ptr() as *const _ ).collect();
+	let lens: Vec<_> = code.iter().map( |e| e.len()    as i32      ).collect();
 	gl::ShaderSource( shader, code.len() as i32, ptrs.as_ptr(), lens.as_ptr() );
 	gl::CompileShader( shader );
 	let mut success = 0;

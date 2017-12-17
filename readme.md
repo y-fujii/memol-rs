@@ -1,4 +1,4 @@
-# memol - a music markup language
+# memol - a music description language
 
 [![Build Status](https://travis-ci.org/y-fujii/memol-rs.svg?branch=master)](https://travis-ci.org/y-fujii/memol-rs)
 
@@ -15,7 +15,7 @@ memol is a music description language which features:
 * **Focused on musical composition**
 	* Language design and implementation help trial-and-error of musical
 	  composition well (in the future).  Unlike score typesetting languages,
-	  memol also focused on describing time-changing value used for MIDI
+	  memol also focused on describing time-dependent value used for MIDI
 	  control changes, etc.
 
 ## Example

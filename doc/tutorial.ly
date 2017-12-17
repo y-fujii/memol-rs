@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="utf-8">
 		<title>memol language overview</title>
+		<link href="https://fonts.googleapis.com/css?family=Inconsolata|Source+Sans+Pro:700|Source+Serif+Pro" rel="stylesheet">
 		<style>
 			* {
 				font: inherit;
@@ -10,7 +11,7 @@
 				padding: 0;
 			}
 			body {
-				font: 100%/1.5 serif;
+				font: 100%/1.5 "Source Serif Pro", serif;
 				margin: 2rem auto;
 				max-width: 48rem;
 				text-align: justify;
@@ -40,10 +41,11 @@
 				border-bottom: solid 1px #e0e0e0;
 			}
 			h1, h2, h3, strong, dt {
+				font-family: "Source Sans Pro", sans-serif;
 				font-weight: bold;
 			}
 			pre, code {
-				font-family: monospace, monospace;
+				font-family: "Inconsolata", monospace;
 				background-color: #f8f8f8;
 			}
 			pre {
@@ -91,9 +93,50 @@ and different from the latest implementation.</strong>
 	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
-<p>You can see the example written in (current) memol language at
-<code><a href="https://github.com/y-fujii/memol-rs/blob/master/examples/gymnopedie.mol">examples/gymnopedie.mol</a></code>
-.
+<p>Here is a complete example written in (current) memol language.
+<pre style="font-size: 75%">
+/* Gymnopedie No. 1, Erik Satie */
+
+score $melody_common() = {
+    _  | _   | _    | _  &lt; | _FA | gfc  | bCD | a    |
+    f^ | f^  | f^   | f  &lt; | _FA | gfc  | bCD | a    |
+    C  | F &gt; | e^   | e^   | e   | ABC- | Edb | Dc-b |
+    D^ | 2DD | EF-G | Ac-D | Edb | D^   | 2DD | G
+}
+
+score $melody() = [
+    $melody_common() { &lt; F  | baB   | CDE  | cDE  | 2fG  | C- | D }
+    $melody_common() { &lt; F- | bC-F- | edc- | Edc- | 2f-G | C- | D }
+]
+
+score $chord_common() = [
+    repeat 8 { (gBDF_)  | (dACF_) } {
+    (fACF_)  | (b&lt;BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_) | (a&lt;AC-E_) | (DGBE_)  | (DDGBE) |
+    (Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)  | (DDGBE)   | (Dc-EAD) | (EBEG_) }
+]
+
+score $chord() = [
+    $chord_common()
+    { (fACF_)  | (b&lt;BDF_)  | (ECEA_)  | (EACFA)   | E (EbAD) (EEBD) | (AgC-EA_) | (daD&lt;DFA)  }
+    $chord_common()
+    { (eADF-A) | (EAC-F-_) | (EC-EA_) | (EAC-F-A) | E (EbAD) (EEBD) | (AgC-EA_) | (daD&lt;DF-A) }
+]
+
+score $pattern() = [
+    repeat 36 { @q0 &gt; q0 ^ 2(/ @q1 Q1 Q2 Q3 Q4) }
+    { (@q0 &gt; q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 &gt; q0 @q1 Q1 Q2 @q3 Q3 Q4 Q5) | / }
+]
+
+score $out.0() = [
+    _ ( $melody() repeat 2 $pattern() with q = $chord() ) with _ = repeat 78 { (ABC+DEF+G) } _
+]
+
+value $out.0.offset()   = $gaussian() / 512
+value $out.0.velocity() = $gaussian() / 64 + if $note.nth() == 0 then 4/8 else 3/8
+value $out.0.cc64()     = [ repeat 79 { 0 23:1 } { 0 } ]
+value $out.tempo()      = 2/5
+</pre>
+
 <p>Although the core idea of the language is considered for many years,
 the development begun recently so both the language specification and the
 implementation are still in a very early stage.  Currently they lack many
@@ -114,9 +157,10 @@ features for practical use.
 
 <h2>Download pre-built binaries</h2>
 <ul>
-	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux)
-	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows)
-	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS)
+	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux x86_64)
+	<li><code><a href="../bin/memol-aarch64-unknown-linux-gnu.zip">memol-aarch64-unknown-linux-gnu.zip</a></code> (Linux aarch64)
+	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows x86_64)
+	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS x86_64)
 </ul>
 <p>Note that macOS binaries are NEVER TESTED since I don't have a Mac...
 

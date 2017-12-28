@@ -91,7 +91,8 @@ pub fn set_scale( s: f32 ) {
 	style.WindowPadding          = (s * style.WindowPadding         ).round();
 	style.WindowMinSize          = (s * style.WindowMinSize         ).round();
 	style.WindowRounding         = (s * style.WindowRounding        ).round();
-	style.ChildWindowRounding    = (s * style.ChildWindowRounding   ).round();
+	style.ChildRounding          = (s * style.ChildRounding         ).round();
+	style.PopupRounding          = (s * style.PopupRounding         ).round();
 	style.FramePadding           = (s * style.FramePadding          ).round();
 	style.FrameRounding          = (s * style.FrameRounding         ).round();
 	style.ItemSpacing            = (s * style.ItemSpacing           ).round();
@@ -168,9 +169,10 @@ pub fn set_theme( base: ImVec4, fg: ImVec4, bg: ImVec4 ) {
 	let bg      = srgb_linear_to_gamma( bg );
 
 	let style = get_style();
-	style.WindowRounding      = 0.0;
-	style.ChildWindowRounding = 0.0;
-	style.FrameRounding       = 0.0;
+	style.WindowRounding = 0.0;
+	style.ChildRounding  = 0.0;
+	style.PopupRounding  = 0.0;
+	style.FrameRounding  = 0.0;
 	style.Colors[ImGuiCol_Text                 as usize] = fg;
 	style.Colors[ImGuiCol_Border               as usize] = normal;
 	style.Colors[ImGuiCol_WindowBg             as usize] = bg;

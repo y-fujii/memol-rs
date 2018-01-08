@@ -157,10 +157,10 @@ features for practical use.
 
 <h2>Download pre-built binaries</h2>
 <ul>
-	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux x86_64)
-	<li><code><a href="../bin/memol-aarch64-unknown-linux-gnu.zip">memol-aarch64-unknown-linux-gnu.zip</a></code> (Linux aarch64)
-	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows x86_64)
-	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS x86_64)
+	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux/x86_64)
+	<li><code><a href="../bin/memol-aarch64-unknown-linux-gnu.zip">memol-aarch64-unknown-linux-gnu.zip</a></code> (Linux/aarch64)
+	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows/x86_64)
+	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS/x86_64)
 </ul>
 <p>Note that macOS binaries are NEVER TESTED since I don't have a Mac...
 

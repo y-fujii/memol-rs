@@ -7,31 +7,36 @@ matrix:
     include:
         - os: linux
           env: >-
-              STRIP="strip --strip-all"
               TARGET=x86_64-unknown-linux-gnu
               EXEC_SUFFIX=
+              STRIP="strip --strip-all"
+              SED_INPLACE="sed -i"
         - os: linux
           env: >-
-              STRIP="aarch64-linux-gnu-strip --strip-all"
               TARGET=aarch64-unknown-linux-gnu
               EXEC_SUFFIX=
+              STRIP="aarch64-linux-gnu-strip --strip-all"
+              SED_INPLACE="sed -i"
         - os: linux
           env: >-
-              STRIP="x86_64-w64-mingw32-strip --strip-all"
               TARGET=x86_64-pc-windows-gnu
               EXEC_SUFFIX=.exe
+              STRIP="x86_64-w64-mingw32-strip --strip-all"
+              SED_INPLACE="sed -i"
         - os: osx
           env: >-
-              STRIP=strip
               TARGET=x86_64-apple-darwin
               EXEC_SUFFIX=
+              STRIP=strip
+              SED_INPLACE="sed -i ''"
     allow_failures:
         - os: osx
         - os: linux
           env: >-
-              STRIP="aarch64-linux-gnu-strip --strip-all"
               TARGET=aarch64-unknown-linux-gnu
               EXEC_SUFFIX=
+              STRIP="aarch64-linux-gnu-strip --strip-all"
+              SED_INPLACE="sed -i"
 
 addons:
     apt:
@@ -46,7 +51,9 @@ script:
     - rustup target add aarch64-unknown-linux-gnu
     - rustup target add x86_64-pc-windows-gnu
 
-    - CC=clang CXX=clang++ CFLAGS=--target=${TARGET} CXXFLAGS=--target=${TARGET} cargo build --release --target=${TARGET}
+    - ${SED_INPLACE} 's/<Windows\.h>/<windows.h>/g' memol_gui/imgui/imgui.cpp
+
+    - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
     - cd target/${TARGET}/release
     - ${STRIP} memol${EXEC_SUFFIX}
     - ${STRIP} memol_gui${EXEC_SUFFIX}

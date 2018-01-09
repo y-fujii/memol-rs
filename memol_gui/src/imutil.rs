@@ -120,8 +120,8 @@ pub fn root_begin( flags: u32 ) {
 		let padding  = get_style().WindowPadding;
 		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, 0.0 );
 		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &ImVec2::zero() );
-		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32, &ImVec2::zero() );
-		SetNextWindowSize( &size, ImGuiSetCond_Always as i32 );
+		SetNextWindowPos( &ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero() );
+		SetNextWindowSize( &size, ImGuiCond_Always as i32 );
 		Begin(
 			c_str!( "root" ), ptr::null_mut(),
 			(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
@@ -151,7 +151,7 @@ pub fn show_text( text: &str ) {
 pub fn message_dialog( title: &str, text: &str ) {
 	unsafe {
 		let pos = 0.5 * get_io().DisplaySize;
-		SetNextWindowPos( &pos, ImGuiSetCond_Always as i32, &ImVec2::new( 0.5, 0.5 ) );
+		SetNextWindowPos( &pos, ImGuiCond_Always as i32, &ImVec2::new( 0.5, 0.5 ) );
 		Begin(
 			c_str!( "{}", title ), ptr::null_mut(),
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar) as i32,

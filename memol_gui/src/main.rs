@@ -166,7 +166,7 @@ impl Ui {
 		let padding = get_style().WindowPadding;
 		PushStyleVar1( ImGuiStyleVar_WindowMinSize as i32, &ImVec2::zero() );
 		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(0.5 * padding).round() );
-		SetNextWindowPos( &ImVec2::zero(), ImGuiSetCond_Always as i32, &ImVec2::zero() );
+		SetNextWindowPos( &ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero() );
 		Begin(
 			c_str!( "Transport" ), ptr::null_mut(),
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |

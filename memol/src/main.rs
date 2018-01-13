@@ -1,4 +1,4 @@
-// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 extern crate getopts;
 extern crate memol;
 use std::*;

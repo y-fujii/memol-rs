@@ -1,4 +1,4 @@
-// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #[macro_use]
 extern crate vst2;
 extern crate memol;

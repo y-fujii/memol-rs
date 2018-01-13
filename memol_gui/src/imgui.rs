@@ -1,4 +1,4 @@
-// (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #![allow( dead_code )]
 use std::*;
 

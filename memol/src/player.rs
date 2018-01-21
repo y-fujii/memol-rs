@@ -87,7 +87,7 @@ impl Player {
 			while !(*it).is_null() {
 				match ffi::CStr::from_ptr( *it as *const _ ).to_str() {
 					Ok( v ) => {
-						let is_conn = (self.lib.port_connected_to)( self.port, format!( "{}\0", v ).as_ptr() );
+						let is_conn = (self.lib.port_connected_to)( self.port, *it );
 						r_result.push( (v.into(), is_conn != 0) );
 					},
 					Err( _ ) => {

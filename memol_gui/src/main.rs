@@ -13,7 +13,6 @@ mod imutil;
 mod pianoroll;
 use std::*;
 use std::error::Error;
-use std::io::prelude::*;
 use memol::*;
 
 
@@ -249,19 +248,12 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 			continue;
 		}
 
-		let mut buf = String::new();
-		if let Err( e ) = fs::File::open( &path ).and_then( |mut e| e.read_to_string( &mut buf ) ) {
-			tx.send( UiMessage::Text( format!( "Error: {}", e.description() ) ) );
-			continue;
-		}
-
 		let msg = || -> Result<_, misc::Error> {
-			let asm = compile( &buf )?;
+			let asm = compile( &path::PathBuf::from( &path ) )?;
 			let evs = assemble( &asm )?;
 			Ok( UiMessage::Data( asm, evs ) )
 		}().unwrap_or_else( |e| {
-			let (row, col) = misc::text_row_col( &buf[0 .. e.loc] );
-			UiMessage::Text( format!( "Compile error at ({}, {}): {}", row, col, e.msg ) )
+			UiMessage::Text( e.message() )
 		} );
 		tx.send( msg );
 	}

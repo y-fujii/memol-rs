@@ -18,29 +18,43 @@ use std::*;
 
 
 pub mod parser {
+	use std::error::Error;
+	use std::io::prelude::*;
+
 	include!( "parser.rs" );
 
-	pub fn parse( src: &str ) -> Result<Definition, ::misc::Error> {
-		// XXX
-		let src = ::regex::Regex::new( r"(?s:/\*.*?\*/)" ).unwrap()
-			.replace_all( src, |caps: &::regex::Captures|
+	// XXX
+	fn remove_comments( src: &str ) -> borrow::Cow<str> {
+		use ::regex::*;
+		thread_local!( static RE: Regex = Regex::new( r"(?s:/\*.*?\*/)" ).unwrap() );
+		RE.with( |re|
+			re.replace_all( src, |caps: &Captures|
 				caps.get( 0 ).unwrap().as_str().chars().map( |c|
 					if c == '\r' || c == '\n' { c } else { ' ' }
 				).collect()
-			);
-		match parse_definition( &src ) {
+			)
+		)
+	}
+
+	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, ::misc::Error> {
+		let mut buf = String::new();
+		fs::File::open( path )
+			.map_err( |e| misc::Error::new( path, 0, e.description() ) )?
+			.read_to_string( &mut buf )
+			.map_err( |e| misc::Error::new( path, 0, e.description() ) )?;
+
+		match parse_definition( path, &remove_comments( &buf ) ) {
 			Ok ( v ) => Ok( v ),
 			Err( e ) => {
-				use ::lalrpop_util::ParseError;
 				match e {
-					ParseError::InvalidToken{ location: loc } |
-					ParseError::UnrecognizedToken{ token: Some( (loc, _, _) ), .. } |
-					ParseError::ExtraToken{ token: (loc, _, _) } =>
-						::misc::error( loc, "unexpected token." ),
+					ParseError::InvalidToken{ location: i } |
+					ParseError::UnrecognizedToken{ token: Some( (i, _, _) ), .. } |
+					ParseError::ExtraToken{ token: (i, _, _) } =>
+						::misc::error( path, i, "unexpected token." ),
 					ParseError::UnrecognizedToken{ token: None, .. } =>
-						::misc::error( src.len(), "unexpected EOF." ),
-					ParseError::User{ error: (loc, msg) } =>
-						::misc::error( loc, msg ),
+						::misc::error( path, buf.len(), "unexpected EOF." ),
+					ParseError::User{ error: err } =>
+						Err( err ),
 				}
 			}
 		}
@@ -83,8 +97,8 @@ impl default::Default for Assembly {
 
 pub const TICK: i64 = 240;
 
-pub fn compile( src: &str ) -> Result<Assembly, misc::Error> {
-	let tree = parser::parse( &src )?;
+pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
+	let tree = parser::parse( src )?;
 	let score_gen = scoregen::Generator::new( &tree );
 	let value_gen = valuegen::Generator::new( &tree );
 

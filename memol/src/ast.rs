@@ -12,8 +12,8 @@ pub struct Ast<T> {
 
 #[derive(Debug)]
 pub struct Definition<'a> {
-	pub scores: collections::HashMap<String, Box<Ast<Score<'a>>>>,
-	pub values: collections::HashMap<String, Box<Ast<ValueTrack>>>,
+	pub scores: collections::HashMap<String, (path::PathBuf, Box<Ast<Score<'a>>>)>,
+	pub values: collections::HashMap<String, (path::PathBuf, Box<Ast<ValueTrack>>)>,
 }
 
 #[derive(Copy, Clone, Debug)]

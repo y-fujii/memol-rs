@@ -23,6 +23,7 @@ struct Span<'a> {
 	t1: ratio::Ratio,
 	tied: bool,
 	syms: &'a collections::HashMap<char, &'a [FlatNote]>,
+	path: &'a path::Path,
 }
 
 #[derive(Debug)]
@@ -55,15 +56,16 @@ impl<'a> Generator<'a> {
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
 		let syms = self.syms.iter().map( |&(s, ref ns)| (s, &ns[..]) ).collect();
+		let &(ref path, ref s) = match self.defs.scores.get( key ) {
+			Some( v ) => v,
+			None      => return Ok( None ),
+		};
 		let span = Span{
 			t0: ratio::Ratio::zero(),
 			t1: ratio::Ratio::one(),
 			tied: false,
 			syms: &syms,
-		};
-		let s = match self.defs.scores.get( key ) {
-			Some( v ) => v,
-			None      => return Ok( None ),
+			path: path,
 		};
 		let mut dst = Ir{
 			notes: Vec::new(),
@@ -89,14 +91,18 @@ impl<'a> Generator<'a> {
 					self.generate_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
-					return misc::error( score.end, "unpaired tie." );
+					return misc::error( &span.path, score.end, "unpaired tie." );
 				}
 				span.t0 + (span.t1 - span.t0) * ns.len() as i64
 			},
 			ast::Score::Symbol( ref key ) => {
-				let s = match self.defs.scores.get( key ) {
+				let &(ref path, ref s) = match self.defs.scores.get( key ) {
 					Some( v ) => v,
-					None      => return misc::error( score.bgn, "undefined symbol." ),
+					None      => return misc::error( &span.path, score.bgn, "undefined symbol." ),
+				};
+				let span = Span{
+					path: path,
+					.. *span
 				};
 				self.generate_score( s, &span, dst )?
 			},
@@ -203,7 +209,7 @@ impl<'a> Generator<'a> {
 					Some( n ) => n,
 					None => match state.note {
 						Some( n ) => n,
-						None      => return misc::error( note.bgn, "previous note does not exist." ),
+						None      => return misc::error( &span.path, note.bgn, "previous note does not exist." ),
 					}
 				};
 				cn.set( Some( rn ) );
@@ -245,19 +251,19 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 				for k in del_ties.iter() {
 					if let None = state.ties.remove( k ) {
-						return misc::error( note.bgn, "unpaired tie." );
+						return misc::error( &span.path, note.bgn, "unpaired tie." );
 					}
 				}
 				for &(k, v) in new_ties.iter() {
 					if let Some( _ ) = state.ties.insert( k, v ) {
-						return misc::error( note.end, "unpaired tie." );
+						return misc::error( &span.path, note.end, "unpaired tie." );
 					}
 				}
 			},
 			ast::Note::Group( ref ns ) => {
 				let tot = ns.iter().map( |&(_, i)| i ).sum();
 				if tot == 0 {
-					return misc::error( note.end, "zero length group." );
+					return misc::error( &span.path, note.end, "zero length group." );
 				}
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
@@ -285,12 +291,12 @@ impl<'a> Generator<'a> {
 	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, sym: char, ord: i32 ) -> Result<Option<i32>, misc::Error> {
 		let fs = match span.syms.get( &sym ) {
 			Some( v ) => v,
-			None      => return misc::error( note.bgn, "note does not exist." ),
+			None      => return misc::error( &span.path, note.bgn, "note does not exist." ),
 		};
 		// XXX: O(N^2).
 		let f = match fs.iter().filter( |n| n.t0 <= span.t0 && span.t0 < n.t1 ).nth( ord as usize ) {
 			Some( v ) => v,
-			None      => return misc::error( note.bgn, "note does not exist." ),
+			None      => return misc::error( &span.path, note.bgn, "note does not exist." ),
 		};
 		Ok( f.nnum )
 	}

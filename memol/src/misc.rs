@@ -1,5 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
+use std::io::Read;
 
 
 pub trait One {
@@ -49,28 +50,6 @@ impl<T: Iterator> IteratorEx<T> for T {
 		let prev = self.next();
 		UniqueIterator{ prev: prev, iter: self }
 	}
-}
-
-#[derive(Debug)]
-pub struct Error {
-	pub loc: usize,
-	pub msg: String,
-}
-
-impl fmt::Display for Error {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
-		write!( f, "loc: {}, msg: {}", self.loc, self.msg )
-	}
-}
-
-impl error::Error for Error {
-	fn description( &self ) -> &str {
-		&self.msg
-	}
-}
-
-pub fn error<T, U: From<Error>>( loc: usize, msg: &str ) -> Result<T, U> {
-	Err( From::from( Error{ loc: loc, msg: msg.into() } ) )
 }
 
 pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
@@ -123,23 +102,60 @@ pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usiz
 	lo
 }
 
-pub fn text_row_col( text: &str ) -> (usize, usize) {
-	let mut row = 0;
-	let mut col = 0;
-	for c in text.chars() {
-		match c {
-			'\r' => {
-			},
-			'\n' => {
-				row += 1;
-				col = 0;
-			},
-			_ => {
-				col += 1;
-			},
-		};
+#[derive(Debug)]
+pub struct Error {
+	pub path: path::PathBuf,
+	pub index: usize,
+	pub message: String,
+}
+
+impl fmt::Display for Error {
+	fn fmt( &self, _: &mut fmt::Formatter ) -> fmt::Result {
+		panic!();
 	}
-	return (row, col);
+}
+
+impl error::Error for Error {
+	fn description( &self ) -> &str {
+		panic!();
+	}
+}
+
+impl Error {
+	pub fn new<T: convert::Into<String>>( path: &path::Path, idx: usize, msg: T ) -> Self {
+		Error{ path: path.to_owned(), index: idx, message: msg.into() }
+	}
+
+	pub fn message( &self ) -> String {
+		let path = self.path.to_string_lossy();
+		let mut buf = String::new();
+		match fs::File::open( &*self.path ).and_then( |mut f| f.read_to_string( &mut buf ) ) {
+			Ok( _ ) =>  {
+				let mut row = 0;
+				let mut col = 0;
+				for c in buf.chars().take( self.index ) {
+					match c {
+						'\r' => (),
+						'\n' => {
+							row += 1;
+							col = 0;
+						},
+						_ => {
+							col += 1;
+						},
+					};
+				}
+				format!( "{}:{}:{} {}", path, row, col, self.message )
+			},
+			Err( _ ) => {
+				format!( "{} {}", path, self.message )
+			},
+		}
+	}
+}
+
+pub fn error<T: convert::Into<String>, U, V: From<Error>>( path: &path::Path, idx: usize, msg: T ) -> Result<U, V> {
+	Err( From::from( Error::new( path, idx, msg ) ) )
 }
 
 #[macro_export]

@@ -16,9 +16,10 @@ pub enum Ir {
 }
 
 #[derive(Debug)]
-struct Span {
+struct Span<'a> {
 	t0: ratio::Ratio,
 	t1: ratio::Ratio,
+	path: &'a path::Path,
 }
 
 #[derive(Debug)]
@@ -44,13 +45,14 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
+		let &(ref path, ref s) = match self.defs.values.get( key ) {
+			Some( v ) => v,
+			None      => return Ok( None ),
+		};
 		let span = Span{
 			t0: ratio::Ratio::zero(),
 			t1: ratio::Ratio::one(),
-		};
-		let s = match self.defs.values.get( key ) {
-			Some( v ) => v,
-			None      => return Ok( None ),
+			path: path,
 		};
 		let (ir, _) = self.generate_value_track( s, &span )?;
 		Ok( Some( ir ) )
@@ -73,14 +75,18 @@ impl<'a> Generator<'a> {
 				(Ir::Sequence( irs ), t1)
 			},
 			ast::ValueTrack::Symbol( ref key ) => {
-				if let Some( s ) = self.defs.values.get( key ) {
+				if let Some( &(ref path, ref s) ) = self.defs.values.get( key ) {
+					let span = Span{
+						path: path,
+						.. *span
+					};
 					self.generate_value_track( s, &span )?
 				}
 				else if self.syms.contains( key ) {
 					(Ir::Symbol( key.clone() ), span.t0)
 				}
 				else {
-					return misc::error( track.bgn, "undefined symbol." );
+					return misc::error( &span.path, track.bgn, "undefined symbol." );
 				}
 			},
 			ast::ValueTrack::Sequence( ref ss ) => {
@@ -151,6 +157,7 @@ impl<'a> Generator<'a> {
 					let span = Span{
 						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
 						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
+						.. *span
 					};
 					self.generate_value( v, &span, state, dst )?;
 					acc += i;

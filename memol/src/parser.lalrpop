@@ -2,30 +2,43 @@
 use std::*;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
+use misc;
 use ratio;
 use ast::*;
 
 #[LALR]
-grammar<'a>;
+grammar<'a>( path: &path::Path );
 
 extern {
-	type Error = (usize, &'static str);
+	type Error = misc::Error;
 }
 
 pub definition: Definition<'a> = {
 	<a:definition> <lo:@L> "score" <b:label> "(" ")" "=" <mi:@L> <c:score_with> <hi:@R> =>? {
 		let mut a = a;
-		match a.scores.insert( b, c ) {
-			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
+		match a.scores.insert( b, (path.to_owned(), c) ) {
+			Some( _ ) => Err( ParseError::User{ error: misc::Error::new( path, lo, "duplicated definition." ) } ),
 			None      => Ok( a ),
 		}
 	},
 	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <mi:@L> <c:value_track> <hi:@R> =>? {
 		let mut a = a;
-		match a.values.insert( b, c ) {
-			Some( _ ) => Err( ParseError::User{ error: (lo, "duplicated definition.") } ),
+		match a.values.insert( b, (path.to_owned(), c) ) {
+			Some( _ ) => Err( ParseError::User{ error: misc::Error::new( path, lo, "duplicated definition." ) } ),
 			None      => Ok( a ),
 		}
+	},
+	<a:definition> <lo:@L> "import" <b:str> <hi:@R> =>? {
+		let cpath = match path.parent() {
+			Some( v ) => v.join( b ),
+			None      => path::PathBuf::from( b ),
+		};
+		let def = parse( &cpath )
+			.map_err( |e| ParseError::User{ error: e } )?;
+		let mut a = a;
+		a.scores.extend( def.scores );
+		a.values.extend( def.values );
+		Ok( a )
 	},
 	=> Definition{ scores: collections::HashMap::new(), values: collections::HashMap::new() },
 };
@@ -357,5 +370,27 @@ uint: i32 = {
 };
 
 label: String = {
-	r"\$[a-zA-Z0-9_.]+" => String::from( &<>[1..] ),
+	r"\$[a-zA-Z0-9_.]+" => String::from( &<>[1 ..] ),
+};
+
+str: String = {
+	<lo:@L> <a:r#""(\\n|\\r|\\t|\\\\|[^\\"])*""#> =>? {
+		let mut dst = String::new();
+		let mut it = a[1 .. a.len() - 1].chars();
+		while let Some( c ) = it.next() {
+			dst.push( if c == '\\' {
+				match it.next() {
+					Some( 'n'  ) => '\n',
+					Some( 'r'  ) => '\r',
+					Some( 't'  ) => '\t',
+					Some( '\\' ) => '\\',
+					_ => panic!(),
+				}
+			}
+			else {
+				c
+			} );
+		}
+		Ok( dst )
+	},
 };

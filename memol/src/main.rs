@@ -29,7 +29,7 @@ fn main() {
 			eprintln!( " event count: {}", result.as_ref().map( |evs| evs.len() ).unwrap_or( 0 ) );
 			match result {
 				Err( e ) => {
-					println!( "{}", e.message() );
+					println!( "{}", e );
 				},
 				Ok( events ) => {
 					let bgn = match events.get( 0 ) {

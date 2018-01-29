@@ -253,7 +253,7 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 			let evs = assemble( &asm )?;
 			Ok( UiMessage::Data( asm, evs ) )
 		}().unwrap_or_else( |e| {
-			UiMessage::Text( e.message() )
+			UiMessage::Text( format!( "{}", e ) )
 		} );
 		tx.send( msg );
 	}

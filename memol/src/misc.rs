@@ -110,27 +110,11 @@ pub struct Error {
 }
 
 impl fmt::Display for Error {
-	fn fmt( &self, _: &mut fmt::Formatter ) -> fmt::Result {
-		panic!();
-	}
-}
-
-impl error::Error for Error {
-	fn description( &self ) -> &str {
-		panic!();
-	}
-}
-
-impl Error {
-	pub fn new<T: convert::Into<String>>( path: &path::Path, idx: usize, msg: T ) -> Self {
-		Error{ path: path.to_owned(), index: idx, message: msg.into() }
-	}
-
-	pub fn message( &self ) -> String {
+	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
 		let path = self.path.to_string_lossy();
 		let mut buf = String::new();
 		match fs::File::open( &*self.path ).and_then( |mut f| f.read_to_string( &mut buf ) ) {
-			Ok( _ ) =>  {
+			Ok( _ ) => {
 				let mut row = 0;
 				let mut col = 0;
 				for c in buf.chars().take( self.index ) {
@@ -143,14 +127,26 @@ impl Error {
 						_ => {
 							col += 1;
 						},
-					};
+					}
 				}
-				format!( "{}:{}:{} {}", path, row, col, self.message )
+				write!( f, "{}:{}:{}: {}", path, row, col, self.message )
 			},
 			Err( _ ) => {
-				format!( "{} {}", path, self.message )
+				write!( f, "{}: {}", path, self.message )
 			},
 		}
+	}
+}
+
+impl error::Error for Error {
+	fn description( &self ) -> &str {
+		panic!();
+	}
+}
+
+impl Error {
+	pub fn new<T: Into<String>>( path: &path::Path, idx: usize, msg: T ) -> Self {
+		Error{ path: path.to_owned(), index: idx, message: msg.into() }
 	}
 }
 

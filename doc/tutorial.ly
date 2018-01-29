@@ -397,6 +397,12 @@ value $out.begin() =  0
 value $out.end()   = 24
 </pre>
 
+<h2>Import</h2>
+<pre>
+import "other_file.mol"
+</pre>
+
+
 <address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
 
 </body>

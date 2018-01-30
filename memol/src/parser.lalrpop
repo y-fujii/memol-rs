@@ -14,21 +14,21 @@ extern {
 }
 
 pub definition: Definition<'a> = {
-	<a:definition> <lo:@L> "score" <b:label> "(" ")" "=" <mi:@L> <c:score_with> <hi:@R> =>? {
+	<a:definition> <lo:@L> "score" <b:label> "(" ")" "=" <c:score_with> =>? {
 		let mut a = a;
 		match a.scores.insert( b, (path.to_owned(), c) ) {
 			Some( _ ) => Err( ParseError::User{ error: misc::Error::new( path, lo, "duplicated definition." ) } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <mi:@L> <c:value_track> <hi:@R> =>? {
+	<a:definition> <lo:@L> "value" <b:label> "(" ")" "=" <c:value_track> =>? {
 		let mut a = a;
 		match a.values.insert( b, (path.to_owned(), c) ) {
 			Some( _ ) => Err( ParseError::User{ error: misc::Error::new( path, lo, "duplicated definition." ) } ),
 			None      => Ok( a ),
 		}
 	},
-	<a:definition> <lo:@L> "import" <b:str> <hi:@R> =>? {
+	<a:definition> <lo:@L> "import" <b:str> =>? {
 		let cpath = match path.parent() {
 			Some( v ) => v.join( b ),
 			None      => path::PathBuf::from( b ),

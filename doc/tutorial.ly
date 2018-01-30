@@ -357,8 +357,9 @@ score $out.0()   = repeat 2 $pattern() with q = $chord()
 <lilypond relative="1">
 	c8 e8 g8 e8 <d f g b>2 c8 e8 g8 e8 <c e g b>2
 </lilypond>
-<p><code>"with"</code> also used for changing a key signature.  Special symbol
-<code>"_"</code> means <code>"abcdefg"</code> note symbol are assigned.
+<p>
+<p>The special symbol <code>"_"</code> corresponds to the note symbols
+<code>"abcdefg"</code>.  It can be used to change a key signature.  
 <pre>
 score $a_major() = { (c+DEF+G+AB) }
 score $out.0()   = { ... } with _ = $a_major()

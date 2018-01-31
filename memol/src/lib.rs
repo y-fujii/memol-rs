@@ -18,7 +18,6 @@ use std::*;
 
 
 pub mod parser {
-	use std::error::Error;
 	use std::io::prelude::*;
 
 	include!( "parser.rs" );
@@ -39,9 +38,9 @@ pub mod parser {
 	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, ::misc::Error> {
 		let mut buf = String::new();
 		fs::File::open( path )
-			.map_err( |e| misc::Error::new( path, 0, e.description() ) )?
+			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?
 			.read_to_string( &mut buf )
-			.map_err( |e| misc::Error::new( path, 0, e.description() ) )?;
+			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?;
 
 		match parse_definition( path, &remove_comments( &buf ) ) {
 			Ok ( v ) => Ok( v ),

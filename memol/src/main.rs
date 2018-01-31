@@ -46,6 +46,6 @@ fn main() {
 		}
 	};
 	if let Err( e ) = f() {
-		println!( "error: {}", e.description() );
+		println!( "error: {}", e );
 	}
 }

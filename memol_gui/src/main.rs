@@ -12,7 +12,6 @@ mod window;
 mod imutil;
 mod pianoroll;
 use std::*;
-use std::error::Error;
 use memol::*;
 
 
@@ -346,13 +345,13 @@ fn main() {
 			let player = match player::Player::new( "memol" ) {
 				Ok ( v ) => v,
 				Err( v ) => {
-					window_tx.send( UiMessage::Text( format!( "Error: {}", v.description() ) ) );
+					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
 					return;
 				},
 			};
 			for port in ports {
 				if let Err( v ) = player.connect( &port ) {
-					window_tx.send( UiMessage::Text( format!( "Error: {}", v.description() ) ) );
+					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
 					return;
 				}
 			}
@@ -378,7 +377,7 @@ fn main() {
 
 		window.event_loop()
 	}().unwrap_or_else( |e| {
-		println!( "Error: {}", e.description() );
+		println!( "Error: {}", e );
 		process::exit( -1 );
 	} );
 }

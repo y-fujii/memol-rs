@@ -168,23 +168,20 @@ features for practical use.
 <p>Although memol can run potentially on any platforms which support Rust and
 JACK, I develop it primary on Linux and sometimes test it on Windows
 (<code>x86_64-pc-windows-gnu</code> target).  Please make sure that following
-programs are installed.
+programs are installed and configured properly.
 <ul>
 	<li><a href="http://rust-lang.org/">Rust</a> (build dependency)
 	<li><a href="http://jackaudio.org/">JACK</a> (runtime dependency)
 </ul>
 <p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
-git clone --recursive <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a>
-cd memol-rs/memol
-cargo install
+cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol
 </pre>
 <p>and everything should be done.
 <p>Recent version of memol has experimental GUI program.
 <a href="https://clang.llvm.org/">clang</a> must be installed to build one.
 <pre>
-cd memol-rs/memol_gui
-cargo install
+cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
 </pre>
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
 

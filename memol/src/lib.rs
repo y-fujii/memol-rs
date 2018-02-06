@@ -7,7 +7,6 @@ pub mod misc;
 pub mod random;
 pub mod ratio;
 pub mod ast;
-//pub mod parser;
 pub mod scoregen;
 pub mod valuegen;
 pub mod midi;
@@ -20,7 +19,7 @@ use std::*;
 pub mod parser {
 	use std::io::prelude::*;
 
-	include!( "parser.rs" );
+	include!( concat!( env!( "OUT_DIR" ), "/parser.rs" ) );
 
 	// XXX
 	fn remove_comments( src: &str ) -> borrow::Cow<str> {

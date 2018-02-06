@@ -94,7 +94,7 @@ and different from the latest implementation.</strong>
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
 <p>Here is a complete example written in (current) memol language.
-<pre style="font-size: 75%">
+<pre style="font-size: 80%">
 /* Gymnopedie No. 1, Erik Satie */
 
 score $melody_common() = {

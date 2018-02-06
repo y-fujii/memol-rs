@@ -86,36 +86,9 @@ pub fn pack_color( col: ImVec4 ) -> u32 {
 	f( col.x ) | (f( col.y ) << 8) | (f( col.z ) << 16) | (f( col.w ) << 24)
 }
 
-pub fn set_scale( s: f32 ) {
-	let style = get_style();
-	style.WindowPadding          = (s * style.WindowPadding         ).round();
-	style.WindowMinSize          = (s * style.WindowMinSize         ).round();
-	style.WindowRounding         = (s * style.WindowRounding        ).round();
-	style.ChildRounding          = (s * style.ChildRounding         ).round();
-	style.PopupRounding          = (s * style.PopupRounding         ).round();
-	style.FramePadding           = (s * style.FramePadding          ).round();
-	style.FrameRounding          = (s * style.FrameRounding         ).round();
-	style.ItemSpacing            = (s * style.ItemSpacing           ).round();
-	style.ItemInnerSpacing       = (s * style.ItemInnerSpacing      ).round();
-	style.TouchExtraPadding      = (s * style.TouchExtraPadding     ).round();
-	style.IndentSpacing          = (s * style.IndentSpacing         ).round();
-	style.ColumnsMinSpacing      = (s * style.ColumnsMinSpacing     ).round();
-	style.ScrollbarSize          = (s * style.ScrollbarSize         ).round();
-	style.ScrollbarRounding      = (s * style.ScrollbarRounding     ).round();
-	style.GrabMinSize            = (s * style.GrabMinSize           ).round();
-	style.GrabRounding           = (s * style.GrabRounding          ).round();
-	style.DisplayWindowPadding   = (s * style.DisplayWindowPadding  ).round();
-	style.DisplaySafeAreaPadding = (s * style.DisplaySafeAreaPadding).round();
-	style.CurveTessellationTol   = (s * style.CurveTessellationTol  ).round();
-}
-
-pub fn root_size() -> ImVec2 {
-	get_io().DisplaySize
-}
-
 pub fn root_begin( flags: u32 ) {
 	unsafe {
-		let size = root_size();
+		let size = get_io().DisplaySize;
 		let rounding = get_style().WindowRounding;
 		let padding  = get_style().WindowPadding;
 		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, 0.0 );

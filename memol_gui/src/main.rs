@@ -261,13 +261,14 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 pub fn init_imgui( scale: f32 ) {
 	let io = imgui::get_io();
 	io.IniFilename = ptr::null();
-	imutil::set_scale( scale );
 	imutil::set_theme(
 		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
 		imgui::ImVec4::new( 1.00, 1.00, 1.00, 1.0 ),
 		imgui::ImVec4::new( 0.05, 0.05, 0.05, 1.0 ),
 	);
 	unsafe {
+		imgui::get_style().ScaleAllSizes( scale );
+
 		let mut cfg = imgui::ImFontConfig::new();
 		cfg.FontDataOwnedByAtlas = false;
 		cfg.MergeMode     = false;

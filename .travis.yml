@@ -10,33 +10,32 @@ matrix:
               TARGET=x86_64-unknown-linux-gnu
               EXEC_SUFFIX=
               STRIP="strip --strip-all"
-              SED_INPLACE="sed -i"
         - os: linux
           env: >-
               TARGET=aarch64-unknown-linux-gnu
+              CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
+              CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               EXEC_SUFFIX=
               STRIP="aarch64-linux-gnu-strip --strip-all"
-              SED_INPLACE="sed -i"
         - os: linux
           env: >-
               TARGET=x86_64-pc-windows-gnu
               EXEC_SUFFIX=.exe
               STRIP="x86_64-w64-mingw32-strip --strip-all"
-              SED_INPLACE="sed -i"
         - os: osx
           env: >-
               TARGET=x86_64-apple-darwin
               EXEC_SUFFIX=
               STRIP=strip
-              SED_INPLACE="sed -i ''"
     allow_failures:
         - os: osx
         - os: linux
           env: >-
               TARGET=aarch64-unknown-linux-gnu
+              CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
+              CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               EXEC_SUFFIX=
               STRIP="aarch64-linux-gnu-strip --strip-all"
-              SED_INPLACE="sed -i"
 
 addons:
     apt:
@@ -47,11 +46,20 @@ addons:
             - p7zip-full
 
 script:
-    - if [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then brew install p7zip curl; fi
-    - rustup target add aarch64-unknown-linux-gnu
-    - rustup target add x86_64-pc-windows-gnu
-
-    - ${SED_INPLACE} 's/<Windows\.h>/<windows.h>/g' memol_gui/imgui/imgui.cpp
+    - |
+        case "${TARGET}" in
+            "x86_64-apple-darwin" )
+                brew install p7zip curl
+            ;;
+            "x86_64-pc-windows-gnu" )
+                rustup target add x86_64-pc-windows-gnu
+                sed -i 's|<Windows\.h>|<windows.h>|g' memol_gui/imgui/imgui.cpp
+            ;;
+            "aarch64-unknown-linux-gnu" )
+                rustup target add aarch64-unknown-linux-gnu
+                sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
+            ;;
+        esac
 
     - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
     - cd target/${TARGET}/release

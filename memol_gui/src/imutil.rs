@@ -86,7 +86,7 @@ pub fn pack_color( col: ImVec4 ) -> u32 {
 	f( col.x ) | (f( col.y ) << 8) | (f( col.z ) << 16) | (f( col.w ) << 24)
 }
 
-pub fn root_begin( flags: u32 ) {
+pub fn root_begin( flags: ImGuiWindowFlags_ ) {
 	unsafe {
 		let size = get_io().DisplaySize;
 		let rounding = get_style().WindowRounding;

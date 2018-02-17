@@ -58,6 +58,7 @@ impl vst2::plugin::Plugin for Plugin {
 			unique_id: 271828182,
 			inputs:  0,
 			outputs: 0,
+			category: vst2::plugin::Category::Synth,
 			.. Default::default()
 		}
 	}

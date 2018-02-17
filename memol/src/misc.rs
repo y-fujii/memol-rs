@@ -8,48 +8,11 @@ pub trait One {
 }
 
 impl One for i32 {
-	fn one() -> Self {
-		1
-	}
+	fn one() -> Self { 1 }
 }
 
 impl One for i64 {
-	fn one() -> Self {
-		1
-	}
-}
-
-#[derive(Debug)]
-pub struct UniqueIterator<T: Iterator> {
-	prev: Option<T::Item>,
-	iter: T,
-}
-
-impl<T: Iterator> Iterator for UniqueIterator<T> where T::Item: PartialEq {
-	type Item = T::Item;
-
-	fn next( &mut self ) -> Option<Self::Item> {
-		if let None = self.prev {
-			return None;
-		}
-		loop {
-			let next = self.iter.next();
-			if next != self.prev {
-				return mem::replace( &mut self.prev, next );
-			}
-		}
-	}
-}
-
-pub trait IteratorEx<T: Iterator> {
-	fn unique( self ) -> UniqueIterator<T>;
-}
-
-impl<T: Iterator> IteratorEx<T> for T {
-	fn unique( mut self ) -> UniqueIterator<T> {
-		let prev = self.next();
-		UniqueIterator{ prev: prev, iter: self }
-	}
+	fn one() -> Self { 1 }
 }
 
 pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
@@ -100,6 +63,14 @@ pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usiz
 		}
 	}
 	lo
+}
+
+pub fn u16_to_bytes_be( i: u16 ) -> [u8; 2] {
+	[ (i >> 8) as u8, i as u8 ]
+}
+
+pub fn u32_to_bytes_be( i: u32 ) -> [u8; 4] {
+	[ (i >> 24) as u8, (i >> 16) as u8, (i >> 8) as u8, i as u8 ]
 }
 
 #[derive(Debug)]

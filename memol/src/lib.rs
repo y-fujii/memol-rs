@@ -10,6 +10,7 @@ pub mod ast;
 pub mod scoregen;
 pub mod valuegen;
 pub mod midi;
+pub mod smf;
 pub mod jack;
 pub mod player;
 pub mod notify;

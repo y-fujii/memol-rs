@@ -114,6 +114,13 @@ pub fn root_end() {
 	}
 }
 
+pub fn text_size( text: &str ) -> ImVec2 {
+	let ptr = text.as_ptr() as *const os::raw::c_char;
+	unsafe {
+		CalcTextSize( ptr, ptr.offset( text.len() as isize ), false, -1.0 )
+	}
+}
+
 pub fn show_text( text: &str ) {
 	let ptr = text.as_ptr() as *const os::raw::c_char;
 	unsafe {

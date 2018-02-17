@@ -19,20 +19,21 @@ const JACK_FRAME_WAIT: i32 = 12;
 
 
 enum UiMessage {
-	Data( Assembly, Vec<midi::Event> ),
+	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
 	Text( String ),
 	Player( Box<player::Player> ),
 }
 
 struct Ui {
-	compile_tx: sync::mpsc::Sender<String>,
+	compile_tx: sync::mpsc::Sender<path::PathBuf>,
+	path: path::PathBuf,
 	assembly: Assembly,
 	events: Vec<midi::Event>,
 	tempo: f64, // XXX
 	text: Option<String>,
 	player: Option<Box<player::Player>>,
 	piano_roll: pianoroll::PianoRoll,
-	channel: i32,
+	channel: usize,
 	follow: bool,
 	autoplay: bool,
 	ports: Vec<(String, bool)>,
@@ -45,15 +46,14 @@ impl window::Ui<UiMessage> for Ui {
 	}
 
 	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
-		if let Some( path ) = path.to_str() {
-			self.compile_tx.send( path.into() ).unwrap();
-		}
+		self.compile_tx.send( path.clone() ).unwrap();
 		JACK_FRAME_WAIT
 	}
 
 	fn on_message( &mut self, msg: UiMessage ) -> i32 {
 		match msg {
-			UiMessage::Data( asm, evs ) => {
+			UiMessage::Data( path, asm, evs ) => {
+				self.path     = path;
 				self.assembly = asm;
 				self.events   = evs;
 				self.text     = None;
@@ -85,9 +85,10 @@ impl window::Ui<UiMessage> for Ui {
 }
 
 impl Ui {
-	fn new( compile_tx: sync::mpsc::Sender<String> ) -> Ui {
+	fn new( compile_tx: sync::mpsc::Sender<path::PathBuf> ) -> Ui {
 		Ui {
 			compile_tx: compile_tx,
+			path: path::PathBuf::new(),
 			assembly: Assembly::default(),
 			events: Vec::new(),
 			tempo: 1.0,
@@ -127,7 +128,9 @@ impl Ui {
 		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
 		imutil::root_begin( 0 );
 			let size = GetWindowSize();
-			if let Some( &(_, ref ch) ) = self.assembly.channels.get( self.channel as usize ) {
+			if let Some( &(_, ref ch) ) = self.assembly.channels
+				.iter().filter( |&&(i, _)| i == self.channel ).next()
+			{
 				let result = self.piano_roll.draw(
 					&ch.score, self.assembly.len.to_float() as f32,
 					(location.to_float() * self.tempo) as f32,
@@ -197,6 +200,19 @@ impl Ui {
 			Checkbox( c_str!( "Autoplay" ), &mut self.autoplay );
 
 			SameLine( 0.0, -1.0 );
+			ImGui::PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
+			if BeginCombo( c_str!( "##Channel" ), c_str!( "Channel {:2}", self.channel ), 0 ) {
+				for &(i, _) in self.assembly.channels.iter() {
+					if Selectable( c_str!( "Channel {:2}", i ), i == self.channel, 0, &ImVec2::zero() ) {
+						self.channel = i;
+						changed = true;
+					}
+				}
+				EndCombo();
+			}
+			PopItemWidth();
+
+			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "Ports..." ), &ImVec2::zero() ) {
 				OpenPopup( c_str!( "ports" ) );
 				self.ports = player.ports().unwrap_or_default();
@@ -215,19 +231,29 @@ impl Ui {
 				EndPopup();
 			}
 
-			for (i, &(ch, _)) in self.assembly.channels.iter().enumerate() {
-				SameLine( 0.0, -1.0 );
-				RadioButton1( c_str!( "{}", ch ), &mut self.channel, i as i32 );
+			SameLine( 0.0, -1.0 );
+			if Button( c_str!( "Generate SMF" ), &ImVec2::zero() ) {
+				if let Err( e ) = self.generate_smf() {
+					self.text = Some( format!( "{}", e ) );
+					changed = true;
+				}
 			}
 		End();
 		PopStyleVar( 2 );
 
 		changed
 	}
+
+	fn generate_smf( &self ) -> io::Result<()> {
+		let smf = self.path.with_extension( "mid" );
+		let mut buf = io::BufWriter::new( fs::File::create( smf )? );
+		memol::smf::write_smf( &mut buf, &self.events, 480 )?;
+		Ok( () )
+	}
 }
 
-fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiMessage> ) {
-	let mut path = String::new();
+fn compile_task( rx: sync::mpsc::Receiver<path::PathBuf>, tx: window::MessageSender<UiMessage> ) {
+	let mut path = path::PathBuf::new();
 	let mut modified = time::UNIX_EPOCH;
 	loop {
 		match notify::wait_file_or_channel( &path, &rx, modified ) {
@@ -243,14 +269,14 @@ fn compile_task( rx: sync::mpsc::Receiver<String>, tx: window::MessageSender<UiM
 				break;
 			},
 		}
-		if path.is_empty() {
+		if path == path::PathBuf::new() {
 			continue;
 		}
 
 		let msg = || -> Result<_, misc::Error> {
-			let asm = compile( &path::PathBuf::from( &path ) )?;
+			let asm = compile( &path )?;
 			let evs = assemble( &asm )?;
-			Ok( UiMessage::Data( asm, evs ) )
+			Ok( UiMessage::Data( path.clone(), asm, evs ) )
 		}().unwrap_or_else( |e| {
 			UiMessage::Text( format!( "{}", e ) )
 		} );
@@ -318,13 +344,13 @@ fn main() {
 		}
 
 		let mut opts = getopts::Options::new();
-		opts.optopt( "s", "", "", "" );
-		opts.optopt( "b", "", "", "" );
-		opts.optmulti( "c", "", "", "" );
+		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE" );
+		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"  );
+		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"  );
 		let args = match opts.parse( env::args().skip( 1 ) ) {
 			Ok ( v ) => v,
 			Err( _ ) => {
-				println!( "Usage: memol_gui (-s SCALING_FACTOR)? (-b BACKGROUND_IMAGE)? (-c JACK_PORT)* (FILE)?" );
+				print!( "{}", opts.usage( "Usage: memol_gui [options] FILE" ) );
 				return Ok( () );
 			},
 		};
@@ -360,7 +386,7 @@ fn main() {
 		} );
 
 		if let Some( path ) = args.free.first() {
-			compile_tx.send( path.clone() )?;
+			compile_tx.send( path::PathBuf::from( path ) )?;
 		}
 		else {
 			window.create_sender().send( UiMessage::Text(
@@ -368,7 +394,7 @@ fn main() {
 			) );
 		}
 
-		if let Some( path ) = args.opt_str( "b" ) {
+		if let Some( path ) = args.opt_str( "w" ) {
 			let mut wallpaper = renderer::Texture::new();
 			let mut img = image::open( path )?.to_rgba();
 			lighten_image( &mut img, 0.5 );

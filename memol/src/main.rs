@@ -26,7 +26,7 @@ fn main() {
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a SMF file." );
-		opts.optmulti( "c", "connect", "Connect to a JACK port.", "" );
+		opts.optmulti( "c", "connect", "Connect to a JACK port.", "PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
 			print!( "{}", opts.usage( "Usage: memol [options] FILE" ) );

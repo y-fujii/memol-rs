@@ -175,24 +175,29 @@ programs are installed and configured properly.
 </ul>
 <p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
-cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol
+$ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol
 </pre>
 <p>and everything should be done.
 <p>Recent version of memol has experimental GUI program.
 <a href="https://clang.llvm.org/">clang</a> must be installed to build one.
 <pre>
-cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
+$ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
 </pre>
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
 
 <h2>Run</h2>
 <p>Current implementation of memol is a simple command line program which emits
-MIDI messages to JACK.
+MIDI messages to JACK or generates a SMF file.
 <pre>
-memol [-c JACK_PORT] FILE
+$ memol
+Usage: memol [options] FILE
+Options:
+    -v, --verbose
+    -b, --batch         Generate a SMF file.
+    -c, --connect PORT  Connect to a JACK port.
 </pre>
-<p>JACK_PORT can be specified multiple times and then the memol output port is
-being connected to them.  Experimental GUI (memol_gui) can be launched without
+<p>PORT can be specified multiple times and then the memol output port is being
+connected to them.  Experimental GUI (memol_gui) can be launched without
 command line arguments.
 <p>memol keeps watching the change of the file and reflects it immediately.  If
 <code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol

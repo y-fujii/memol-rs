@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use ratio;
 use midi;
 
 
@@ -12,11 +11,13 @@ pub trait Player: Send {
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
 	fn seek( &self, time: f64 ) -> io::Result<()>;
-	fn location( &self ) -> ratio::Ratio;
+	fn location( &self ) -> f64;
 	fn is_playing( &self ) -> bool;
 }
 
-pub struct DummyPlayer {}
+pub struct DummyPlayer {
+	location: cell::Cell<f64>,
+}
 
 unsafe impl Send for DummyPlayer {}
 
@@ -44,12 +45,13 @@ impl Player for DummyPlayer {
 		Ok( () )
 	}
 
-	fn seek( &self, _: f64 ) -> io::Result<()> {
+	fn seek( &self, loc: f64 ) -> io::Result<()> {
+		self.location.set( loc );
 		Ok( () )
 	}
 
-	fn location( &self ) -> ratio::Ratio {
-		ratio::Ratio::zero()
+	fn location( &self ) -> f64 {
+		self.location.get()
 	}
 
 	fn is_playing( &self ) -> bool {
@@ -59,6 +61,8 @@ impl Player for DummyPlayer {
 
 impl DummyPlayer {
 	pub fn new() -> Box<DummyPlayer> {
-		Box::new( DummyPlayer{} )
+		Box::new( DummyPlayer{
+			location: cell::Cell::new( 0.0 ),
+		} )
 	}
 }

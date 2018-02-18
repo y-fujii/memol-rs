@@ -122,7 +122,7 @@ impl Ui {
 			{
 				let result = self.piano_roll.draw(
 					&ch.score, self.assembly.len.to_float() as f32,
-					(location.to_float() * self.tempo) as f32,
+					(location * self.tempo) as f32,
 					is_playing && self.follow, size,
 				);
 				if let Some( loc ) = result {

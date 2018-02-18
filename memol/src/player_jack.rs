@@ -1,7 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 use misc;
-use ratio;
 use midi;
 use player;
 use jack;
@@ -102,12 +101,12 @@ impl player::Player for Player {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			(self.lib.transport_query)( self.jack, &mut pos );
-			(self.lib.transport_locate)( self.jack, (time * pos.frame_rate as f64) as u32 );
+			(self.lib.transport_locate)( self.jack, (time * pos.frame_rate as f64).round() as u32 );
 		}
 		Ok( () )
 	}
 
-	fn location( &self ) -> ratio::Ratio {
+	fn location( &self ) -> f64 {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			(self.lib.transport_query)( self.jack, &mut pos );
@@ -115,7 +114,7 @@ impl player::Player for Player {
 			// jack_get_current_transport_frame() estimates the current
 			// position more accurately.
 			let frame = (self.lib.get_current_transport_frame)( self.jack );
-			ratio::Ratio::new( frame as i64, pos.frame_rate as i64 )
+			frame as f64 / pos.frame_rate as f64
 		}
 	}
 

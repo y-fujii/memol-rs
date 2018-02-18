@@ -7,7 +7,7 @@ use scoregen;
 use valuegen;
 
 
-#[derive(Debug)]
+#[derive( Clone )]
 pub struct Event {
 	pub time: f64,
 	pub prio: i16,

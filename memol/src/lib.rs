@@ -13,6 +13,7 @@ pub mod midi;
 pub mod smf;
 pub mod jack;
 pub mod player;
+pub mod player_jack;
 pub mod notify;
 use std::*;
 

@@ -13,6 +13,7 @@ mod imutil;
 mod pianoroll;
 use std::*;
 use memol::*;
+use memol::player::Player;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
@@ -31,7 +32,7 @@ struct Ui {
 	events: Vec<midi::Event>,
 	tempo: f64, // XXX
 	text: Option<String>,
-	player: Option<Box<player::Player>>,
+	player: Box<player::Player>,
 	piano_roll: pianoroll::PianoRoll,
 	channel: usize,
 	follow: bool,
@@ -64,20 +65,18 @@ impl window::Ui<UiMessage> for Ui {
 				self.text = Some( text );
 			},
 			UiMessage::Player( player ) => {
-				self.player = Some( player );
+				self.player = player;
 			},
 		}
 
-		if let Some( ref player ) = self.player {
-			let bgn = match self.events.get( 0 ) {
-				Some( ev ) => ev.time.max( 0.0 ),
-				None       => 0.0,
-			};
-			player.set_data( mem::replace( &mut self.events, Vec::new() ) );
-			if self.autoplay && !player.is_playing() {
-				player.seek( bgn ).unwrap_or_default();
-				player.play().unwrap_or_default();
-			}
+		let bgn = match self.events.get( 0 ) {
+			Some( ev ) => ev.time.max( 0.0 ),
+			None       => 0.0,
+		};
+		self.player.set_data( self.events.clone() );
+		if self.autoplay && !self.player.is_playing() {
+			self.player.seek( bgn ).unwrap_or_default();
+			self.player.play().unwrap_or_default();
 		}
 
 		JACK_FRAME_WAIT
@@ -93,7 +92,7 @@ impl Ui {
 			events: Vec::new(),
 			tempo: 1.0,
 			text: None,
-			player: None,
+			player: player::DummyPlayer::new(),
 			piano_roll: pianoroll::PianoRoll::new(),
 			channel: 0,
 			follow: true,
@@ -106,18 +105,8 @@ impl Ui {
 	unsafe fn draw_all( &mut self ) -> i32 {
 		use imgui::*;
 
-		let is_playing;
-		let location;
-		match self.player {
-			Some( ref player ) => {
-				is_playing = player.is_playing();
-				location   = player.location();
-			},
-			None => {
-				is_playing = false;
-				location   = ratio::Ratio::zero();
-			},
-		}
+		let is_playing = self.player.is_playing();
+		let location   = self.player.location();
 
 		if let Some( ref text ) = self.text {
 			imutil::message_dialog( "Message", text );
@@ -136,8 +125,8 @@ impl Ui {
 					(location.to_float() * self.tempo) as f32,
 					is_playing && self.follow, size,
 				);
-				if let (&Some( ref player ), Some( loc )) = (&self.player, result) {
-					player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
+				if let Some( loc ) = result {
+					self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
 					changed = true;
 				}
 			}
@@ -158,10 +147,6 @@ impl Ui {
 	unsafe fn draw_transport( &mut self ) -> bool {
 		use imgui::*;
 
-		let player = match self.player {
-			Some( ref v ) => v,
-			None          => return false,
-		};
 		let mut changed = false;
 
 		let padding = get_style().WindowPadding;
@@ -175,22 +160,22 @@ impl Ui {
 		);
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
-				player.seek( 0.0 ).unwrap_or_default();
+				self.player.seek( 0.0 ).unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04b}" ), &size ) {
-				player.play().unwrap_or_default();
+				self.player.play().unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04d}" ), &size ) {
-				player.stop().unwrap_or_default();
+				self.player.stop().unwrap_or_default();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
-				player.seek( self.assembly.len.to_float() / self.tempo ).unwrap_or_default();
+				self.player.seek( self.assembly.len.to_float() / self.tempo ).unwrap_or_default();
 				changed = true;
 			}
 
@@ -215,16 +200,16 @@ impl Ui {
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "Ports..." ), &ImVec2::zero() ) {
 				OpenPopup( c_str!( "ports" ) );
-				self.ports = player.ports().unwrap_or_default();
+				self.ports = self.player.ports().unwrap_or_default();
 			}
 			if BeginPopup( c_str!( "ports" ) ) {
 				for &mut (ref port, ref mut is_conn) in self.ports.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
-							player.connect( port ).is_ok()
+							self.player.connect( port ).is_ok()
 						}
 						else {
-							player.disconnect( port ).is_err()
+							self.player.disconnect( port ).is_err()
 						}
 					}
 				}
@@ -369,7 +354,7 @@ fn main() {
 		let ports = args.opt_strs( "c" );
 		let window_tx = window.create_sender();
 		thread::spawn( move || {
-			let player = match player::Player::new( "memol" ) {
+			let player = match player_jack::Player::new( "memol" ) {
 				Ok ( v ) => v,
 				Err( v ) => {
 					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );

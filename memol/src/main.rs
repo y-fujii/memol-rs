@@ -2,6 +2,7 @@
 extern crate getopts;
 extern crate memol;
 use std::*;
+use memol::player::Player;
 
 
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
@@ -44,7 +45,7 @@ fn main() {
 			return Ok( () );
 		}
 
-		let player = memol::player::Player::new( "memol" )?;
+		let player = memol::player_jack::Player::new( "memol" )?;
 		for port in args.opt_strs( "c" ) {
 			player.connect( &port )?;
 		}

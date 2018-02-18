@@ -4,13 +4,13 @@ use midi;
 
 
 pub trait Player: Send {
-	fn set_data( &self, events: Vec<midi::Event> );
+	fn set_data( &self, Vec<midi::Event> );
 	fn ports( &self ) -> io::Result<Vec<(String, bool)>>;
-	fn connect( &self, port: &str ) -> io::Result<()>;
-	fn disconnect( &self, port: &str ) -> io::Result<()>;
+	fn connect( &self, &str ) -> io::Result<()>;
+	fn disconnect( &self, &str ) -> io::Result<()>;
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
-	fn seek( &self, time: f64 ) -> io::Result<()>;
+	fn seek( &self, f64 ) -> io::Result<()>;
 	fn location( &self ) -> f64;
 	fn is_playing( &self ) -> bool;
 }

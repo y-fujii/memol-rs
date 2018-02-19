@@ -26,7 +26,7 @@ fn main() {
 	let f = || -> Result<(), Box<error::Error>> {
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
-		opts.optflag ( "b", "batch",   "Generate a SMF file." );
+		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
 		opts.optmulti( "c", "connect", "Connect to a JACK port.", "PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {

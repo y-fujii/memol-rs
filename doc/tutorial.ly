@@ -187,13 +187,13 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 
 <h2>Run</h2>
 <p>Current implementation of memol is a simple command line program which emits
-MIDI messages to JACK or generates a SMF file.
+MIDI messages to JACK or generates a MIDI file.
 <pre>
 $ memol
 Usage: memol [options] FILE
 Options:
     -v, --verbose
-    -b, --batch         Generate a SMF file.
+    -b, --batch         Generate a MIDI file.
     -c, --connect PORT  Connect to a JACK port.
 </pre>
 <p>PORT can be specified multiple times and then the memol output port is being

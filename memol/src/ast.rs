@@ -47,7 +47,7 @@ pub enum Score<'a> {
 
 #[derive(Debug)]
 pub enum Value {
-	Value( ratio::Ratio, ratio::Ratio ),
+	Value( Option<ratio::Ratio>, Option<ratio::Ratio> ),
 	Group( Vec<(Box<Ast<Value>>, i32)> ),
 }
 

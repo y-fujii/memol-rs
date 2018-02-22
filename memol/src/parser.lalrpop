@@ -263,8 +263,9 @@ value_track_prim_wz_if: Box<Ast<ValueTrack>> = {
 	<lo:@L> "if" <a:value_track> "then" <b:value_track> "else" <c:value_track> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Branch( a, b, c ) ),
 	<lo:@L> "!" <a:value_track_prim_wz_if> <hi:@R> => {
+		let v = Some( ratio::Ratio::one() );
 		let one = Ast::new_box( lo, hi, ValueTrack::ValueTrack(
-			vec![ Ast::new_box( lo, hi, Value::Value( ratio::Ratio::one(), ratio::Ratio::one() ) ) ]
+			vec![ Ast::new_box( lo, hi, Value::Value( v, v ) ) ]
 		) );
 		Ast::new_box( lo, hi, ValueTrack::BinaryOp( one, a, BinaryOp::Sub ) )
 	}
@@ -272,7 +273,7 @@ value_track_prim_wz_if: Box<Ast<ValueTrack>> = {
 
 value_track_prim_wo_if: Box<Ast<ValueTrack>> = {
 	<lo:@L> <a:uint> <hi:@R> => {
-		let v = ratio::Ratio::new( a as i64, 1 );
+		let v = Some( a.into() );
 		Ast::new_box( lo, hi, ValueTrack::ValueTrack(
 			vec![ Ast::new_box( lo, hi, Value::Value( v, v ) ) ]
 		) )
@@ -290,8 +291,9 @@ value_track_prim_wo_if: Box<Ast<ValueTrack>> = {
 	<lo:@L> "repeat" <a:uint> <b:value_track_prim_wo_if> <hi:@R> =>
 		Ast::new_box( lo, hi, ValueTrack::Repeat( b, a ) ),
 	<lo:@L> "!" <a:value_track_prim_wo_if> <hi:@R> => {
+		let v = Some( ratio::Ratio::one() );
 		let one = Ast::new_box( lo, hi, ValueTrack::ValueTrack(
-			vec![ Ast::new_box( lo, hi, Value::Value( ratio::Ratio::one(), ratio::Ratio::one() ) ) ]
+			vec![ Ast::new_box( lo, hi, Value::Value( v, v ) ) ]
 		) );
 		Ast::new_box( lo, hi, ValueTrack::BinaryOp( one, a, BinaryOp::Sub ) )
 	}
@@ -320,12 +322,17 @@ value_track_content: Vec<Box<Ast<Value>>> = {
 };
 
 value: Box<Ast<Value>> = {
-	<lo:@L> <a:sratio> <hi:@R> =>
+	<lo:@L> <a:boundary> <hi:@R> =>
 		Ast::new_box( lo, hi, Value::Value( a, a ) ),
-	<lo:@L> <a:sratio> ".." <b:sratio> <hi:@R> =>
+	<lo:@L> <a:boundary> ".." <b:boundary> <hi:@R> =>
 		Ast::new_box( lo, hi, Value::Value( a, b ) ),
 	<lo:@L> "[" <a:value_group_content> "]" <hi:@R> =>
 		Ast::new_box( lo, hi, Value::Group( a ) ),
+};
+
+boundary: Option<ratio::Ratio> = {
+	"*"        => None,
+	<a:sratio> => Some( a ),
 };
 
 value_group_content: Vec<(Box<Ast<Value>>, i32)> = {
@@ -356,7 +363,7 @@ sratio: ratio::Ratio = {
 	<a:sint> "/" <b:uint> =>
 		ratio::Ratio::new( a as i64, b as i64 ),
 	<a:sint> =>
-		ratio::Ratio::new( a as i64, 1 ),
+		a.into(),
 };
 
 sint: i32 = {

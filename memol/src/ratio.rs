@@ -16,6 +16,12 @@ impl From<i64> for Ratio {
 	}
 }
 
+impl From<i32> for Ratio {
+	fn from( n: i32 ) -> Self {
+		Ratio{ y: n as i64, x: 1 }
+	}
+}
+
 impl cmp::PartialEq for Ratio {
 	fn eq( &self, other: &Self ) -> bool {
 		self.y * other.x == other.y * self.x

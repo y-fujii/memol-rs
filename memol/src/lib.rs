@@ -122,8 +122,8 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 			.unwrap_or( valuegen::Ir::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
-				ratio::Ratio::new( 0, 1 ),
-				ratio::Ratio::new( 0, 1 ),
+				ratio::Ratio::zero(),
+				ratio::Ratio::zero(),
 			) );
 		let duration = value_gen.generate( &format!( "out.{}.duration", ch ) )?
 			.unwrap_or( valuegen::Ir::Symbol( "note.len".into() ) );
@@ -131,8 +131,8 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 			.unwrap_or( valuegen::Ir::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
-				ratio::Ratio::new( 0, 1 ),
-				ratio::Ratio::new( 0, 1 ),
+				ratio::Ratio::zero(),
+				ratio::Ratio::zero(),
 			) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {

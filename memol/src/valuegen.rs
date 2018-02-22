@@ -15,15 +15,15 @@ pub enum Ir {
 	Branch( Box<Ir>, Box<Ir>, Box<Ir> ),
 }
 
-#[derive(Debug)]
 struct Span<'a> {
 	t0: ratio::Ratio,
 	t1: ratio::Ratio,
 	path: &'a path::Path,
 }
 
-#[derive(Debug)]
 struct State {
+	t: ratio::Ratio,
+	v: ratio::Ratio,
 }
 
 pub struct Generator<'a> {
@@ -62,7 +62,10 @@ impl<'a> Generator<'a> {
 		let dst = match track.ast {
 			ast::ValueTrack::ValueTrack( ref vs ) => {
 				let mut irs = Vec::new();
-				let mut state = State{};
+				let mut state = State{
+					t: span.t0,
+					v: ratio::Ratio::zero(),
+				};
 				for (i, v) in vs.iter().enumerate() {
 					let span = Span{
 						t0: span.t0 + (span.t1 - span.t0) * i as i64,
@@ -72,6 +75,9 @@ impl<'a> Generator<'a> {
 					self.generate_value( v, &span, &mut state, &mut irs )?;
 				}
 				let t1 = span.t0 + (span.t1 - span.t0) * vs.len() as i64;
+				if state.t != t1 {
+					return misc::error( &span.path, track.end, "the last value must be specified." );
+				}
 				(Ir::Sequence( irs ), t1)
 			},
 			ast::ValueTrack::Symbol( ref key ) => {
@@ -148,7 +154,18 @@ impl<'a> Generator<'a> {
 	fn generate_value( &self, value: &ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Vec<(Ir, ratio::Ratio)> ) -> Result<(), misc::Error> {
 		match value.ast {
 			ast::Value::Value( v0, v1 ) => {
-				dst.push( (Ir::Value( span.t0, span.t1, v0, v1 ), span.t0) );
+				if let Some( v0 ) = v0 {
+					if state.t != span.t0 {
+						dst.push( (Ir::Value( state.t, span.t0, state.v, v0 ), state.t) );
+					}
+					state.t = span.t0;
+					state.v = v0;
+				}
+				if let Some( v1 ) = v1 {
+					dst.push( (Ir::Value( state.t, span.t1, state.v, v1 ), state.t) );
+					state.t = span.t1;
+					state.v = v1;
+				}
 			},
 			ast::Value::Group( ref vs ) => {
 				let tot: i32 = vs.iter().map( |&(_, i)| i ).sum();
@@ -163,7 +180,7 @@ impl<'a> Generator<'a> {
 					acc += i;
 				}
 			},
-		};
+		}
 		Ok( () )
 	}
 }

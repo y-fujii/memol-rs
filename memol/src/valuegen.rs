@@ -240,7 +240,7 @@ impl<'a> Evaluator<'a> {
 					ast::BinaryOp::Ge => if lhs >= rhs { 1.0 } else { 0.0 },
 					ast::BinaryOp::Lt => if lhs <  rhs { 1.0 } else { 0.0 },
 					ast::BinaryOp::Gt => if lhs >  rhs { 1.0 } else { 0.0 },
-					ast::BinaryOp::Or => 1.0 - (1.0 - lhs) * (1.0 - rhs),
+					ast::BinaryOp::Or => lhs + rhs - lhs * rhs,
 				}
 			},
 			Ir::Branch( ref ir_cond, ref ir_then, ref ir_else ) => {

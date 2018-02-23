@@ -3,29 +3,30 @@ use std::*;
 use ratio;
 
 
-#[derive(Debug)]
+#[derive( Debug )]
 pub struct Ast<T> {
 	pub ast: T,
 	pub bgn: usize,
 	pub end: usize,
 }
 
-#[derive(Debug)]
+#[derive( Debug )]
 pub struct Definition<'a> {
 	pub scores: collections::HashMap<String, (path::PathBuf, Box<Ast<Score<'a>>>)>,
-	pub values: collections::HashMap<String, (path::PathBuf, Box<Ast<ValueTrack>>)>,
+	pub values: collections::HashMap<String, (path::PathBuf, Box<Ast<Score<'a>>>)>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive( Copy, Clone, Debug )]
 pub enum Dir {
 	Lower,
 	Upper,
 }
 
-#[derive(Debug)]
+#[derive( Debug )]
 pub enum Note<'a> {
-	Note( Dir, char, i32, i32 ),
 	Rest,
+	Note( Dir, char, i32, i32 ),
+	Value( Option<ratio::Ratio>, Option<ratio::Ratio> ),
 	Repeat( cell::Cell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i32 ),
 	OctaveByNote( char, i32, i32 ),
@@ -34,37 +35,22 @@ pub enum Note<'a> {
 	Tie( Box<Ast<Note<'a>>> ),
 }
 
-#[derive(Debug)]
+#[derive( Debug )]
 pub enum Score<'a> {
 	Score( Vec<Box<Ast<Note<'a>>>> ),
 	Symbol( String ),
-	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
 	Parallel( Vec<Box<Ast<Score<'a>>>> ),
 	Sequence( Vec<Box<Ast<Score<'a>>>> ),
+	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
 	Repeat( Box<Ast<Score<'a>>>, i32 ),
 	Stretch( Box<Ast<Score<'a>>>, ratio::Ratio ),
+	BinaryOp( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, BinaryOp ),
+	Branch( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
 }
 
-#[derive(Debug)]
-pub enum Value {
-	Value( Option<ratio::Ratio>, Option<ratio::Ratio> ),
-	Group( Vec<(Box<Ast<Value>>, i32)> ),
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive( Copy, Clone, Debug )]
 pub enum BinaryOp {
 	Add, Sub, Mul, Div, Eq, Ne, Le, Ge, Lt, Gt, Or,
-}
-
-#[derive(Debug)]
-pub enum ValueTrack {
-	ValueTrack( Vec<Box<Ast<Value>>> ),
-	Symbol( String ),
-	Sequence( Vec<Box<Ast<ValueTrack>>> ),
-	Repeat( Box<Ast<ValueTrack>>, i32 ),
-	Stretch( Box<Ast<ValueTrack>>, ratio::Ratio ),
-	BinaryOp( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, BinaryOp ),
-	Branch( Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>>, Box<Ast<ValueTrack>> ),
 }
 
 impl<T> Ast<T> {

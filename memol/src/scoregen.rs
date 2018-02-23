@@ -157,6 +157,9 @@ impl<'a> Generator<'a> {
 				};
 				self.generate_score( s, &span, dst )?
 			},
+			_ => {
+				return misc::error( &span.path, score.bgn, "syntax error." );
+			}
 		};
 		Ok( end )
 	}
@@ -283,6 +286,9 @@ impl<'a> Generator<'a> {
 					.. *span
 				};
 				self.generate_note( n, &span, state, dst )?
+			},
+			_ => {
+				return misc::error( &span.path, note.bgn, "syntax error." );
 			},
 		};
 		Ok( () )

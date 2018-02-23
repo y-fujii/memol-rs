@@ -1,15 +1,15 @@
 /* Gymnopedie No. 1, Erik Satie */
 
 score $melody_common() = {
-	_  | _   | _    | _  < | _FA | gfc  | bCD | a    |
-	f^ | f^  | f^   | f  < | _FA | gfc  | bCD | a    |
-	C  | F > | e^   | e^   | e   | ABC- | Edb | Dc-b |
-	D^ | 2DD | EF-G | Ac-D | Edb | D^   | 2DD | G
+	_  | _    | _    | _  < | _FA | gfc  | bCD  | a    |
+	f^ | f^   | f^   | f  < | _FA | gfc  | bCD  | a    |
+	C  | F >  | e^   | e^   | e   | ABC- | Edb  | Dc-b |
+	D^ | D:2D | EF-G | Ac-D | Edb | D^   | D:2D | G
 }
 
 score $melody() = [
-	$melody_common() { < F  | baB   | CDE  | cDE  | 2fG  | C- | D }
-	$melody_common() { < F- | bC-F- | edc- | Edc- | 2f-G | C- | D }
+	$melody_common() { < F  | baB   | CDE  | cDE  | f:2G  | C- | D }
+	$melody_common() { < F- | bC-F- | edc- | Edc- | f-:2G | C- | D }
 ]
 
 score $chord_common() = [
@@ -26,7 +26,7 @@ score $chord() = [
 ]
 
 score $pattern() = [
-	repeat 36 { @q0 > q0 ^ 2(/ @q1 Q1 Q2 Q3 Q4) }
+	repeat 36 { @q0 > q0 ^ (/ @q1 Q1 Q2 Q3 Q4):2 }
 	{ (@q0 > q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 > q0 @q1 Q1 Q2 @q3 Q3 Q4 Q5) | / }
 ]
 
@@ -35,6 +35,6 @@ score $out.0() = [
 ]
 
 value $out.0.offset()   = $gaussian() / 512
-value $out.0.velocity() = $gaussian() / 64 + if $note.nth() == 0 then 4/8 else 3/8
-value $out.0.cc64()     = [ repeat 79 { 0 23:1 } { 0 } ]
+value $out.0.velocity() = $gaussian() / 64 + (if $note.nth() == 0 then 4/8 else 3/8)
+value $out.0.cc64()     = [ repeat 79 { 0 1:23 } { 0 } ]
 value $out.tempo()      = 2/5

@@ -58,9 +58,9 @@ impl<'a> Generator<'a> {
 		Ok( Some( ir ) )
 	}
 
-	fn generate_value_track( &self, track: &ast::Ast<ast::ValueTrack>, span: &Span ) -> Result<(Ir, ratio::Ratio), misc::Error> {
+	fn generate_value_track( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span ) -> Result<(Ir, ratio::Ratio), misc::Error> {
 		let dst = match track.ast {
-			ast::ValueTrack::ValueTrack( ref vs ) => {
+			ast::Score::Score( ref vs ) => {
 				let mut irs = Vec::new();
 				let mut state = State{
 					t: span.t0,
@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
 				}
 				(Ir::Sequence( irs ), t1)
 			},
-			ast::ValueTrack::Symbol( ref key ) => {
+			ast::Score::Symbol( ref key ) => {
 				if let Some( &(ref path, ref s) ) = self.defs.values.get( key ) {
 					let span = Span{
 						path: path,
@@ -95,7 +95,13 @@ impl<'a> Generator<'a> {
 					return misc::error( &span.path, track.bgn, "undefined symbol." );
 				}
 			},
-			ast::ValueTrack::Sequence( ref ss ) => {
+			ast::Score::Parallel( ref ss ) => {
+				if ss.len() != 1 {
+					return misc::error( &span.path, track.bgn, "syntax error." );
+				}
+				self.generate_value_track( &ss[0], &span )?
+			},
+			ast::Score::Sequence( ref ss ) => {
 				let mut irs = Vec::new();
 				let mut t = span.t0;
 				for s in ss.iter() {
@@ -110,7 +116,7 @@ impl<'a> Generator<'a> {
 				}
 				(Ir::Sequence( irs ), t)
 			},
-			ast::ValueTrack::Repeat( ref s, n ) => {
+			ast::Score::Repeat( ref s, n ) => {
 				let mut irs = Vec::new();
 				let mut t = span.t0;
 				for _ in 0 .. n {
@@ -125,21 +131,21 @@ impl<'a> Generator<'a> {
 				}
 				(Ir::Sequence( irs ), t)
 			},
-			ast::ValueTrack::Stretch( ref s, r ) => {
+			ast::Score::Stretch( ref s, r ) => {
 				let span = Span{
 					t1: span.t0 + r * (span.t1 - span.t0),
 					.. *span
 				};
 				self.generate_value_track( s, &span )?
 			},
-			ast::ValueTrack::BinaryOp( ref lhs, ref rhs, op ) => {
+			ast::Score::BinaryOp( ref lhs, ref rhs, op ) => {
 				let (ir_lhs, t_lhs) = self.generate_value_track( lhs, &span )?;
 				let (ir_rhs, t_rhs) = self.generate_value_track( rhs, &span )?;
 				let ir = Ir::BinaryOp( Box::new( ir_lhs ), Box::new( ir_rhs ), op );
 				let t = cmp::max( t_lhs, t_rhs );
 				(ir, t)
 			},
-			ast::ValueTrack::Branch( ref cond, ref then, ref elze ) => {
+			ast::Score::Branch( ref cond, ref then, ref elze ) => {
 				let (ir_cond, t_cond) = self.generate_value_track( cond, &span )?;
 				let (ir_then, t_then) = self.generate_value_track( then, &span )?;
 				let (ir_elze, t_elze) = self.generate_value_track( elze, &span )?;
@@ -147,13 +153,16 @@ impl<'a> Generator<'a> {
 				let t = cmp::max( t_cond, cmp::max( t_then, t_elze ) );
 				(ir, t)
 			},
+			_ => {
+				return misc::error( &span.path, track.bgn, "syntax error." );
+			},
 		};
 		Ok( dst )
 	}
 
-	fn generate_value( &self, value: &ast::Ast<ast::Value>, span: &Span, state: &mut State, dst: &mut Vec<(Ir, ratio::Ratio)> ) -> Result<(), misc::Error> {
+	fn generate_value( &self, value: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State, dst: &mut Vec<(Ir, ratio::Ratio)> ) -> Result<(), misc::Error> {
 		match value.ast {
-			ast::Value::Value( v0, v1 ) => {
+			ast::Note::Value( v0, v1 ) => {
 				if let Some( v0 ) = v0 {
 					if state.t != span.t0 {
 						dst.push( (Ir::Value( state.t, span.t0, state.v, v0 ), state.t) );
@@ -167,7 +176,7 @@ impl<'a> Generator<'a> {
 					state.v = v1;
 				}
 			},
-			ast::Value::Group( ref vs ) => {
+			ast::Note::Group( ref vs ) => {
 				let tot: i32 = vs.iter().map( |&(_, i)| i ).sum();
 				let mut acc = 0;
 				for &(ref v, i) in vs.iter() {
@@ -179,6 +188,9 @@ impl<'a> Generator<'a> {
 					self.generate_value( v, &span, state, dst )?;
 					acc += i;
 				}
+			},
+			_ => {
+				return misc::error( &span.path, value.bgn, "syntax error." );
 			},
 		}
 		Ok( () )

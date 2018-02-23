@@ -98,15 +98,15 @@ and different from the latest implementation.</strong>
 /* Gymnopedie No. 1, Erik Satie */
 
 score $melody_common() = {
-    _  | _   | _    | _  &lt; | _FA | gfc  | bCD | a    |
-    f^ | f^  | f^   | f  &lt; | _FA | gfc  | bCD | a    |
-    C  | F &gt; | e^   | e^   | e   | ABC- | Edb | Dc-b |
-    D^ | 2DD | EF-G | Ac-D | Edb | D^   | 2DD | G
+    _  | _    | _    | _  &lt; | _FA | gfc  | bCD  | a    |
+    f^ | f^   | f^   | f  &lt; | _FA | gfc  | bCD  | a    |
+    C  | F &gt;  | e^   | e^   | e   | ABC- | Edb  | Dc-b |
+    D^ | D:2D | EF-G | Ac-D | Edb | D^   | D:2D | G
 }
 
 score $melody() = [
-    $melody_common() { &lt; F  | baB   | CDE  | cDE  | 2fG  | C- | D }
-    $melody_common() { &lt; F- | bC-F- | edc- | Edc- | 2f-G | C- | D }
+    $melody_common() { &lt; F  | baB   | CDE  | cDE  | f:2G  | C- | D }
+    $melody_common() { &lt; F- | bC-F- | edc- | Edc- | f-:2G | C- | D }
 ]
 
 score $chord_common() = [
@@ -123,7 +123,7 @@ score $chord() = [
 ]
 
 score $pattern() = [
-    repeat 36 { @q0 &gt; q0 ^ 2(/ @q1 Q1 Q2 Q3 Q4) }
+    repeat 36 { @q0 &gt; q0 ^ (/ @q1 Q1 Q2 Q3 Q4):2 }
     { (@q0 &gt; q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 &gt; q0 @q1 Q1 Q2 @q3 Q3 Q4 Q5) | / }
 ]
 
@@ -133,7 +133,7 @@ score $out.0() = [
 
 value $out.0.offset()   = $gaussian() / 512
 value $out.0.velocity() = $gaussian() / 64 + if $note.nth() == 0 then 4/8 else 3/8
-value $out.0.cc64()     = [ repeat 79 { 0 23:1 } { 0 } ]
+value $out.0.cc64()     = [ repeat 79 { 0 1:23 } { 0 } ]
 value $out.tempo()      = 2/5
 </pre>
 
@@ -269,10 +269,10 @@ absolute duration values are never specified in memol.  Grouping is noted as
 <code>"[...]"</code> and it divides the duration equally into child notes and
 serializes them.  Group notation can be nested oneself and other notation.
 Each child note have an optional number prefix, which represents a relative
-ratio.  For example, <code>"[3e 2c]"</code> gives the duration 3/5 to "e" and
+ratio.  For example, <code>"[e:3 c:2]"</code> gives the duration 3/5 to "e" and
 2/5 to "c".
 <pre>
-score $out.0() = { c | c c | c c c | c [c c c c] [3c c] [2c 3c [c c]] }
+score $out.0() = { c | c c | c c c | c [c c c c] [c:3 c] [c:2 c:3 [c c]] }
 </pre>
 <lilypond relative="1">
 	{ c1 c2 c2 \tuplet 3/2 { c2 c2 c2 } c4 c16 c16 c16 c16 c8. c16 \tuplet 3/2 { c8 c8. c32 c32 } }
@@ -300,7 +300,7 @@ score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 Composite notes such as group and chord also can be tied.  A tied chord means
 all child notes are tied.  A tied group means the last note is tied.
 <pre>
-score $out.0() = { [3c c]^c [3c c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
+score $out.0() = { [c:3 c]^c [c:3 c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
 </pre>
 <lilypond relative="1">
 	\set tieWaitForNote = ##t
@@ -313,7 +313,7 @@ recent simple note or chord in postordered depth-first traversal.  The ties of
 child notes are inherited if a target is composite (the tie attached to itself
 is not inherited).
 <pre>
-score $out.0() = { (c E G) / | (c [E /]) | ([3c E]) / }
+score $out.0() = { (c E G) / | (c [E /]) | ([c:3 E]) / }
 </pre>
 <lilypond relative="1">
 	<c e g>2 <c e g>2

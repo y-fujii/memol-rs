@@ -110,7 +110,7 @@ impl PianoRoll {
 	}
 
 	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &generator::ScoreIr, time_cur: f32, color_0: u32, color_1: u32 ) {
-		for note in ir.notes.iter() {
+		for note in ir.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
 				None      => continue,

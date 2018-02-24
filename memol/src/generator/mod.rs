@@ -4,6 +4,7 @@ mod eval;
 use std::*;
 use ast;
 use ratio;
+use random;
 pub use self::score::*;
 pub use self::value::*;
 pub use self::eval::*;
@@ -16,7 +17,7 @@ pub struct FlatNote {
 	pub nnum: Option<i32>,
 }
 
-struct Span<'a> {
+pub struct Span<'a> {
 	t0: ratio::Ratio,
 	t1: ratio::Ratio,
 	tied: bool,
@@ -25,13 +26,14 @@ struct Span<'a> {
 }
 
 pub struct Generator<'a> {
+	rng: &'a random::Generator,
 	defs: &'a ast::Definition<'a>,
 	values: collections::HashSet<String>,
 	syms: Vec<(char, Vec<FlatNote>)>,
 }
 
 impl<'a> Generator<'a> {
-	pub fn new( defs: &'a ast::Definition<'a> ) -> Generator<'a> {
+	pub fn new( rng: &'a random::Generator, defs: &'a ast::Definition<'a> ) -> Generator<'a> {
 		let syms = vec![ ('_', vec![
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
@@ -49,6 +51,7 @@ impl<'a> Generator<'a> {
 		values.insert( "note.nth".into() );
 
 		Generator{
+			rng: rng,
 			defs: defs,
 			values: values,
 			syms: syms,

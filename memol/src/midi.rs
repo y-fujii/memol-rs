@@ -28,7 +28,7 @@ impl Event {
 }
 
 pub struct Generator<'a> {
-	rng: &'a mut random::Generator,
+	rng: &'a random::Generator,
 	events: Vec<Event>,
 	timeline: Vec<f64>,
 	bgn: i64,
@@ -37,7 +37,7 @@ pub struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
-	pub fn new( rng: &'a mut random::Generator, bgn: i64, end: i64, tick: i64 ) -> Self {
+	pub fn new( rng: &'a random::Generator, bgn: i64, end: i64, tick: i64 ) -> Self {
 		Generator{
 			rng: rng,
 			events: Vec::new(),
@@ -57,7 +57,7 @@ impl<'a> Generator<'a> {
 		evaluator.add_symbol( "note.cnt".into(), |_| note_cnt.get() );
 		evaluator.add_symbol( "note.nth".into(), |_| note_nth.get() );
 		let mut offset = collections::HashMap::new();
-		for f in ir_score.notes.iter() {
+		for f in ir_score.iter() {
 			let nnum = match f.nnum {
 				Some( v ) => v,
 				None      => continue,
@@ -69,7 +69,7 @@ impl<'a> Generator<'a> {
 
 			// XXX: O(N^2).
 			let mut cnt = 0;
-			for g in ir_score.notes.iter().filter( |g| g.t0 <= f.t0 && f.t0 < g.t1 ) {
+			for g in ir_score.iter().filter( |g| g.t0 <= f.t0 && f.t0 < g.t1 ) {
 				if g as *const _ == f as *const _ {
 					note_nth.set( cnt as f64 );
 				}
@@ -100,7 +100,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_pitch( &mut self, ch: usize, ir: &generator::ValueIr ) {
-		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 0;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -115,7 +115,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &generator::ValueIr ) {
-		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 255;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -128,7 +128,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_tempo( &mut self, ir: &generator::ValueIr ) {
-		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new_with_random( self.rng );
 		debug_assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {

@@ -6,12 +6,9 @@ use ast;
 use super::*;
 
 
-#[derive(Debug)]
-pub struct ScoreIr {
-	pub notes: Vec<FlatNote>,
-}
+pub type ScoreIr = Vec<FlatNote>;
 
-struct State<'a> {
+pub struct ScoreState<'a> {
 	nnum: i32,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
@@ -31,17 +28,15 @@ impl<'a> Generator<'a> {
 			syms: &syms,
 			path: path,
 		};
-		let mut dst = ScoreIr{
-			notes: Vec::new(),
-		};
+		let mut dst = Vec::new();
 		self.generate_score_inner( s, &span, &mut dst )?;
 		Ok( Some( dst ) )
 	}
 
-	fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<ratio::Ratio, misc::Error> {
+	pub fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
-				let mut state = State{
+				let mut state = ScoreState{
 					nnum: 60,
 					note: None,
 					ties: collections::HashMap::new(),
@@ -71,12 +66,10 @@ impl<'a> Generator<'a> {
 				self.generate_score_inner( s, &span, dst )?
 			},
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
-				let mut dst_rhs = ScoreIr{
-					notes: Vec::new(),
-				};
+				let mut dst_rhs = Vec::new();
 				self.generate_score_inner( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone();
-				syms.insert( *key, &dst_rhs.notes[..] );
+				syms.insert( *key, &dst_rhs[..] );
 				let span = Span{
 					syms: &syms,
 					.. *span
@@ -121,6 +114,28 @@ impl<'a> Generator<'a> {
 				};
 				self.generate_score_inner( s, &span, dst )?
 			},
+			ast::Score::Branch( ref cond, ref then, ref elze ) => {
+				let (ir_cond, _) = self.generate_value_inner( cond, &span )?;
+				let mut ir_then = Vec::new();
+				let t_then = self.generate_score_inner( then, &span, &mut ir_then )?;
+				let mut ir_elze = Vec::new();
+				let t_elze = self.generate_score_inner( elze, &span, &mut ir_elze )?;
+
+				let evaluator = Evaluator::new_with_random( &self.rng );
+				let mut memo = collections::HashMap::new();
+				for ir in ir_then.into_iter() {
+					if *memo.entry( ir.t0 ).or_insert_with( || evaluator.eval( &ir_cond, ir.t0 ) ) >= 0.5 {
+						dst.push( ir );
+					}
+				}
+				for ir in ir_elze.into_iter() {
+					if *memo.entry( ir.t0 ).or_insert_with( || evaluator.eval( &ir_cond, ir.t0 ) ) < 0.5 {
+						dst.push( ir );
+					}
+				}
+
+				cmp::max( t_then, t_elze )
+			},
 			_ => {
 				return misc::error( &span.path, score.bgn, "syntax error." );
 			}
@@ -128,13 +143,13 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_score_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State<'a>, dst: &mut ScoreIr ) -> Result<(), misc::Error> {
+	pub fn generate_score_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ScoreState<'a>, dst: &mut ScoreIr ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( dir, sym, ord, sig ) => {
 				let nnum = match self.get_nnum( note, span, sym, ord )? {
 					Some( v ) => v,
 					None => {
-						dst.notes.push( FlatNote{
+						dst.push( FlatNote{
 							t0: span.t0,
 							t1: span.t1,
 							nnum: None,
@@ -155,7 +170,7 @@ impl<'a> Generator<'a> {
 					state.ties.insert( nnum, t0 );
 				}
 				else {
-					dst.notes.push( FlatNote{
+					dst.push( FlatNote{
 						t0: t0,
 						t1: span.t1,
 						nnum: Some( nnum ),
@@ -165,7 +180,7 @@ impl<'a> Generator<'a> {
 				state.note = Some( note );
 			},
 			ast::Note::Rest => {
-				dst.notes.push( FlatNote{
+				dst.push( FlatNote{
 					t0: span.t0,
 					t1: span.t1,
 					nnum: None,
@@ -193,7 +208,7 @@ impl<'a> Generator<'a> {
 			ast::Note::Chord( ref ns ) => {
 				let mut del_ties = Vec::new();
 				let mut new_ties = Vec::new();
-				let mut s = State{
+				let mut s = ScoreState{
 					ties: collections::HashMap::new(),
 					.. *state
 				};

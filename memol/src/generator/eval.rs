@@ -8,7 +8,7 @@ use super::*;
 
 
 pub struct Evaluator<'a> {
-	syms: collections::HashMap<String, Box<'a + FnMut( ratio::Ratio ) -> f64>>,
+	syms: collections::HashMap<String, Box<'a + Fn( ratio::Ratio ) -> f64>>,
 }
 
 impl<'a> Evaluator<'a> {
@@ -23,17 +23,17 @@ impl<'a> Evaluator<'a> {
 		this
 	}
 
-	pub fn new_with_random( rng: &'a mut random::Generator ) -> Self {
+	pub fn new_with_random( rng: &'a random::Generator ) -> Self {
 		let mut this = Self::new();
 		this.add_symbol( "gaussian".into(), move |_| rng.next_gauss() );
 		this
 	}
 
-	pub fn add_symbol<F: 'a + FnMut( ratio::Ratio ) -> f64>( &mut self, key: String, f: F ) {
+	pub fn add_symbol<F: 'a + Fn( ratio::Ratio ) -> f64>( &mut self, key: String, f: F ) {
 		self.syms.insert( key, Box::new( f ) );
 	}
 
-	pub fn eval( &mut self, ir: &ValueIr, t: ratio::Ratio ) -> f64 {
+	pub fn eval( &self, ir: &ValueIr, t: ratio::Ratio ) -> f64 {
 		match *ir {
 			ValueIr::Value( t0, t1, v0, v1 ) => {
 				let t = cmp::min( cmp::max( t, t0 ), t1 );
@@ -41,7 +41,7 @@ impl<'a> Evaluator<'a> {
 				v.to_float()
 			},
 			ValueIr::Symbol( ref sym ) => {
-				let f = self.syms.get_mut( sym ).unwrap();
+				let f = self.syms.get( sym ).unwrap();
 				f( t )
 			},
 			ValueIr::Sequence( ref irs ) => {

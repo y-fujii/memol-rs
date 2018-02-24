@@ -62,7 +62,7 @@ impl window::Ui<UiMessage> for Ui {
 				self.assembly = asm;
 				self.events   = evs;
 				self.text     = None;
-				let mut evaluator = generator::Evaluator::new();
+				let evaluator = generator::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
 			},
 			UiMessage::Text( text ) => {
@@ -263,8 +263,9 @@ fn compile_task( rx: sync::mpsc::Receiver<path::PathBuf>, tx: window::MessageSen
 		}
 
 		let msg = || -> Result<_, misc::Error> {
-			let asm = compile( &path )?;
-			let evs = assemble( &asm )?;
+			let rng = random::Generator::new();
+			let asm = compile( &rng, &path )?;
+			let evs = assemble( &rng, &asm )?;
 			Ok( UiMessage::Data( path.clone(), asm, evs ) )
 		}().unwrap_or_else( |e| {
 			UiMessage::Text( format!( "{}", e ) )

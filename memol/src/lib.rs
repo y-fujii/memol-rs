@@ -91,9 +91,9 @@ impl default::Default for Assembly {
 
 pub const TICK: i64 = 240;
 
-pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
+pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, misc::Error> {
 	let tree = parser::parse( src )?;
-	let gen = generator::Generator::new( &tree );
+	let gen = generator::Generator::new( rng, &tree );
 
 	let mut scores = Vec::new();
 	for ch in 0 .. 16 {
@@ -152,12 +152,12 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 		) );
 
 	let len = channels.iter()
-		.flat_map( |&(_, ref v)| v.score.notes.iter() )
+		.flat_map( |&(_, ref v)| v.score.iter() )
 		.map( |v| v.t1 )
 		.max()
 		.unwrap_or( ratio::Ratio::zero() );
 
-	let mut evaluator = generator::Evaluator::new();
+	let evaluator = generator::Evaluator::new_with_random( rng );
 	let bgn = match gen.generate_value( "out.begin" )? {
 		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,
@@ -176,12 +176,10 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 	} )
 }
 
-pub fn assemble( src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
-	let mut rng = random::Generator::new();
-
+pub fn assemble( rng: &random::Generator, src: &Assembly ) -> Result<Vec<midi::Event>, misc::Error> {
 	let bgn = (src.bgn * TICK).round();
 	let end = (src.end * TICK).round();
-	let mut migen = midi::Generator::new( &mut rng, bgn, end, TICK );
+	let mut migen = midi::Generator::new( rng, bgn, end, TICK );
 	for &(ch, ref irs) in src.channels.iter() {
 		migen.add_score( ch, &irs.score, &irs.velocity, &irs.offset, &irs.duration );
 		migen.add_pitch( ch, &irs.pitch );

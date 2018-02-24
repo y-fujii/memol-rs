@@ -8,7 +8,8 @@ use memol_cli::player::Player;
 
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
 	let timer = time::SystemTime::now();
-	let result = memol::compile( &path ).and_then( |e| memol::assemble( &e ) );
+	let rng = memol::random::Generator::new();
+	let result = memol::compile( &rng, &path ).and_then( |e| memol::assemble( &rng, &e ) );
 	let elapsed = timer.elapsed().unwrap();
 	if verbose {
 		eprintln!( "compile time: {} ms", elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1000000 );

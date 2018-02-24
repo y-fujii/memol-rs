@@ -15,7 +15,7 @@ pub enum ValueIr {
 	Branch( Box<ValueIr>, Box<ValueIr>, Box<ValueIr> ),
 }
 
-struct State {
+pub struct ValueState {
 	t: ratio::Ratio,
 	v: ratio::Ratio,
 }
@@ -38,11 +38,11 @@ impl<'a> Generator<'a> {
 		Ok( Some( ir ) )
 	}
 
-	fn generate_value_inner( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span ) -> Result<(ValueIr, ratio::Ratio), misc::Error> {
+	pub fn generate_value_inner( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span ) -> Result<(ValueIr, ratio::Ratio), misc::Error> {
 		let dst = match track.ast {
 			ast::Score::Score( ref vs ) => {
 				let mut irs = Vec::new();
-				let mut state = State{
+				let mut state = ValueState{
 					t: span.t0,
 					v: ratio::Ratio::zero(),
 				};
@@ -126,11 +126,11 @@ impl<'a> Generator<'a> {
 				(ir, t)
 			},
 			ast::Score::Branch( ref cond, ref then, ref elze ) => {
-				let (ir_cond, t_cond) = self.generate_value_inner( cond, &span )?;
+				let (ir_cond, _     ) = self.generate_value_inner( cond, &span )?;
 				let (ir_then, t_then) = self.generate_value_inner( then, &span )?;
 				let (ir_elze, t_elze) = self.generate_value_inner( elze, &span )?;
 				let ir = ValueIr::Branch( Box::new( ir_cond ), Box::new( ir_then ), Box::new( ir_elze ) );
-				let t = cmp::max( t_cond, cmp::max( t_then, t_elze ) );
+				let t = cmp::max( t_then, t_elze );
 				(ir, t)
 			},
 			_ => {
@@ -140,7 +140,7 @@ impl<'a> Generator<'a> {
 		Ok( dst )
 	}
 
-	fn generate_value_note( &self, value: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State, dst: &mut Vec<(ValueIr, ratio::Ratio)> ) -> Result<(), misc::Error> {
+	pub fn generate_value_note( &self, value: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ValueState, dst: &mut Vec<(ValueIr, ratio::Ratio)> ) -> Result<(), misc::Error> {
 		match value.ast {
 			ast::Note::Value( v0, v1 ) => {
 				if let Some( v0 ) = v0 {

@@ -3,24 +3,12 @@ use std::*;
 use std::io::Read;
 
 
-pub trait One {
-	fn one() -> Self;
-}
-
-impl One for i32 {
-	fn one() -> Self { 1 }
-}
-
-impl One for i64 {
-	fn one() -> Self { 1 }
-}
-
-pub fn idiv<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
+pub fn idiv( x: i64, y: i64 ) -> i64 {
 	let r = x / y;
-	if r * y <= x { r } else { r - T::one() }
+	if r * y <= x { r } else { r - 1 }
 }
 
-pub fn imod<T: Copy + cmp::Ord + ops::Sub<Output = T> + ops::Mul<Output = T> + ops::Div<Output = T> + One>( x: T, y: T ) -> T {
+pub fn imod( x: i64, y: i64 ) -> i64 {
 	x - y * idiv( x, y )
 }
 

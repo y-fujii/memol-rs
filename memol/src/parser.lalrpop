@@ -172,7 +172,7 @@ note: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::Tie( a ) ),
 };
 
-key_signature: i32 = {
+key_signature: i64 = {
 	"+" <key_signature> => <> + 1,
 	"-" <key_signature> => <> - 1,
 	                    => 0,
@@ -183,7 +183,7 @@ boundary: Option<ratio::Ratio> = {
 	<a:uint> => Some( a.into() ),
 };
 
-group_content: Vec<(Box<Ast<Note<'a>>>, i32)> = {
+group_content: Vec<(Box<Ast<Note<'a>>>, i64)> = {
 	<a:group_content> <b:note> => {
 		let mut a = a;
 		a.push( (b, 1) );
@@ -227,31 +227,31 @@ octave: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
 };
 
-pitch_lower: (char, i32) = {
-	<a:r"[a-g]">          => ('_', a.chars().next().unwrap() as i32 - 'a' as i32),
+pitch_lower: (char, i64) = {
+	<a:r"[a-g]">          => ('_', a.chars().next().unwrap() as i64 - 'a' as i64),
 	<a:r"[h-z]"> <b:sint> => (a.chars().next().unwrap(), b),
 };
 
-pitch_upper: (char, i32) = {
-	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i32 - 'A' as i32),
+pitch_upper: (char, i64) = {
+	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i64 - 'A' as i64),
 	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
 };
 
 sratio: ratio::Ratio = {
 	<a:sint> "/" <b:uint> =>
-		ratio::Ratio::new( a as i64, b as i64 ),
+		ratio::Ratio::new( a, b ),
 	<a:sint> =>
 		a.into(),
 };
 
-sint: i32 = {
+sint: i64 = {
 	"-" <uint> => -<>,
 	"+" <uint> =>  <>,
 	    <uint> =>  <>,
 };
 
-uint: i32 = {
-	r"[0-9]+" => i32::from_str( <> ).unwrap(),
+uint: i64 = {
+	r"[0-9]+" => i64::from_str( <> ).unwrap(),
 };
 
 label: String = {

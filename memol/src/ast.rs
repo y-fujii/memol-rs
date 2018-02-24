@@ -25,13 +25,13 @@ pub enum Dir {
 #[derive( Debug )]
 pub enum Note<'a> {
 	Rest,
-	Note( Dir, char, i32, i32 ),
+	Note( Dir, char, i64, i64 ),
 	Value( Option<ratio::Ratio>, Option<ratio::Ratio> ),
 	Repeat( cell::Cell<Option<&'a Ast<Note<'a>>>> ),
-	Octave( i32 ),
-	OctaveByNote( char, i32, i32 ),
+	Octave( i64 ),
+	OctaveByNote( char, i64, i64 ),
 	Chord( Vec<Box<Ast<Note<'a>>>> ),
-	Group( Vec<(Box<Ast<Note<'a>>>, i32)> ),
+	Group( Vec<(Box<Ast<Note<'a>>>, i64)> ),
 	Tie( Box<Ast<Note<'a>>> ),
 }
 
@@ -42,7 +42,7 @@ pub enum Score<'a> {
 	Parallel( Vec<Box<Ast<Score<'a>>>> ),
 	Sequence( Vec<Box<Ast<Score<'a>>>> ),
 	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
-	Repeat( Box<Ast<Score<'a>>>, i32 ),
+	Repeat( Box<Ast<Score<'a>>>, i64 ),
 	Stretch( Box<Ast<Score<'a>>>, ratio::Ratio ),
 	BinaryOp( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, BinaryOp ),
 	Branch( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),

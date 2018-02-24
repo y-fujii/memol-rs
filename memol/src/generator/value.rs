@@ -29,7 +29,7 @@ impl<'a> Generator<'a> {
 		};
 		let span = Span{
 			t0: ratio::Ratio::zero(),
-			t1: ratio::Ratio::one(),
+			dt: ratio::Ratio::one(),
 			tied: false,
 			syms: &syms,
 			path: path,
@@ -47,14 +47,10 @@ impl<'a> Generator<'a> {
 					v: ratio::Ratio::zero(),
 				};
 				for (i, v) in vs.iter().enumerate() {
-					let span = Span{
-						t0: span.t0 + (span.t1 - span.t0) * i as i64,
-						t1: span.t1 + (span.t1 - span.t0) * i as i64,
-						.. *span
-					};
+					let span = Span{ t0: span.t0 + span.dt * i as i64, .. *span };
 					self.generate_value_note( v, &span, &mut state, &mut irs )?;
 				}
-				let t1 = span.t0 + (span.t1 - span.t0) * vs.len() as i64;
+				let t1 = span.t0 + span.dt * vs.len() as i64;
 				if state.t != t1 {
 					return misc::error( &span.path, track.end, "the last value must be specified." );
 				}
@@ -62,10 +58,7 @@ impl<'a> Generator<'a> {
 			},
 			ast::Score::Symbol( ref key ) => {
 				if let Some( &(ref path, ref s) ) = self.defs.values.get( key ) {
-					let span = Span{
-						path: path,
-						.. *span
-					};
+					let span = Span{ path: path, .. *span };
 					self.generate_value_inner( s, &span )?
 				}
 				else if self.values.contains( key ) {
@@ -85,11 +78,7 @@ impl<'a> Generator<'a> {
 				let mut irs = Vec::new();
 				let mut t = span.t0;
 				for s in ss.iter() {
-					let span = Span{
-						t0: t,
-						t1: t + (span.t1 - span.t0),
-						.. *span
-					};
+					let span = Span{ t0: t, .. *span };
 					let (ir, t1) = self.generate_value_inner( s, &span )?;
 					irs.push( (ir, t) );
 					t = t1;
@@ -100,11 +89,7 @@ impl<'a> Generator<'a> {
 				let mut irs = Vec::new();
 				let mut t = span.t0;
 				for _ in 0 .. n {
-					let span = Span{
-						t0: t,
-						t1: t + (span.t1 - span.t0),
-						.. *span
-					};
+					let span = Span{ t0: t, .. *span };
 					let (ir, t1) = self.generate_value_inner( s, &span )?;
 					irs.push( (ir, t) );
 					t = t1;
@@ -112,10 +97,7 @@ impl<'a> Generator<'a> {
 				(ValueIr::Sequence( irs ), t)
 			},
 			ast::Score::Stretch( ref s, r ) => {
-				let span = Span{
-					t1: span.t0 + r * (span.t1 - span.t0),
-					.. *span
-				};
+				let span = Span{ dt: r * span.dt, .. *span };
 				self.generate_value_inner( s, &span )?
 			},
 			ast::Score::BinaryOp( ref lhs, ref rhs, op ) => {
@@ -151,18 +133,19 @@ impl<'a> Generator<'a> {
 					state.v = v0;
 				}
 				if let Some( v1 ) = v1 {
-					dst.push( (ValueIr::Value( state.t, span.t1, state.v, v1 ), state.t) );
-					state.t = span.t1;
+					let t1 = span.t0 + span.dt;
+					dst.push( (ValueIr::Value( state.t, t1, state.v, v1 ), state.t) );
+					state.t = t1;
 					state.v = v1;
 				}
 			},
 			ast::Note::Group( ref vs ) => {
-				let tot: i32 = vs.iter().map( |&(_, i)| i ).sum();
+				let tot = vs.iter().map( |&(_, i)| i ).sum();
 				let mut acc = 0;
 				for &(ref v, i) in vs.iter() {
 					let span = Span{
-						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
-						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
+						t0: span.t0 + span.dt * ratio::Ratio::new( acc, tot ),
+						dt: span.dt * ratio::Ratio::new( i, tot ),
 						.. *span
 					};
 					self.generate_value_note( v, &span, state, dst )?;

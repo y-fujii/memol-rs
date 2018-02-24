@@ -9,9 +9,9 @@ use super::*;
 pub type ScoreIr = Vec<FlatNote>;
 
 pub struct ScoreState<'a> {
-	nnum: i32,
+	nnum: i64,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
-	ties: collections::HashMap<i32, ratio::Ratio>,
+	ties: collections::HashMap<i64, ratio::Ratio>,
 }
 
 impl<'a> Generator<'a> {
@@ -23,7 +23,7 @@ impl<'a> Generator<'a> {
 		};
 		let span = Span{
 			t0: ratio::Ratio::zero(),
-			t1: ratio::Ratio::one(),
+			dt: ratio::Ratio::one(),
 			tied: false,
 			syms: &syms,
 			path: path,
@@ -42,27 +42,20 @@ impl<'a> Generator<'a> {
 					ties: collections::HashMap::new(),
 				};
 				for (i, n) in ns.iter().enumerate() {
-					let span = Span{
-						t0: span.t0 + (span.t1 - span.t0) * i as i64,
-						t1: span.t1 + (span.t1 - span.t0) * i as i64,
-						.. *span
-					};
+					let span = Span{ t0: span.t0 + span.dt * i as i64, .. *span };
 					self.generate_score_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
 					return misc::error( &span.path, score.end, "unpaired tie." );
 				}
-				span.t0 + (span.t1 - span.t0) * ns.len() as i64
+				span.t0 + span.dt * ns.len() as i64
 			},
 			ast::Score::Symbol( ref key ) => {
 				let &(ref path, ref s) = match self.defs.scores.get( key ) {
 					Some( v ) => v,
 					None      => return misc::error( &span.path, score.bgn, "undefined symbol." ),
 				};
-				let span = Span{
-					path: path,
-					.. *span
-				};
+				let span = Span{ path: path, .. *span };
 				self.generate_score_inner( s, &span, dst )?
 			},
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
@@ -70,10 +63,7 @@ impl<'a> Generator<'a> {
 				self.generate_score_inner( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone();
 				syms.insert( *key, &dst_rhs[..] );
-				let span = Span{
-					syms: &syms,
-					.. *span
-				};
+				let span = Span{ syms: &syms, .. *span };
 				self.generate_score_inner( lhs, &span, dst )?
 			},
 			ast::Score::Parallel( ref ss ) => {
@@ -86,11 +76,7 @@ impl<'a> Generator<'a> {
 			ast::Score::Sequence( ref ss ) => {
 				let mut t = span.t0;
 				for s in ss.iter() {
-					let span = Span{
-						t0: t,
-						t1: t + (span.t1 - span.t0),
-						.. *span
-					};
+					let span = Span{ t0: t, .. *span };
 					t = self.generate_score_inner( s, &span, dst )?;
 				}
 				t
@@ -98,20 +84,13 @@ impl<'a> Generator<'a> {
 			ast::Score::Repeat( ref s, n ) => {
 				let mut t = span.t0;
 				for _ in 0 .. n {
-					let span = Span{
-						t0: t,
-						t1: t + (span.t1 - span.t0),
-						.. *span
-					};
+					let span = Span{ t0: t, .. *span };
 					t = self.generate_score_inner( s, &span, dst )?;
 				}
 				t
 			},
 			ast::Score::Stretch( ref s, r ) => {
-				let span = Span{
-					t1: span.t0 + r * (span.t1 - span.t0),
-					.. *span
-				};
+				let span = Span{ dt: r * span.dt, .. *span };
 				self.generate_score_inner( s, &span, dst )?
 			},
 			ast::Score::Branch( ref cond, ref then, ref elze ) => {
@@ -151,7 +130,7 @@ impl<'a> Generator<'a> {
 					None => {
 						dst.push( FlatNote{
 							t0: span.t0,
-							t1: span.t1,
+							t1: span.t0 + span.dt,
 							nnum: None,
 						} );
 						return Ok( () );
@@ -172,7 +151,7 @@ impl<'a> Generator<'a> {
 				else {
 					dst.push( FlatNote{
 						t0: t0,
-						t1: span.t1,
+						t1: span.t0 + span.dt,
 						nnum: Some( nnum ),
 					} );
 				}
@@ -182,7 +161,7 @@ impl<'a> Generator<'a> {
 			ast::Note::Rest => {
 				dst.push( FlatNote{
 					t0: span.t0,
-					t1: span.t1,
+					t1: span.t0 + span.dt,
 					nnum: None,
 				} );
 			},
@@ -250,8 +229,8 @@ impl<'a> Generator<'a> {
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
-						t0: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc    ) as i64, tot as i64 ),
-						t1: span.t0 + (span.t1 - span.t0) * ratio::Ratio::new( (acc + i) as i64, tot as i64 ),
+						t0: span.t0 + span.dt * ratio::Ratio::new( acc, tot ),
+						dt: span.dt * ratio::Ratio::new( i, tot ),
 						tied: acc + i == tot && span.tied, // only apply to the last note.
 						.. *span
 					};
@@ -260,10 +239,7 @@ impl<'a> Generator<'a> {
 				}
 			},
 			ast::Note::Tie( ref n ) => {
-				let span = Span{
-					tied: true,
-					.. *span
-				};
+				let span = Span{ tied: true, .. *span };
 				self.generate_score_note( n, &span, state, dst )?
 			},
 			_ => {
@@ -273,7 +249,7 @@ impl<'a> Generator<'a> {
 		Ok( () )
 	}
 
-	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, sym: char, ord: i32 ) -> Result<Option<i32>, misc::Error> {
+	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, sym: char, ord: i64 ) -> Result<Option<i64>, misc::Error> {
 		let fs = match span.syms.get( &sym ) {
 			Some( v ) => v,
 			None      => return misc::error( &span.path, note.bgn, "note does not exist." ),

@@ -4,7 +4,7 @@ use misc;
 
 
 // irreducible && x >= 0, x = 0 is interpreted as +0.
-#[derive(Copy, Clone, Debug)]
+#[derive( Copy, Clone, Debug )]
 pub struct Ratio {
 	pub y: i64,
 	pub x: i64,
@@ -13,12 +13,6 @@ pub struct Ratio {
 impl From<i64> for Ratio {
 	fn from( n: i64 ) -> Self {
 		Ratio{ y: n, x: 1 }
-	}
-}
-
-impl From<i32> for Ratio {
-	fn from( n: i32 ) -> Self {
-		Ratio{ y: n as i64, x: 1 }
 	}
 }
 

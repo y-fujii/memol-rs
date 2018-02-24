@@ -14,12 +14,12 @@ pub use self::eval::*;
 pub struct FlatNote {
 	pub t0: ratio::Ratio,
 	pub t1: ratio::Ratio,
-	pub nnum: Option<i32>,
+	pub nnum: Option<i64>,
 }
 
 pub struct Span<'a> {
 	t0: ratio::Ratio,
-	t1: ratio::Ratio,
+	dt: ratio::Ratio,
 	tied: bool,
 	syms: &'a collections::HashMap<char, &'a [FlatNote]>,
 	path: &'a path::Path,

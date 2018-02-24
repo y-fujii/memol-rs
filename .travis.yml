@@ -63,8 +63,8 @@ script:
 
     - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
     - cd target/${TARGET}/release
-    - ${STRIP} memol${EXEC_SUFFIX}
+    - ${STRIP} memol_cli${EXEC_SUFFIX}
     - ${STRIP} memol_gui${EXEC_SUFFIX}
-    - 7z a memol-${TARGET}.zip memol${EXEC_SUFFIX} memol_gui${EXEC_SUFFIX}
+    - 7z a memol-${TARGET}.zip memol_cli${EXEC_SUFFIX} memol_gui${EXEC_SUFFIX}
 
     - curl --upload-file memol-${TARGET}.zip https://transfer.sh/memol-${TARGET}.zip || true

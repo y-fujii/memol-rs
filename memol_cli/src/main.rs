@@ -1,8 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 extern crate getopts;
 extern crate memol;
+extern crate memol_cli;
 use std::*;
-use memol::player::Player;
+use memol_cli::player::Player;
 
 
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
@@ -30,7 +31,7 @@ fn main() {
 		opts.optmulti( "c", "connect", "Connect to a JACK port.", "PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
-			print!( "{}", opts.usage( "Usage: memol [options] FILE" ) );
+			print!( "{}", opts.usage( "Usage: memol_cli [options] FILE" ) );
 			return Ok( () );
 		}
 
@@ -45,7 +46,7 @@ fn main() {
 			return Ok( () );
 		}
 
-		let player = memol::player_jack::Player::new( "memol" )?;
+		let player = memol_cli::player_jack::Player::new( "memol" )?;
 		for port in args.opt_strs( "c" ) {
 			player.connect( &port )?;
 		}
@@ -61,7 +62,7 @@ fn main() {
 				player.play()?;
 			}
 
-			memol::notify::wait_file( &args.free[0] )?;
+			memol_cli::notify::wait_file( &args.free[0] )?;
 		}
 	};
 	if let Err( e ) = f() {

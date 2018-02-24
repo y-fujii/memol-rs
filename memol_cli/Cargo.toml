@@ -1,12 +1,9 @@
 [package]
-name = "memol"
+name = "memol_cli"
 version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
-build = "build.rs"
 
 [dependencies]
-lalrpop-util = "*"
-regex = "*"
-
-[build-dependencies]
-lalrpop = "*"
+getopts = "*"
+libloading = "*"
+memol = { path = "../memol" }

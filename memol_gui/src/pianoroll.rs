@@ -2,7 +2,8 @@
 use std::*;
 use imgui::*;
 use imutil;
-use memol::*;
+use memol::misc;
+use memol::generator;
 
 
 pub struct PianoRoll {

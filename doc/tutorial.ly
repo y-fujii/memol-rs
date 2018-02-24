@@ -175,7 +175,7 @@ programs are installed and configured properly.
 </ul>
 <p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
-$ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol
+$ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_cli
 </pre>
 <p>and everything should be done.
 <p>Recent version of memol has experimental GUI program.
@@ -189,8 +189,8 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 <p>Current implementation of memol is a simple command line program which emits
 MIDI messages to JACK or generates a MIDI file.
 <pre>
-$ memol
-Usage: memol [options] FILE
+$ memol_cli
+Usage: memol_cli [options] FILE
 Options:
     -v, --verbose
     -b, --batch         Generate a MIDI file.

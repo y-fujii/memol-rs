@@ -1,5 +1,5 @@
 [workspace]
-members = ["memol", "memol_gui", "memol_vst"]
+members = ["memol", "memol_cli", "memol_gui", "memol_vst"]
 
 [profile.release]
 lto = true

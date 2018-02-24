@@ -1,7 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 extern crate regex;
 extern crate lalrpop_util;
-extern crate libloading;
 #[macro_use]
 pub mod misc;
 pub mod random;
@@ -10,10 +9,6 @@ pub mod ast;
 pub mod generator;
 pub mod midi;
 pub mod smf;
-pub mod jack;
-pub mod player;
-pub mod player_jack;
-pub mod notify;
 use std::*;
 
 

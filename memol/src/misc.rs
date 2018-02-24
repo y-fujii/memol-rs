@@ -124,13 +124,3 @@ impl Error {
 pub fn error<T: convert::Into<String>, U, V: From<Error>>( path: &path::Path, idx: usize, msg: T ) -> Result<U, V> {
 	Err( From::from( Error::new( path, idx, msg ) ) )
 }
-
-#[macro_export]
-macro_rules! c_str {
-	($e: tt) => (
-		concat!( $e, "\0" ).as_ptr() as *const os::raw::c_char
-	);
-	($e: tt, $($arg: tt)*) => (
-		format!( concat!( $e, "\0" ), $($arg)* ).as_ptr() as *const os::raw::c_char
-	)
-}

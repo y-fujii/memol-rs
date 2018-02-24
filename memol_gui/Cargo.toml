@@ -10,6 +10,7 @@ gl = "*"
 glutin = "*"
 image = "*"
 memol = { path = "../memol" }
+memol_cli = { path = "../memol_cli" }
 
 [build-dependencies]
 cc = "*"

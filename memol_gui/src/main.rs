@@ -4,16 +4,20 @@ extern crate getopts;
 extern crate gl;
 extern crate glutin;
 extern crate image;
-#[macro_use]
 extern crate memol;
+extern crate memol_cli;
+#[macro_use]
+mod imutil;
 mod imgui;
 mod renderer;
 mod window;
-mod imutil;
 mod pianoroll;
 use std::*;
 use memol::*;
-use memol::player::Player;
+use memol_cli::player;
+use memol_cli::player::Player;
+use memol_cli::player_jack;
+use memol_cli::notify;
 
 
 const JACK_FRAME_WAIT: i32 = 12;

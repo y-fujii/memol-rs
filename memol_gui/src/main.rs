@@ -58,7 +58,7 @@ impl window::Ui<UiMessage> for Ui {
 				self.assembly = asm;
 				self.events   = evs;
 				self.text     = None;
-				let mut evaluator = valuegen::Evaluator::new();
+				let mut evaluator = generator::Evaluator::new();
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
 			},
 			UiMessage::Text( text ) => {

@@ -3,58 +3,22 @@ use std::*;
 use misc;
 use ratio;
 use ast;
+use super::*;
 
 
 #[derive(Debug)]
-pub struct FlatNote {
-	pub t0: ratio::Ratio,
-	pub t1: ratio::Ratio,
-	pub nnum: Option<i32>,
-}
-
-#[derive(Debug)]
-pub struct Ir {
+pub struct ScoreIr {
 	pub notes: Vec<FlatNote>,
 }
 
-#[derive(Debug)]
-struct Span<'a> {
-	t0: ratio::Ratio,
-	t1: ratio::Ratio,
-	tied: bool,
-	syms: &'a collections::HashMap<char, &'a [FlatNote]>,
-	path: &'a path::Path,
-}
-
-#[derive(Debug)]
 struct State<'a> {
 	nnum: i32,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
 	ties: collections::HashMap<i32, ratio::Ratio>,
 }
 
-#[derive(Debug)]
-pub struct Generator<'a> {
-	defs: &'a ast::Definition<'a>,
-	syms: Vec<(char, Vec<FlatNote>)>,
-}
-
 impl<'a> Generator<'a> {
-	pub fn new( defs: &'a ast::Definition<'a> ) -> Generator<'a> {
-		let syms = vec![ ('_', vec![
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
-		] ) ];
-
-		Generator{ defs: defs, syms: syms }
-	}
-
-	pub fn generate( &self, key: &str ) -> Result<Option<Ir>, misc::Error> {
+	pub fn generate_score( &self, key: &str ) -> Result<Option<ScoreIr>, misc::Error> {
 		let syms = self.syms.iter().map( |&(s, ref ns)| (s, &ns[..]) ).collect();
 		let &(ref path, ref s) = match self.defs.scores.get( key ) {
 			Some( v ) => v,
@@ -67,14 +31,14 @@ impl<'a> Generator<'a> {
 			syms: &syms,
 			path: path,
 		};
-		let mut dst = Ir{
+		let mut dst = ScoreIr{
 			notes: Vec::new(),
 		};
-		self.generate_score( s, &span, &mut dst )?;
+		self.generate_score_inner( s, &span, &mut dst )?;
 		Ok( Some( dst ) )
 	}
 
-	fn generate_score( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut Ir ) -> Result<ratio::Ratio, misc::Error> {
+	fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<ratio::Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = State{
@@ -88,7 +52,7 @@ impl<'a> Generator<'a> {
 						t1: span.t1 + (span.t1 - span.t0) * i as i64,
 						.. *span
 					};
-					self.generate_note( n, &span, &mut state, dst )?;
+					self.generate_score_note( n, &span, &mut state, dst )?;
 				}
 				if !state.ties.is_empty() {
 					return misc::error( &span.path, score.end, "unpaired tie." );
@@ -104,25 +68,25 @@ impl<'a> Generator<'a> {
 					path: path,
 					.. *span
 				};
-				self.generate_score( s, &span, dst )?
+				self.generate_score_inner( s, &span, dst )?
 			},
 			ast::Score::With( ref lhs, ref key, ref rhs ) => {
-				let mut dst_rhs = Ir{
+				let mut dst_rhs = ScoreIr{
 					notes: Vec::new(),
 				};
-				self.generate_score( rhs, &span, &mut dst_rhs )?;
+				self.generate_score_inner( rhs, &span, &mut dst_rhs )?;
 				let mut syms = span.syms.clone();
 				syms.insert( *key, &dst_rhs.notes[..] );
 				let span = Span{
 					syms: &syms,
 					.. *span
 				};
-				self.generate_score( lhs, &span, dst )?
+				self.generate_score_inner( lhs, &span, dst )?
 			},
 			ast::Score::Parallel( ref ss ) => {
 				let mut t = span.t0;
 				for s in ss.iter() {
-					t = cmp::max( t, self.generate_score( s, &span, dst )? );
+					t = cmp::max( t, self.generate_score_inner( s, &span, dst )? );
 				}
 				t
 			},
@@ -134,7 +98,7 @@ impl<'a> Generator<'a> {
 						t1: t + (span.t1 - span.t0),
 						.. *span
 					};
-					t = self.generate_score( s, &span, dst )?;
+					t = self.generate_score_inner( s, &span, dst )?;
 				}
 				t
 			},
@@ -146,7 +110,7 @@ impl<'a> Generator<'a> {
 						t1: t + (span.t1 - span.t0),
 						.. *span
 					};
-					t = self.generate_score( s, &span, dst )?;
+					t = self.generate_score_inner( s, &span, dst )?;
 				}
 				t
 			},
@@ -155,7 +119,7 @@ impl<'a> Generator<'a> {
 					t1: span.t0 + r * (span.t1 - span.t0),
 					.. *span
 				};
-				self.generate_score( s, &span, dst )?
+				self.generate_score_inner( s, &span, dst )?
 			},
 			_ => {
 				return misc::error( &span.path, score.bgn, "syntax error." );
@@ -164,7 +128,7 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	fn generate_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State<'a>, dst: &mut Ir ) -> Result<(), misc::Error> {
+	fn generate_score_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut State<'a>, dst: &mut ScoreIr ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( dir, sym, ord, sig ) => {
 				let nnum = match self.get_nnum( note, span, sym, ord )? {
@@ -216,7 +180,7 @@ impl<'a> Generator<'a> {
 					}
 				};
 				cn.set( Some( rn ) );
-				self.generate_note( rn, span, state, dst )?
+				self.generate_score_note( rn, span, state, dst )?
 			},
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12;
@@ -235,7 +199,7 @@ impl<'a> Generator<'a> {
 				};
 				for (i, n) in ns.iter().enumerate() {
 					s.ties = state.ties.clone();
-					self.generate_note( n, span, &mut s, dst )?;
+					self.generate_score_note( n, span, &mut s, dst )?;
 					for k in state.ties.keys() {
 						match s.ties.get( k ) {
 							Some( v ) if *v < span.t0 => (),
@@ -276,7 +240,7 @@ impl<'a> Generator<'a> {
 						tied: acc + i == tot && span.tied, // only apply to the last note.
 						.. *span
 					};
-					self.generate_note( n, &span, state, dst )?;
+					self.generate_score_note( n, &span, state, dst )?;
 					acc += i;
 				}
 			},
@@ -285,7 +249,7 @@ impl<'a> Generator<'a> {
 					tied: true,
 					.. *span
 				};
-				self.generate_note( n, &span, state, dst )?
+				self.generate_score_note( n, &span, state, dst )?
 			},
 			_ => {
 				return misc::error( &span.path, note.bgn, "syntax error." );

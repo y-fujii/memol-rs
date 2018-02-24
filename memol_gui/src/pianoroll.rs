@@ -30,7 +30,7 @@ impl PianoRoll {
 		}
 	}
 
-	pub unsafe fn draw( &mut self, ir: &scoregen::Ir, time_len: f32, time_cur: f32, follow: bool, size: ImVec2 ) -> Option<f32> {
+	pub unsafe fn draw( &mut self, ir: &generator::ScoreIr, time_len: f32, time_cur: f32, follow: bool, size: ImVec2 ) -> Option<f32> {
 		let content_h = size.y - get_style().ScrollbarSize;
 		let unit = content_h / 128.0;
 		let content_w = unit * self.time_scale * (time_len + 1.0);
@@ -108,7 +108,7 @@ impl PianoRoll {
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &scoregen::Ir, time_cur: f32, color_0: u32, color_1: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &generator::ScoreIr, time_cur: f32, color_0: u32, color_1: u32 ) {
 		for note in ir.notes.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,

@@ -7,8 +7,7 @@ pub mod misc;
 pub mod random;
 pub mod ratio;
 pub mod ast;
-pub mod scoregen;
-pub mod valuegen;
+pub mod generator;
 pub mod midi;
 pub mod smf;
 pub mod jack;
@@ -62,17 +61,17 @@ pub mod parser {
 }
 
 pub struct Channel {
-	pub score: scoregen::Ir,
-	pub velocity: valuegen::Ir,
-	pub offset: valuegen::Ir,
-	pub duration: valuegen::Ir,
-	pub pitch: valuegen::Ir,
-	pub ccs: Vec<(usize, valuegen::Ir)>,
+	pub score: generator::ScoreIr,
+	pub velocity: generator::ValueIr,
+	pub offset: generator::ValueIr,
+	pub duration: generator::ValueIr,
+	pub pitch: generator::ValueIr,
+	pub ccs: Vec<(usize, generator::ValueIr)>,
 }
 
 pub struct Assembly {
 	pub channels: Vec<(usize, Channel)>,
-	pub tempo: valuegen::Ir,
+	pub tempo: generator::ValueIr,
 	pub len: ratio::Ratio,
 	pub bgn: ratio::Ratio,
 	pub end: ratio::Ratio,
@@ -82,7 +81,7 @@ impl default::Default for Assembly {
 	fn default() -> Self {
 		Assembly{
 			channels: Vec::new(),
-			tempo: valuegen::Ir::Value(
+			tempo: generator::ValueIr::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::one(),
@@ -99,36 +98,35 @@ pub const TICK: i64 = 240;
 
 pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 	let tree = parser::parse( src )?;
-	let score_gen = scoregen::Generator::new( &tree );
-	let value_gen = valuegen::Generator::new( &tree );
+	let gen = generator::Generator::new( &tree );
 
 	let mut scores = Vec::new();
 	for ch in 0 .. 16 {
-		if let Some( ir ) = score_gen.generate( &format!( "out.{}", ch ) )? {
+		if let Some( ir ) = gen.generate_score( &format!( "out.{}", ch ) )? {
 			scores.push( (ch, ir) );
 		}
 	}
 
 	let mut channels = Vec::new();
 	for (ch, score) in scores.into_iter() {
-		let velocity = value_gen.generate( &format!( "out.{}.velocity", ch ) )?
-			.unwrap_or( valuegen::Ir::Value(
+		let velocity = gen.generate_value( &format!( "out.{}.velocity", ch ) )?
+			.unwrap_or( generator::ValueIr::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::new( 5, 8 ),
 				ratio::Ratio::new( 5, 8 ),
 			) );
-		let offset = value_gen.generate( &format!( "out.{}.offset", ch ) )?
-			.unwrap_or( valuegen::Ir::Value(
+		let offset = gen.generate_value( &format!( "out.{}.offset", ch ) )?
+			.unwrap_or( generator::ValueIr::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::zero(),
 				ratio::Ratio::zero(),
 			) );
-		let duration = value_gen.generate( &format!( "out.{}.duration", ch ) )?
-			.unwrap_or( valuegen::Ir::Symbol( "note.len".into() ) );
-		let pitch = value_gen.generate( &format!( "out.{}.pitch", ch ) )?
-			.unwrap_or( valuegen::Ir::Value(
+		let duration = gen.generate_value( &format!( "out.{}.duration", ch ) )?
+			.unwrap_or( generator::ValueIr::Symbol( "note.len".into() ) );
+		let pitch = gen.generate_value( &format!( "out.{}.pitch", ch ) )?
+			.unwrap_or( generator::ValueIr::Value(
 				ratio::Ratio::zero(),
 				ratio::Ratio::one(),
 				ratio::Ratio::zero(),
@@ -136,7 +134,7 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 			) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
-			if let Some( ir ) = value_gen.generate( &format!( "out.{}.cc{}", ch, cc ) )? {
+			if let Some( ir ) = gen.generate_value( &format!( "out.{}.cc{}", ch, cc ) )? {
 				ccs.push( (cc, ir) );
 			}
 		}
@@ -150,8 +148,8 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 		}) );
 	}
 
-	let tempo = value_gen.generate( "out.tempo" )?
-		.unwrap_or( valuegen::Ir::Value(
+	let tempo = gen.generate_value( "out.tempo" )?
+		.unwrap_or( generator::ValueIr::Value(
 			ratio::Ratio::zero(),
 			ratio::Ratio::one(),
 			ratio::Ratio::one(),
@@ -164,12 +162,12 @@ pub fn compile( src: &path::Path ) -> Result<Assembly, misc::Error> {
 		.max()
 		.unwrap_or( ratio::Ratio::zero() );
 
-	let mut evaluator = valuegen::Evaluator::new();
-	let bgn = match value_gen.generate( "out.begin" )? {
+	let mut evaluator = generator::Evaluator::new();
+	let bgn = match gen.generate_value( "out.begin" )? {
 		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,
 	};
-	let end = match value_gen.generate( "out.end" )? {
+	let end = match gen.generate_value( "out.end" )? {
 		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => (len * TICK).round()
 	};

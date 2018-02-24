@@ -3,8 +3,7 @@ use std::*;
 use misc;
 use random;
 use ratio::Ratio;
-use scoregen;
-use valuegen;
+use generator;
 
 
 #[derive( Clone )]
@@ -49,11 +48,11 @@ impl<'a> Generator<'a> {
 		}
 	}
 
-	pub fn add_score( &mut self, ch: usize, ir_score: &scoregen::Ir, ir_vel: &valuegen::Ir, ir_ofs: &valuegen::Ir, ir_dur: &valuegen::Ir ) {
+	pub fn add_score( &mut self, ch: usize, ir_score: &generator::ScoreIr, ir_vel: &generator::ValueIr, ir_ofs: &generator::ValueIr, ir_dur: &generator::ValueIr ) {
 		let note_len = cell::Cell::new( 0.0 );
 		let note_cnt = cell::Cell::new( 0.0 );
 		let note_nth = cell::Cell::new( 0.0 );
-		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
+		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
 		evaluator.add_symbol( "note.len".into(), |_| note_len.get() );
 		evaluator.add_symbol( "note.cnt".into(), |_| note_cnt.get() );
 		evaluator.add_symbol( "note.nth".into(), |_| note_nth.get() );
@@ -100,8 +99,8 @@ impl<'a> Generator<'a> {
 		}
 	}
 
-	pub fn add_pitch( &mut self, ch: usize, ir: &valuegen::Ir ) {
-		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
+	pub fn add_pitch( &mut self, ch: usize, ir: &generator::ValueIr ) {
+		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 0;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -115,8 +114,8 @@ impl<'a> Generator<'a> {
 		}
 	}
 
-	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &valuegen::Ir ) {
-		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
+	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &generator::ValueIr ) {
+		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
 		let mut prev_v = 255;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -128,8 +127,8 @@ impl<'a> Generator<'a> {
 		}
 	}
 
-	pub fn add_tempo( &mut self, ir: &valuegen::Ir ) {
-		let mut evaluator = valuegen::Evaluator::new_with_random( self.rng );
+	pub fn add_tempo( &mut self, ir: &generator::ValueIr ) {
+		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
 		debug_assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {

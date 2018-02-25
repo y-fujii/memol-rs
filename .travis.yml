@@ -67,4 +67,9 @@ script:
     - ${STRIP} memol_gui${EXEC_SUFFIX}
     - 7z a memol-${TARGET}.zip memol_cli${EXEC_SUFFIX} memol_gui${EXEC_SUFFIX}
 
-    - curl --upload-file memol-${TARGET}.zip https://transfer.sh/memol-${TARGET}.zip || true
+deploy:
+    provider: releases
+    api_key:
+        secure: Sic6McEifxATx/a60AYGiEgm1e9fPUdElkNBzqfsyLrrdAqMriF8hLKf+tXp4/BIooZNhVdwRWl8lW9aGqVVpe5Vx/ELVRvVsPNXRVp5C/eRsMC7tW4HL3Pw4vGNrn/bG8R0Uu2DH5/ZLeIrp0S1PNpbSDFTk1GMNx8FPxkvalU7FakpiXI6wsRF3WqdaTo24Jz6G8hYbzz4aALauyYXLoKOYecQASpHQneOFTGQE42H6gpkmIrbcXaidx4IJHs+uiVSmAoCsTEvqSEptWmOcT3lzJ23WKPQfR8CFf5gT/alUjyTdzq0t990Sj8SSKenFB/VfdSLY/HKTWk0Q1EgXi2pE8X04hsepGm7+1Z4MsoajO4gcfqWvHA7HAp1CVITVuiZx48lTMHSyPrqagPnymsNDvuhOFkIutR1UO+chDhlmKDtkHjLFhz1S3LhiBM0BUENrwsPBrPCxkEK6t1EyKZYanXSbDqwWvyP3tz1JMFRlPKNUbx6E6vuVyUGmFbnbaWunrGIdiwfjfjDg7yEzNRnsHeyFuVuuJqzNvxhtwt+XXNpLBgZSdVydOOZ0NrMA47uYHTksG45elAIJ85aZQ8zth2j9V0VCOVBcHp2UXqJ5Y6kclpvhvwDVTe4wRJGsxK4BjR5Z+avkG4gKhNGA6sIxA5KPJun05Out2CT200=
+    file: target/${TARGET}/release/memol-${TARGET}.zip
+    skip_cleanup: true

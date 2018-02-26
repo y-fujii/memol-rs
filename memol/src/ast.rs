@@ -44,6 +44,7 @@ pub enum Score<'a> {
 	With( Box<Ast<Score<'a>>>, char, Box<Ast<Score<'a>>> ),
 	Repeat( Box<Ast<Score<'a>>>, i64 ),
 	Stretch( Box<Ast<Score<'a>>>, ratio::Ratio ),
+	Filter( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
 	BinaryOp( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, BinaryOp ),
 	Branch( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
 }

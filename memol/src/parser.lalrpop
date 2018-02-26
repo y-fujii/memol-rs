@@ -44,16 +44,22 @@ pub definition: Definition<'a> = {
 };
 
 score: Box<Ast<Score<'a>>> = {
-	<lo:@L> "if" <a:score> "then" <b:score> "else" <c:score> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::Branch( a, b, c ) ),
-	<score_with>,
+	<lo:@L> <a:score> "with" <b:r"[h-z]"> "=" <c:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::With( a, b.chars().next().unwrap(), c ) ),
+	<lo:@L> <a:score> "with" "*" "=" <c:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::With( a, '*', c ) ),
+	<score_stmt>,
 };
 
-score_with: Box<Ast<Score<'a>>> = {
-	<lo:@L> <a:score_with> "with" <b:r"[h-z]"> "=" <c:score_or> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::With( a, b.chars().next().unwrap(), c ) ),
-	<lo:@L> <a:score_with> "with" "_" "=" <c:score_or> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::With( a, '_', c ) ),
+score_stmt: Box<Ast<Score<'a>>> = {
+	<lo:@L> "if" <a:score_stmt> "then" <b:score_stmt> "else" <c:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Branch( a, b, c ) ),
+	<lo:@L> "repeat" <a:uint> <b:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Repeat( b, a ) ),
+	<lo:@L> "stretch" <a:sratio> <b:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
+	<lo:@L> "filter" <a:score_stmt> <b:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Filter( a, b ) ),
 	<score_or>,
 };
 
@@ -116,10 +122,6 @@ score_prim: Box<Ast<Score<'a>>> = {
 		Ast::new_box( lo, hi, Score::Parallel( a ) ),
 	<lo:@L> "{" <a:score_content> "}" <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Score( a ) ),
-	<lo:@L> "repeat" <a:uint> <b:score_prim> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::Repeat( b, a ) ),
-	<lo:@L> "stretch" <a:sratio> <b:score_prim> <hi:@R> =>
-		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 	<lo:@L> "!" <a:score_prim> <hi:@R> => {
 		let v = Some( ratio::Ratio::one() );
 		let one = Ast::new_box( lo, hi, Score::Score(

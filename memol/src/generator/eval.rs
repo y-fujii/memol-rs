@@ -8,29 +8,33 @@ use super::*;
 
 
 pub struct Evaluator<'a> {
-	syms: collections::HashMap<String, Box<'a + Fn( ratio::Ratio ) -> f64>>,
+	rng: &'a random::Generator,
+	pub note_len: f64,
+	pub note_cnt: f64,
+	pub note_nth: f64,
 }
 
 impl<'a> Evaluator<'a> {
-	pub fn new() -> Self {
-		let mut this = Evaluator{
-			syms: collections::HashMap::new(),
-		};
-		this.add_symbol( "gaussian".into(), move |_| 0.0 );
-		this.add_symbol( "note.len".into(), move |_| 0.0 );
-		this.add_symbol( "note.cnt".into(), move |_| 0.0 );
-		this.add_symbol( "note.nth".into(), move |_| 0.0 );
-		this
+	pub fn new( rng: &'a random::Generator ) -> Self {
+		Evaluator{
+			rng: rng,
+			note_len: 0.0,
+			note_cnt: 0.0,
+			note_nth: 0.0,
+		}
 	}
 
-	pub fn new_with_random( rng: &'a random::Generator ) -> Self {
-		let mut this = Self::new();
-		this.add_symbol( "gaussian".into(), move |_| rng.next_gauss() );
-		this
-	}
-
-	pub fn add_symbol<F: 'a + Fn( ratio::Ratio ) -> f64>( &mut self, key: String, f: F ) {
-		self.syms.insert( key, Box::new( f ) );
+	pub fn set_note( &mut self, ir: &ScoreIr, f: &FlatNote ) {
+		// XXX: O(N^2).
+		let mut cnt = 0;
+		for g in ir.iter().filter( |g| g.t0 <= f.t0 && f.t0 < g.t1 ) {
+			if g as *const _ == f as *const _ {
+				self.note_nth = cnt as f64;
+			}
+			cnt += 1;
+		}
+		self.note_cnt = cnt as f64;
+		self.note_len = (f.t1 - f.t0).to_float();
 	}
 
 	pub fn eval( &self, ir: &ValueIr, t: ratio::Ratio ) -> f64 {
@@ -39,10 +43,6 @@ impl<'a> Evaluator<'a> {
 				let t = cmp::min( cmp::max( t, t0 ), t1 );
 				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
 				v.to_float()
-			},
-			ValueIr::Symbol( ref sym ) => {
-				let f = self.syms.get( sym ).unwrap();
-				f( t )
 			},
 			ValueIr::Sequence( ref irs ) => {
 				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
@@ -71,6 +71,11 @@ impl<'a> Evaluator<'a> {
 				let elze = self.eval( ir_else, t );
 				cond * then + (1.0 - cond) * elze
 			},
+			ValueIr::Time    => t.to_float(),
+			ValueIr::Gauss   => self.rng.next_gauss(),
+			ValueIr::NoteLen => self.note_len,
+			ValueIr::NoteCnt => self.note_cnt,
+			ValueIr::NoteNth => self.note_nth,
 		}
 	}
 }

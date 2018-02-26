@@ -10,7 +10,7 @@ pub use self::value::*;
 pub use self::eval::*;
 
 
-#[derive( Debug )]
+#[derive( Clone, Debug )]
 pub struct FlatNote {
 	pub t0: ratio::Ratio,
 	pub t1: ratio::Ratio,
@@ -28,7 +28,6 @@ pub struct Span<'a> {
 pub struct Generator<'a> {
 	rng: &'a random::Generator,
 	defs: &'a ast::Definition<'a>,
-	values: collections::HashSet<String>,
 	syms: Vec<(char, Vec<FlatNote>)>,
 }
 
@@ -44,16 +43,9 @@ impl<'a> Generator<'a> {
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
 		] ) ];
 
-		let mut values = collections::HashSet::new();
-		values.insert( "gaussian".into() );
-		values.insert( "note.len".into() );
-		values.insert( "note.cnt".into() );
-		values.insert( "note.nth".into() );
-
 		Generator{
 			rng: rng,
 			defs: defs,
-			values: values,
 			syms: syms,
 		}
 	}

@@ -9,10 +9,14 @@ use super::*;
 #[derive( Debug )]
 pub enum ValueIr {
 	Value( ratio::Ratio, ratio::Ratio, ratio::Ratio, ratio::Ratio ),
-	Symbol( String ),
 	Sequence( Vec<(ValueIr, ratio::Ratio)> ),
 	BinaryOp( Box<ValueIr>, Box<ValueIr>, ast::BinaryOp ),
 	Branch( Box<ValueIr>, Box<ValueIr>, Box<ValueIr> ),
+	Time,
+	Gauss,
+	NoteLen,
+	NoteCnt,
+	NoteNth,
 }
 
 pub struct ValueState {
@@ -57,15 +61,20 @@ impl<'a> Generator<'a> {
 				(ValueIr::Sequence( irs ), t1)
 			},
 			ast::Score::Symbol( ref key ) => {
-				if let Some( &(ref path, ref s) ) = self.defs.values.get( key ) {
-					let span = Span{ path: path, .. *span };
-					self.generate_value_inner( s, &span )?
-				}
-				else if self.values.contains( key ) {
-					(ValueIr::Symbol( key.clone() ), span.t0)
-				}
-				else {
-					return misc::error( &span.path, track.bgn, "undefined symbol." );
+				match key.as_str() {
+					"time"     => (ValueIr::Time,    span.t0),
+					"gauss"    => (ValueIr::Gauss,   span.t0),
+					"note.len" => (ValueIr::NoteLen, span.t0),
+					"note.cnt" => (ValueIr::NoteCnt, span.t0),
+					"note.nth" => (ValueIr::NoteNth, span.t0),
+					_ => {
+						let &(ref path, ref s) = match self.defs.values.get( key ) {
+							Some( v ) => v,
+							None      => return misc::error( &span.path, track.bgn, "undefined symbol." ),
+						};
+						let span = Span{ path: path, .. *span };
+						self.generate_value_inner( s, &span )?
+					}
 				}
 			},
 			ast::Score::Parallel( ref ss ) => {

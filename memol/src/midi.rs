@@ -49,13 +49,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_score( &mut self, ch: usize, ir_score: &generator::ScoreIr, ir_vel: &generator::ValueIr, ir_ofs: &generator::ValueIr, ir_dur: &generator::ValueIr ) {
-		let note_len = cell::Cell::new( 0.0 );
-		let note_cnt = cell::Cell::new( 0.0 );
-		let note_nth = cell::Cell::new( 0.0 );
-		let mut evaluator = generator::Evaluator::new_with_random( self.rng );
-		evaluator.add_symbol( "note.len".into(), |_| note_len.get() );
-		evaluator.add_symbol( "note.cnt".into(), |_| note_cnt.get() );
-		evaluator.add_symbol( "note.nth".into(), |_| note_nth.get() );
+		let mut evaluator = generator::Evaluator::new( self.rng );
 		let mut offset = collections::HashMap::new();
 		for f in ir_score.iter() {
 			let nnum = match f.nnum {
@@ -67,27 +61,17 @@ impl<'a> Generator<'a> {
 				continue;
 			}
 
-			// XXX: O(N^2).
-			let mut cnt = 0;
-			for g in ir_score.iter().filter( |g| g.t0 <= f.t0 && f.t0 < g.t1 ) {
-				if g as *const _ == f as *const _ {
-					note_nth.set( cnt as f64 );
-				}
-				cnt += 1;
-			}
-			note_cnt.set( cnt as f64 );
-			note_len.set( (f.t1 - f.t0).to_float() );
-
+			evaluator.set_note( ir_score, f );
 			let dt = evaluator.eval( ir_dur, f.t0 );
 			let d0 = *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
 			let d1 = *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );
 			let t0 = f.t0.to_float() + d0;
-			let t1 = if dt == note_len.get() {
+			let t1 = if dt == evaluator.note_len {
 				// avoid event order inversion due to FP errors.
 				f.t1.to_float() + d1
 			}
 			else {
-				let a = dt / note_len.get();
+				let a = dt / evaluator.note_len;
 				(1.0 - a) * (f.t0.to_float() + d0) + a * (f.t1.to_float() + d1)
 			};
 			if t0 >= t1 {
@@ -100,7 +84,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_pitch( &mut self, ch: usize, ir: &generator::ValueIr ) {
-		let evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new( self.rng );
 		let mut prev_v = 0;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -115,7 +99,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_cc( &mut self, ch: usize, cc: usize, ir: &generator::ValueIr ) {
-		let evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new( self.rng );
 		let mut prev_v = 255;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
@@ -128,7 +112,7 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_tempo( &mut self, ir: &generator::ValueIr ) {
-		let evaluator = generator::Evaluator::new_with_random( self.rng );
+		let evaluator = generator::Evaluator::new( self.rng );
 		debug_assert!( self.timeline.len() == 0 );
 		let mut s = 0.0;
 		for i in 0 .. self.end + 1 {

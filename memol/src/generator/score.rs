@@ -93,27 +93,20 @@ impl<'a> Generator<'a> {
 				let span = Span{ dt: r * span.dt, .. *span };
 				self.generate_score_inner( s, &span, dst )?
 			},
-			ast::Score::Branch( ref cond, ref then, ref elze ) => {
+			ast::Score::Filter( ref cond, ref then ) => {
 				let (ir_cond, _) = self.generate_value_inner( cond, &span )?;
 				let mut ir_then = Vec::new();
-				let t_then = self.generate_score_inner( then, &span, &mut ir_then )?;
-				let mut ir_elze = Vec::new();
-				let t_elze = self.generate_score_inner( elze, &span, &mut ir_elze )?;
+				let t = self.generate_score_inner( then, &span, &mut ir_then )?;
 
-				let evaluator = Evaluator::new_with_random( &self.rng );
-				let mut memo = collections::HashMap::new();
-				for ir in ir_then.into_iter() {
-					if *memo.entry( ir.t0 ).or_insert_with( || evaluator.eval( &ir_cond, ir.t0 ) ) >= 0.5 {
-						dst.push( ir );
-					}
-				}
-				for ir in ir_elze.into_iter() {
-					if *memo.entry( ir.t0 ).or_insert_with( || evaluator.eval( &ir_cond, ir.t0 ) ) < 0.5 {
-						dst.push( ir );
+				let mut evaluator = Evaluator::new( &self.rng );
+				for f in ir_then.iter() {
+					evaluator.set_note( &ir_then, f );
+					if evaluator.eval( &ir_cond, f.t0 ) >= 0.5 {
+						dst.push( f.clone() );
 					}
 				}
 
-				cmp::max( t_then, t_elze )
+				t
 			},
 			_ => {
 				return misc::error( &span.path, score.bgn, "syntax error." );

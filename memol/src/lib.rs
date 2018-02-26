@@ -119,7 +119,7 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 				ratio::Ratio::zero(),
 			) );
 		let duration = gen.generate_value( &format!( "out.{}.duration", ch ) )?
-			.unwrap_or( generator::ValueIr::Symbol( "note.len".into() ) );
+			.unwrap_or( generator::ValueIr::NoteLen );
 		let pitch = gen.generate_value( &format!( "out.{}.pitch", ch ) )?
 			.unwrap_or( generator::ValueIr::Value(
 				ratio::Ratio::zero(),
@@ -157,7 +157,7 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 		.max()
 		.unwrap_or( ratio::Ratio::zero() );
 
-	let evaluator = generator::Evaluator::new_with_random( rng );
+	let evaluator = generator::Evaluator::new( rng );
 	let bgn = match gen.generate_value( "out.begin" )? {
 		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,

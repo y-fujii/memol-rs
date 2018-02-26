@@ -62,7 +62,8 @@ impl window::Ui<UiMessage> for Ui {
 				self.assembly = asm;
 				self.events   = evs;
 				self.text     = None;
-				let evaluator = generator::Evaluator::new();
+				let rng = random::Generator::new(); // XXX
+				let evaluator = generator::Evaluator::new( &rng );
 				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
 			},
 			UiMessage::Text( text ) => {

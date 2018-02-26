@@ -131,8 +131,8 @@ score $out.0() = [
     _ ( $melody() repeat 2 $pattern() with q = $chord() ) with _ = repeat 78 { (ABC+DEF+G) } _
 ]
 
-value $out.0.offset()   = $gaussian() / 512
-value $out.0.velocity() = $gaussian() / 64 + if $note.nth() == 0 then 4/8 else 3/8
+value $out.0.offset()   = $gauss() / 512
+value $out.0.velocity() = $gauss() / 64 + if $note.nth() == 0 then 4/8 else 3/8
 value $out.0.cc64()     = [ repeat 79 { 0 1:23 } { 0 } ]
 value $out.tempo()      = 2/5
 </pre>
@@ -156,13 +156,8 @@ features for practical use.
 </ul>
 
 <h2>Download pre-built binaries</h2>
-<ul>
-	<li><code><a href="../bin/memol-x86_64-unknown-linux-gnu.zip">memol-x86_64-unknown-linux-gnu.zip</a></code> (Linux/x86_64)
-	<li><code><a href="../bin/memol-aarch64-unknown-linux-gnu.zip">memol-aarch64-unknown-linux-gnu.zip</a></code> (Linux/aarch64)
-	<li><code><a href="../bin/memol-x86_64-pc-windows-gnu.zip">memol-x86_64-pc-windows-gnu.zip</a></code> (Windows/x86_64)
-	<li><code><a href="../bin/memol-x86_64-apple-darwin.zip">memol-x86_64-pc-apple-darwin.zip</a></code> (macOS/x86_64)
-</ul>
-<p>Note that macOS binaries are NEVER TESTED since I don't have a Mac...
+<p><a href="https://github.com/y-fujii/memol-rs/releases">See GitHub Release page.</a>
+<p>Note that macOS binaries are never tested since I don't have a Mac...
 
 <h2>Build and install</h2>
 <p>Although memol can run potentially on any platforms which support Rust and
@@ -380,12 +375,16 @@ time-dependent value.
 <pre>
 value $out.tempo()      = 1 / 2
 value $out.0.velocity() = { [3:3 4] 3 2 | 2..4 3 } / 8 + { 0..1 | 1..2 } / 4
-value $out.0.offset()   = $note.nth() / 32 + $gaussian() / 256
+value $out.0.offset()   = $note.nth() / 32 + $gauss() / 256
 value $out.0.duration() = $note.len() * 6 / 8 + 1 / 8
 value $out.0.cc11()     = { 3..* | 4..* | *..* | *..1 } / 4
 </pre>
 <p>There are some special symbols: <code>$note.len(), $note.cnt(), $note.nth()</code>.
 <p>XXX
+<p>Score can be filtered by value:
+<pre>
+score $top_notes = filter $note.nth() == 0 { (cEGB) | (cEFA) }
+</pre>
 
 <h2>MIDI channels</h2>
 <p>WARNING: This specification will be changed.

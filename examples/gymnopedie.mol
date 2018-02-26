@@ -31,10 +31,10 @@ score $pattern() = [
 ]
 
 score $out.0() = [
-	_ ( $melody() repeat 2 $pattern() with q = $chord() ) with _ = repeat 78 { (ABC+DEF+G) } _
+	_ ( $melody() repeat 2 $pattern() with q = $chord() ) with * = repeat 78 { (ABC+DEF+G) } _
 ]
 
-value $out.0.offset()   = $gaussian() / 512
-value $out.0.velocity() = $gaussian() / 64 + (if $note.nth() == 0 then 4/8 else 3/8)
+value $out.0.offset()   = $gauss() / 512
+value $out.0.velocity() = $gauss() / 64 + (if $note.nth() == 0 then 4/8 else 3/8)
 value $out.0.cc64()     = [ repeat 79 { 0 1:23 } { 0 } ]
 value $out.tempo()      = 2/5

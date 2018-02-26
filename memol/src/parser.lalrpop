@@ -230,12 +230,12 @@ octave: Box<Ast<Note<'a>>> = {
 };
 
 pitch_lower: (char, i64) = {
-	<a:r"[a-g]">          => ('_', a.chars().next().unwrap() as i64 - 'a' as i64),
+	<a:r"[a-g]">          => ('*', a.chars().next().unwrap() as i64 - 'a' as i64),
 	<a:r"[h-z]"> <b:sint> => (a.chars().next().unwrap(), b),
 };
 
 pitch_upper: (char, i64) = {
-	<a:r"[A-G]">          => ('_', a.chars().next().unwrap() as i64 - 'A' as i64),
+	<a:r"[A-G]">          => ('*', a.chars().next().unwrap() as i64 - 'A' as i64),
 	<a:r"[H-Z]"> <b:sint> => (a.chars().next().unwrap().to_lowercase().next().unwrap(), b),
 };
 

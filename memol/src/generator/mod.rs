@@ -33,7 +33,7 @@ pub struct Generator<'a> {
 
 impl<'a> Generator<'a> {
 	pub fn new( rng: &'a random::Generator, defs: &'a ast::Definition<'a> ) -> Generator<'a> {
-		let syms = vec![ ('_', vec![
+		let syms = vec![ ('*', vec![
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
 			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },

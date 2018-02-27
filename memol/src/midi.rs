@@ -65,18 +65,15 @@ impl<'a> Generator<'a> {
 			let dt = evaluator.eval( ir_dur, f.t0 );
 			let d0 = *offset.entry( (f.t0, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t0 ) );
 			let d1 = *offset.entry( (f.t1, nnum) ).or_insert_with( || evaluator.eval( ir_ofs, f.t1 ) );
+
+			// be careful of the numerical error which causes order inversion.
+			let a = dt / evaluator.note_len;
 			let t0 = f.t0.to_float() + d0;
-			let t1 = if dt == evaluator.note_len {
-				// avoid event order inversion due to FP errors.
-				f.t1.to_float() + d1
-			}
-			else {
-				let a = dt / evaluator.note_len;
-				(1.0 - a) * (f.t0.to_float() + d0) + a * (f.t1.to_float() + d1)
-			};
+			let t1 = (1.0 - a) * t0 + a * (f.t1.to_float() + d1);
 			if t0 >= t1 {
 				continue;
 			}
+
 			let vel = (evaluator.eval( ir_vel, f.t0 ) * 127.0).round().max( 0.0 ).min( 127.0 );
 			self.events.push( Event::new( t0,  1, &[ (0x90 + ch) as u8, nnum as u8, vel as u8 ] ) );
 			self.events.push( Event::new( t1, -1, &[ (0x80 + ch) as u8, nnum as u8, vel as u8 ] ) );
@@ -88,7 +85,7 @@ impl<'a> Generator<'a> {
 		let mut prev_v = 0;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
-			let v = (evaluator.eval( ir, t ) * 8192.0 + 8192.0).round().max( 0.0 ).min( 16383.0 ) as u32;
+			let v = (evaluator.eval( ir, t ) * 8192.0 + 8192.0).round().max( 0.0 ).min( 16383.0 ) as usize;
 			if v != prev_v {
 				let lsb = ((v >> 0) & 0x7f) as u8;
 				let msb = ((v >> 7) & 0x7f) as u8;

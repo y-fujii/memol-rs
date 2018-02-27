@@ -61,7 +61,7 @@ script:
             ;;
         esac
 
-    - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
+    - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
     - cd target/${TARGET}/release
     - ${STRIP} memol_cli${EXEC_SUFFIX}
     - ${STRIP} memol_gui${EXEC_SUFFIX}

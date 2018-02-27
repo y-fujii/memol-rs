@@ -93,8 +93,8 @@ and different from the latest implementation.</strong>
 	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
 	fact, the sheet musics in this page are rendered by Lilypond!).
 </dl>
-<p>Here is a complete example written in (current) memol language.
-<pre style="font-size: 80%">
+<p>Here is a example written in (current) memol language.
+<pre style="font-size: 87.5%">
 /* Gymnopedie No. 1, Erik Satie */
 
 score $melody_common() = {
@@ -128,11 +128,11 @@ score $pattern() = [
 ]
 
 score $out.0() = [
-    _ ( $melody() repeat 2 $pattern() with q = $chord() ) with _ = repeat 78 { (ABC+DEF+G) } _
+    _ ( $melody() repeat 2 $pattern() with q = $chord() ) with * = repeat 78 { (ABC+DEF+G) } _
 ]
 
 value $out.0.offset()   = $gauss() / 512
-value $out.0.velocity() = $gauss() / 64 + if $note.nth() == 0 then 4/8 else 3/8
+value $out.0.velocity() = $gauss() / 64 + (if $note.nth() == 0 then 4/8 else 3/8)
 value $out.0.cc64()     = [ repeat 79 { 0 1:23 } { 0 } ]
 value $out.tempo()      = 2/5
 </pre>
@@ -166,7 +166,7 @@ JACK, I develop it primary on Linux and sometimes test it on Windows
 programs are installed and configured properly.
 <ul>
 	<li><a href="http://rust-lang.org/">Rust</a> (build dependency)
-	<li><a href="http://jackaudio.org/">JACK</a> (runtime dependency)
+	<li><a href="http://jackaudio.org/">JACK</a> (runtime dependency, optional but strongly recommended)
 </ul>
 <p>Building and installing memol are quite simple thanks to Cargo; Just type
 <pre>
@@ -359,7 +359,7 @@ score $out.0()   = repeat 2 $pattern() with q = $chord()
 <code>"abcdefg"</code>.  It can be used to change a key signature.  
 <pre>
 score $a_major() = { (c+DEF+G+AB) }
-score $out.0()   = { ... } with _ = $a_major()
+score $out.0()   = { ... } with * = $a_major()
 </pre>
 
 <h2>Value track</h2>

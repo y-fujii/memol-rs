@@ -25,20 +25,17 @@ pub fn gcd( y: i64, x: i64 ) -> i64 {
 	if s { -y } else { y }
 }
 
+// semantically equivalent to:
+//     for (i, x) in xs.iter().enumerate() {
+//         if !f( x ) {
+//             return i;
+//         }
+//     }
+//     return xs.len();
 pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usize {
-	/*
-		semantically equivalent to:
-			for (i, x) in xs.iter().enumerate() {
-				if !f( x ) {
-					return i;
-				}
-			}
-			return xs.len();
-
-		invariants:
-			f( xs[lo - 1] ) == true
-			f( xs[hi    ] ) == false
-	*/
+	// invariants:
+	//     f( xs[lo - 1] ) == true
+	//     f( xs[hi    ] ) == false
 	let mut lo = 0;
 	let mut hi = xs.len();
 	while lo < hi {

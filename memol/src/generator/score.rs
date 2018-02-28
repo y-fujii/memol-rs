@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 use misc;
-use ratio;
+use ratio::Ratio;
 use ast;
 use super::*;
 
@@ -11,7 +11,7 @@ pub type ScoreIr = Vec<FlatNote>;
 pub struct ScoreState<'a> {
 	nnum: i64,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
-	ties: collections::HashMap<i64, ratio::Ratio>,
+	ties: collections::HashMap<i64, Ratio>,
 }
 
 impl<'a> Generator<'a> {
@@ -22,8 +22,8 @@ impl<'a> Generator<'a> {
 			None      => return Ok( None ),
 		};
 		let span = Span{
-			t0: ratio::Ratio::zero(),
-			dt: ratio::Ratio::one(),
+			t0: Ratio::zero(),
+			dt: Ratio::one(),
 			tied: false,
 			syms: &syms,
 			path: path,
@@ -33,7 +33,7 @@ impl<'a> Generator<'a> {
 		Ok( Some( dst ) )
 	}
 
-	pub fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<ratio::Ratio, misc::Error> {
+	pub fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = ScoreState{
@@ -105,7 +105,32 @@ impl<'a> Generator<'a> {
 						dst.push( f.clone() );
 					}
 				}
+				t
+			},
+			ast::Score::Slice( ref s, t0, t1 ) => {
+				// XXX
+				let mut tmp = Vec::new();
+				let span1 = Span{ t0: span.t0 - t0, .. *span };
+				self.generate_score_inner( s, &span1, &mut tmp )?;
+				for f in tmp.iter() {
+					if span.t0 <= f.t0 && f.t0 < span.t0 + (t1 - t0) {
+						dst.push( f.clone() );
+					}
+				}
+				span.t0 + (t1 - t0)
+			},
+			ast::Score::Transpose( ref sn, ref ss ) => {
+				let (ir_n, _) = self.generate_value_inner( sn, &span )?;
+				let mut ir_s = Vec::new();
+				let t = self.generate_score_inner( ss, &span, &mut ir_s )?;
 
+				let mut evaluator = Evaluator::new( &self.rng );
+				for f in ir_s.iter() {
+					evaluator.set_note( &ir_s, f );
+					let n = evaluator.eval( &ir_n, f.t0 ).round() as i64;
+					let nnum = f.nnum.map( |e| e + n );
+					dst.push( FlatNote{ nnum, ..*f } );
+				}
 				t
 			},
 			_ => {
@@ -222,8 +247,8 @@ impl<'a> Generator<'a> {
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
-						t0: span.t0 + span.dt * ratio::Ratio::new( acc, tot ),
-						dt: span.dt * ratio::Ratio::new( i, tot ),
+						t0: span.t0 + span.dt * Ratio::new( acc, tot ),
+						dt: span.dt * Ratio::new( i, tot ),
 						tied: acc + i == tot && span.tied, // only apply to the last note.
 						.. *span
 					};

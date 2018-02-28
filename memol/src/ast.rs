@@ -47,6 +47,8 @@ pub enum Score<'a> {
 	Filter( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
 	BinaryOp( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, BinaryOp ),
 	Branch( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
+	Slice( Box<Ast<Score<'a>>>, ratio::Ratio, ratio::Ratio ),
+	Transpose( Box<Ast<Score<'a>>>, Box<Ast<Score<'a>>> ),
 }
 
 #[derive( Copy, Clone, Debug )]

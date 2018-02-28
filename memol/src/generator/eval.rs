@@ -44,9 +44,11 @@ impl<'a> Evaluator<'a> {
 				let v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
 				v.to_float()
 			},
-			ValueIr::Sequence( ref irs ) => {
-				let i = misc::bsearch_boundary( &irs, |&(_, t0)| t0 <= t );
-				self.eval( &irs[i - 1].0, t )
+			ValueIr::Sequence( t0, ref irs ) => {
+				let t = cmp::min( cmp::max( t, t0 ), irs.last().unwrap().1 );
+				let i = misc::bsearch_boundary( &irs, |&(_, t1)| t1 <= t );
+				let i = cmp::min( i, irs.len() - 1 );
+				self.eval( &irs[i].0, t )
 			},
 			ValueIr::BinaryOp( ref ir_lhs, ref ir_rhs, op ) => {
 				let lhs = self.eval( ir_lhs, t );
@@ -79,4 +81,3 @@ impl<'a> Evaluator<'a> {
 		}
 	}
 }
-

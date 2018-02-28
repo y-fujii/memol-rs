@@ -34,13 +34,13 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
 	pub fn new( rng: &'a random::Generator, defs: &'a ast::Definition<'a> ) -> Generator<'a> {
 		let syms = vec![ ('*', vec![
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
-			FlatNote{ t0: ratio::Ratio::zero(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 69 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 71 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 60 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 62 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 64 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 65 ) },
+			FlatNote{ t0: -ratio::Ratio::inf(), t1: ratio::Ratio::inf(), nnum: Some( 67 ) },
 		] ) ];
 
 		Generator{

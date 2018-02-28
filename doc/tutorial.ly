@@ -82,7 +82,7 @@ and different from the latest implementation.</strong>
 	composition well (in the future).  Unlike score typesetting languages,
 	memol also focused on describing time-dependent value used for MIDI control
 	changes, etc.
-	<dt>Extendable with ordinal programming languages
+	<dt>Extendable with arbitrary programming languages
 	<dd>(Planned. Not implemented yet.)
 </dl>
 <p>memol does <strong>not</strong> aim to have:

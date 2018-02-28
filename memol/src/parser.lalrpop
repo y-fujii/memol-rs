@@ -60,6 +60,10 @@ score_stmt: Box<Ast<Score<'a>>> = {
 		Ast::new_box( lo, hi, Score::Stretch( b, a ) ),
 	<lo:@L> "filter" <a:score_stmt> <b:score_stmt> <hi:@R> =>
 		Ast::new_box( lo, hi, Score::Filter( a, b ) ),
+	<lo:@L> "slice" <a:sratio> <b:sratio> <c:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Slice( c, a, b ) ),
+	<lo:@L> "transpose" <a:score_stmt> <b:score_stmt> <hi:@R> =>
+		Ast::new_box( lo, hi, Score::Transpose( a, b ) ),
 	<score_or>,
 };
 

@@ -6,36 +6,41 @@ language: rust
 matrix:
     include:
         - os: linux
-          env: >-
-              TARGET=x86_64-unknown-linux-gnu
-              EXEC_SUFFIX=
-              STRIP="strip --strip-all"
+          env: TARGET=x86_64-unknown-linux-gnu
+          script:
+              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - cd target/${TARGET}/release
+              - strip --strip-all memol_cli memol_gui libmemol_vst.so
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.so
         - os: linux
           env: >-
               TARGET=aarch64-unknown-linux-gnu
               CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
-              EXEC_SUFFIX=
-              STRIP="aarch64-linux-gnu-strip --strip-all"
+          script:
+              - sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
+              - rustup target add ${TARGET}
+              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - cd target/${TARGET}/release
+              - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui libmemol_vst.so
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.so
         - os: linux
-          env: >-
-              TARGET=x86_64-pc-windows-gnu
-              EXEC_SUFFIX=.exe
-              STRIP="x86_64-w64-mingw32-strip --strip-all"
+          env: TARGET=x86_64-pc-windows-gnu
+          script:
+              - sed -i 's|<Windows\.h>|<windows.h>|g' memol_gui/imgui/imgui.cpp
+              - rustup target add ${TARGET}
+              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - cd target/${TARGET}/release
+              - x86_64-w64-mingw32-strip --strip-all memol_cli.exe memol_gui.exe memol_vst.dll
+              - 7z a memol-${TARGET}.zip memol_cli.exe memol_gui.exe memol_vst.dll
         - os: osx
-          env: >-
-              TARGET=x86_64-apple-darwin
-              EXEC_SUFFIX=
-              STRIP=strip
-    allow_failures:
-        - os: osx
-        - os: linux
-          env: >-
-              TARGET=aarch64-unknown-linux-gnu
-              CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
-              CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
-              EXEC_SUFFIX=
-              STRIP="aarch64-linux-gnu-strip --strip-all"
+          env: TARGET=x86_64-apple-darwin
+          script:
+              - brew install p7zip curl
+              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - cd target/${TARGET}/release
+              - strip memol_cli memol_gui
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.dylib
 
 addons:
     apt:
@@ -44,28 +49,6 @@ addons:
             - gcc-aarch64-linux-gnu
             - libc-dev-arm64-cross
             - p7zip-full
-
-script:
-    - |
-        case "${TARGET}" in
-            "x86_64-apple-darwin" )
-                brew install p7zip curl
-            ;;
-            "x86_64-pc-windows-gnu" )
-                rustup target add x86_64-pc-windows-gnu
-                sed -i 's|<Windows\.h>|<windows.h>|g' memol_gui/imgui/imgui.cpp
-            ;;
-            "aarch64-unknown-linux-gnu" )
-                rustup target add aarch64-unknown-linux-gnu
-                sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
-            ;;
-        esac
-
-    - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
-    - cd target/${TARGET}/release
-    - ${STRIP} memol_cli${EXEC_SUFFIX}
-    - ${STRIP} memol_gui${EXEC_SUFFIX}
-    - 7z a memol-${TARGET}.zip memol_cli${EXEC_SUFFIX} memol_gui${EXEC_SUFFIX}
 
 deploy:
     provider: releases

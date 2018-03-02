@@ -80,8 +80,8 @@ impl window::Ui<UiMessage> for Ui {
 		};
 		self.player.set_data( self.events.clone() );
 		if self.autoplay && !self.player.is_playing() {
-			self.player.seek( bgn ).unwrap_or_default();
-			self.player.play().unwrap_or_default();
+			self.player.seek( bgn ).ok();
+			self.player.play().ok();
 		}
 
 		JACK_FRAME_WAIT
@@ -131,7 +131,7 @@ impl Ui {
 					is_playing && self.follow, size,
 				);
 				if let Some( loc ) = result {
-					self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).unwrap_or_default();
+					self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).ok();
 					changed = true;
 				}
 			}
@@ -165,22 +165,22 @@ impl Ui {
 		);
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
-				self.player.seek( 0.0 ).unwrap_or_default();
+				self.player.seek( 0.0 ).ok();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04b}" ), &size ) {
-				self.player.play().unwrap_or_default();
+				self.player.play().ok();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04d}" ), &size ) {
-				self.player.stop().unwrap_or_default();
+				self.player.stop().ok();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
-				self.player.seek( self.assembly.len.to_float() / self.tempo ).unwrap_or_default();
+				self.player.seek( self.assembly.len.to_float() / self.tempo ).ok();
 				changed = true;
 			}
 

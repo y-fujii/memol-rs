@@ -6,6 +6,7 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 [dependencies]
 vst2 = { git = "https://github.com/overdrivenpotato/rust-vst2" }
 memol = { path = "../memol" }
+memol_cli = { path = "../memol_cli" }
 
 [lib]
 crate-type = ["cdylib"]

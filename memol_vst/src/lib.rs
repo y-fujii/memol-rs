@@ -2,10 +2,13 @@
 #[macro_use]
 extern crate vst2;
 extern crate memol;
+extern crate memol_cli;
 use std::*;
 use memol::{ misc, midi };
 use vst2::host::Host;
 
+
+const REMOTE_ADDR: &'static str = "ws://localhost:27182";
 
 struct HostCallbackExt {
 	callback: Option<vst2::api::HostCallbackProc>,
@@ -42,13 +45,36 @@ struct SharedData {
 struct Plugin {
 	host: vst2::plugin::HostCallback,
 	shared: sync::Arc<sync::Mutex<SharedData>>,
+	is_playing: bool,
 }
 
 impl vst2::plugin::Plugin for Plugin {
 	fn new( host: vst2::plugin::HostCallback ) -> Self {
-		Self{
+		let shared = sync::Arc::new( sync::Mutex::new( SharedData{
+			events: Vec::new(),
+			changed: false,
+		} ) );
+
+		{
+			let shared = shared.clone();
+			thread::spawn( move || {
+				loop {
+					memol_cli::ipc::Bus::new().connect( REMOTE_ADDR, |msg| {
+						if let memol_cli::ipc::Message::Success{ events: evs } = msg {
+							let mut shared = shared.lock().unwrap();
+							shared.events = evs.into_iter().map( |e| e.into() ).collect();
+							shared.changed = true;
+						}
+					} ).ok();
+					thread::sleep( time::Duration::new( 3, 0 ) );
+				}
+			} );
+		}
+
+		Plugin{
 			host: host,
-			.. Default::default()
+			shared: shared,
+			is_playing: false,
 		}
 	}
 
@@ -75,7 +101,7 @@ impl vst2::plugin::Plugin for Plugin {
 
 	fn process( &mut self, _: vst2::buffer::AudioBuffer<f32> ) {
 		let bsize = HostCallbackExt::get_block_size( &self.host ) as f64;
-		let (pos, rate, playing) = match HostCallbackExt::get_time( &self.host ) {
+		let (pos, rate, is_playing) = match HostCallbackExt::get_time( &self.host ) {
 			Some( v ) => v,
 			None      => return,
 		};
@@ -86,31 +112,33 @@ impl vst2::plugin::Plugin for Plugin {
 
 		let mut events = Vec::new();
 
-		if shared.changed {
+		if shared.changed || self.is_playing != is_playing {
 			for ch in 0 .. 16 {
 				// all notes off message.
-				events.push( Self::event( &[ 0xb0 + ch, 0x7b, 0x00 ], 0.0 ) );
+				events.push( Self::event( &[ 0xb0 + ch, 0x7b, 0x00 ], 0 ) );
 			}
 			shared.changed = false;
 		}
 
-		if playing {
-			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (ev.time * rate, ev.prio) < (pos,         i16::MIN) );
-			let iend = misc::bsearch_boundary( &shared.events, |ev| (ev.time * rate, ev.prio) < (pos + bsize, i16::MIN) );
+		if is_playing {
+			let frame = |ev: &midi::Event| (ev.time * rate - pos).round();
+			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (0.0,   i16::MIN) );
+			let iend = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (bsize, i16::MIN) );
 			for ev in shared.events[ibgn .. iend].iter() {
-				events.push( Self::event( &ev.msg, ev.time * rate - pos ) );
+				events.push( Self::event( &ev.msg, frame( ev ) as i32 ) );
 			}
 		}
 
 		self.host.process_events( events );
+		self.is_playing = is_playing;
 	}
 }
 
 impl Plugin {
-	fn event<'a>( msg: &[u8], frame: f64 ) -> vst2::event::Event<'a> {
+	fn event<'a>( msg: &[u8], frame: i32 ) -> vst2::event::Event<'a> {
 		vst2::event::Event::Midi{
 			data: [ msg[0], msg[1], msg[2] ],
-			delta_frames: frame.round() as i32,
+			delta_frames: frame,
 			live: false,
 			note_length: None,
 			note_offset: None,

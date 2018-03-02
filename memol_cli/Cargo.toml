@@ -6,4 +6,8 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 [dependencies]
 getopts = "*"
 libloading = "*"
+ws = "*"
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
 memol = { path = "../memol" }

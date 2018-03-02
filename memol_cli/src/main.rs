@@ -2,9 +2,12 @@
 extern crate getopts;
 extern crate memol;
 extern crate memol_cli;
+extern crate ws;
 use std::*;
-use memol_cli::player::Player;
+use memol_cli::*;
 
+
+const SERVER_ADDR: &'static str = "localhost:27182";
 
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
 	let timer = time::SystemTime::now();
@@ -26,6 +29,7 @@ fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>
 
 fn main() {
 	let f = || -> Result<(), Box<error::Error>> {
+		// parse command line.
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
@@ -35,9 +39,9 @@ fn main() {
 			print!( "{}", opts.usage( "Usage: memol_cli [options] FILE" ) );
 			return Ok( () );
 		}
-
 		let path = path::PathBuf::from( &args.free[0] );
 
+		// generate MIDI file.
 		if args.opt_present( "b" ) {
 			if let Some( events ) = compile( &path, args.opt_present( "v" ) ) {
 				let smf = path.with_extension( "mid" );
@@ -47,23 +51,40 @@ fn main() {
 			return Ok( () );
 		}
 
-		let player = memol_cli::player_jack::Player::new( "memol" )?;
+		// initialize IPC.
+		let bus = ipc::Bus::new();
+		let sender: ipc::Sender<ipc::Message> = bus.create_sender();
+		thread::spawn( move || {
+			if let Err( err ) = bus.listen( SERVER_ADDR, |_| () ) {
+				eprintln!( "IPC: {}", err );
+			}
+		} );
+
+		// initialize JACK.
+		let player: Box<player::Player> = match player_jack::Player::new( "memol" ) {
+			Ok ( v ) => v,
+			Err( _ ) => player::DummyPlayer::new(),
+		};
 		for port in args.opt_strs( "c" ) {
 			player.connect( &port )?;
 		}
 
+		// main loop.
 		loop {
 			if let Some( events ) = compile( &path, args.opt_present( "v" ) ) {
 				let bgn = match events.get( 0 ) {
 					Some( ev ) => ev.time.max( 0.0 ),
 					None       => 0.0,
 				};
-				player.set_data( events );
+				player.set_data( events.clone() );
 				player.seek( bgn )?;
 				player.play()?;
+				sender.send( &ipc::Message::Success{
+					events: events.into_iter().map( |e| e.into() ).collect()
+				} )?;
 			}
 
-			memol_cli::notify::wait_file( &args.free[0] )?;
+			notify::wait_file( &args.free[0] )?;
 		}
 	};
 	if let Err( e ) = f() {

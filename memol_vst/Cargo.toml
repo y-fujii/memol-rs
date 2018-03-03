@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 
 [dependencies]
-vst2 = { git = "https://github.com/overdrivenpotato/rust-vst2" }
+vst = { git = "https://github.com/y-fujii/rust-vst", branch = "sebbert_work" }
+#vst = { path = "../../rust-vst" }
 memol = { path = "../memol" }
 memol_cli = { path = "../memol_cli" }
 

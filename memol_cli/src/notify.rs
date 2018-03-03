@@ -51,7 +51,7 @@ pub fn wait_file( path: &str ) -> io::Result<()> {
 
 pub enum WaitResult<T> {
 	File( time::SystemTime ),
-	Message( T ),
+	Channel( T ),
 	Disconnect,
 }
 
@@ -63,14 +63,14 @@ pub fn wait_file_or_channel<T: AsRef<path::Path>, U>( path: &T, rx: &sync::mpsc:
 			break;
 		}
 		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
-			Ok ( v )                                          => return WaitResult::Message( v ),
+			Ok ( v )                                          => return WaitResult::Channel( v ),
 			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
 			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return WaitResult::Disconnect,
 		}
 	}
 	loop {
 		match rx.recv_timeout( time::Duration::from_millis( 100 ) ) {
-			Ok ( v )                                          => return WaitResult::Message( v ),
+			Ok ( v )                                          => return WaitResult::Channel( v ),
 			Err( sync::mpsc::RecvTimeoutError::Timeout )      => (),
 			Err( sync::mpsc::RecvTimeoutError::Disconnected ) => return WaitResult::Disconnect,
 		}

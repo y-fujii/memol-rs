@@ -14,14 +14,12 @@ mod window;
 mod pianoroll;
 use std::*;
 use memol::*;
-use memol_cli::player;
+use memol_cli::{ notify, ipc, player, player_jack };
 use memol_cli::player::Player;
-use memol_cli::player_jack;
-use memol_cli::notify;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
-
+const SERVER_ADDR: &'static str = "localhost:27182";
 
 enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
@@ -29,8 +27,13 @@ enum UiMessage {
 	Player( Box<player::Player> ),
 }
 
+enum CompilerMessage {
+    File( path::PathBuf ),
+    Refresh,
+}
+
 struct Ui {
-	compile_tx: sync::mpsc::Sender<path::PathBuf>,
+	compile_tx: sync::mpsc::Sender<CompilerMessage>,
 	path: path::PathBuf,
 	assembly: Assembly,
 	events: Vec<midi::Event>,
@@ -51,7 +54,7 @@ impl window::Ui<UiMessage> for Ui {
 	}
 
 	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
-		self.compile_tx.send( path.clone() ).unwrap();
+		self.compile_tx.send( CompilerMessage::File( path.clone() ) ).unwrap();
 		JACK_FRAME_WAIT
 	}
 
@@ -89,7 +92,7 @@ impl window::Ui<UiMessage> for Ui {
 }
 
 impl Ui {
-	fn new( compile_tx: sync::mpsc::Sender<path::PathBuf> ) -> Ui {
+	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage> ) -> Ui {
 		Ui {
 			compile_tx: compile_tx,
 			path: path::PathBuf::new(),
@@ -228,6 +231,10 @@ impl Ui {
 					changed = true;
 				}
 			}
+			SameLine( 0.0, -1.0 );
+			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
+                self.compile_tx.send( CompilerMessage::Refresh ).unwrap();
+			}
 		End();
 		PopStyleVar( 2 );
 
@@ -242,7 +249,7 @@ impl Ui {
 	}
 }
 
-fn compile_task( rx: sync::mpsc::Receiver<path::PathBuf>, tx: window::MessageSender<UiMessage> ) {
+fn compile_task( rx: sync::mpsc::Receiver<CompilerMessage>, ui_tx: window::MessageSender<UiMessage>, bus_tx: ipc::Sender<ipc::Message> ) {
 	let mut path = path::PathBuf::new();
 	let mut modified = time::UNIX_EPOCH;
 	loop {
@@ -250,14 +257,13 @@ fn compile_task( rx: sync::mpsc::Receiver<path::PathBuf>, tx: window::MessageSen
 			notify::WaitResult::File( v ) => {
 				modified = v;
 			},
-			notify::WaitResult::Message( v ) => {
+			notify::WaitResult::Channel( CompilerMessage::File( v ) ) => {
 				path = v;
 				modified = time::UNIX_EPOCH;
 				continue;
 			},
-			notify::WaitResult::Disconnect => {
-				break;
-			},
+			notify::WaitResult::Channel( CompilerMessage::Refresh ) => (),
+			notify::WaitResult::Disconnect => break,
 		}
 		if path == path::PathBuf::new() {
 			continue;
@@ -267,11 +273,14 @@ fn compile_task( rx: sync::mpsc::Receiver<path::PathBuf>, tx: window::MessageSen
 			let rng = random::Generator::new();
 			let asm = compile( &rng, &path )?;
 			let evs = assemble( &rng, &asm )?;
+			bus_tx.send( &ipc::Message::Success{
+				events: evs.iter().map( |e| e.clone().into() ).collect()
+			} ).unwrap();
 			Ok( UiMessage::Data( path.clone(), asm, evs ) )
 		}().unwrap_or_else( |e| {
 			UiMessage::Text( format!( "{}", e ) )
 		} );
-		tx.send( msg );
+		ui_tx.send( msg );
 	}
 }
 
@@ -334,6 +343,7 @@ fn main() {
 			set_process_dpi_aware();
 		}
 
+		// parse command line.
 		let mut opts = getopts::Options::new();
 		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE" );
 		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"  );
@@ -349,14 +359,42 @@ fn main() {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
 
+		// initialize IPC.
+		let bus = ipc::Bus::new();
+		let bus_tx: ipc::Sender<ipc::Message> = bus.create_sender();
+		thread::spawn( move || {
+			if let Err( err ) = bus.listen( SERVER_ADDR, |_| () ) {
+				eprintln!( "IPC: {}", err );
+			}
+		} );
+
+		let (compile_tx, compile_rx) = sync::mpsc::channel();
+
+		// initialize window.
 		let scaling = args.opt_str( "s" ).map( |e| e.parse() ).unwrap_or( Ok( 2.0 ) )?;
 		init_imgui( scaling );
-		let (compile_tx, compile_rx) = sync::mpsc::channel();
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
+		if let Some( path ) = args.opt_str( "w" ) {
+			let mut wallpaper = renderer::Texture::new();
+			let mut img = image::open( path )?.to_rgba();
+			lighten_image( &mut img, 0.5 );
+			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
+			window.ui_mut().wallpaper = Some( wallpaper );
+		}
 
+		// initialize compiler.
 		let window_tx = window.create_sender();
-		thread::spawn( move || compile_task( compile_rx, window_tx ) );
+		thread::spawn( move || compile_task( compile_rx, window_tx, bus_tx ) );
+		if let Some( path ) = args.free.first() {
+			compile_tx.send( CompilerMessage::File( path.into() ) ).unwrap();
+		}
+		else {
+			window.create_sender().send( UiMessage::Text(
+				"Drag and drop to open a file.".into()
+			) );
+		}
 
+		// initialize player.
 		let ports = args.opt_strs( "c" );
 		let window_tx = window.create_sender();
 		thread::spawn( move || {
@@ -375,23 +413,6 @@ fn main() {
 			}
 			window_tx.send( UiMessage::Player( player ) );
 		} );
-
-		if let Some( path ) = args.free.first() {
-			compile_tx.send( path::PathBuf::from( path ) )?;
-		}
-		else {
-			window.create_sender().send( UiMessage::Text(
-				"Drag and drop to open a file.".into()
-			) );
-		}
-
-		if let Some( path ) = args.opt_str( "w" ) {
-			let mut wallpaper = renderer::Texture::new();
-			let mut img = image::open( path )?.to_rgba();
-			lighten_image( &mut img, 0.5 );
-			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
-			window.ui_mut().wallpaper = Some( wallpaper );
-		}
 
 		window.event_loop()
 	}().unwrap_or_else( |e| {

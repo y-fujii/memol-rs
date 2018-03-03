@@ -109,12 +109,17 @@ impl<'a> Generator<'a> {
 	}
 
 	pub fn add_tempo( &mut self, ir: &generator::ValueIr ) {
-		let evaluator = generator::Evaluator::new( self.rng );
 		debug_assert!( self.timeline.len() == 0 );
+		let evaluator = generator::Evaluator::new( self.rng );
+		// Kahan summation.
 		let mut s = 0.0;
+		let mut c = 0.0;
 		for i in 0 .. self.end + 1 {
 			self.timeline.push( s );
-			s += 1.0 / (self.tick as f64 * evaluator.eval( ir, Ratio::new( i, self.tick ) ));
+			let y = 1.0 / (self.tick as f64 * evaluator.eval( ir, Ratio::new( i, self.tick ) )) - c;
+			let t = s + y;
+			c = (t - s) - y;
+			s = t;
 		}
 		self.timeline.push( s );
 	}

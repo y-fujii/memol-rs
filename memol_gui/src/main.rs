@@ -19,7 +19,7 @@ use memol_cli::player::Player;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
-const SERVER_ADDR: &'static str = "localhost:27182";
+const SERVER_ADDR: &'static str = "127.0.0.1:27182";
 
 enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),

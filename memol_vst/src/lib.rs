@@ -9,7 +9,7 @@ use vst::host::Host;
 use memol::{ misc, midi };
 
 
-const REMOTE_ADDR: &'static str = "ws://localhost:27182";
+const REMOTE_ADDR: &'static str = "ws://127.0.0.1:27182";
 
 struct SharedData {
 	events: Vec<midi::Event>,

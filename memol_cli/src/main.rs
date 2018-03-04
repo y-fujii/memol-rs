@@ -7,7 +7,7 @@ use std::*;
 use memol_cli::*;
 
 
-const SERVER_ADDR: &'static str = "localhost:27182";
+const SERVER_ADDR: &'static str = "127.0.0.1:27182";
 
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
 	let timer = time::SystemTime::now();

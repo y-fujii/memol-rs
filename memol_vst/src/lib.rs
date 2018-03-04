@@ -25,13 +25,48 @@ struct Plugin {
 
 impl default::Default for Plugin {
 	fn default() -> Self {
-		Plugin::new_inner( vst::plugin::HostCallback::default() )
+		Plugin{
+			host: vst::plugin::HostCallback::default(),
+			shared: sync::Arc::new( sync::Mutex::new( SharedData{
+				events: Vec::new(),
+				changed: false,
+			} ) ),
+			buffer: events::EventBuffer::new(),
+			playing: false,
+		}
 	}
 }
 
 impl vst::plugin::Plugin for Plugin {
 	fn new( host: vst::plugin::HostCallback ) -> Self {
-		Plugin::new_inner( host )
+		let shared = sync::Arc::new( sync::Mutex::new( SharedData{
+			events: Vec::new(),
+			changed: false,
+		} ) );
+
+		{
+			let shared = shared.clone();
+			// XXX: finalization.
+			thread::spawn( move || {
+				loop {
+					memol_cli::ipc::Bus::new().connect( REMOTE_ADDR, |msg| {
+						if let memol_cli::ipc::Message::Success{ events: evs } = msg {
+							let mut shared = shared.lock().unwrap();
+							shared.events = evs.into_iter().map( |e| e.into() ).collect();
+							shared.changed = true;
+						}
+					} ).ok();
+					thread::sleep( time::Duration::new( 3, 0 ) );
+				}
+			} );
+		}
+
+		Plugin{
+			host: host,
+			shared: shared,
+			buffer: events::EventBuffer::new(),
+			playing: false,
+		}
 	}
 
 	fn get_info( &self ) -> vst::plugin::Info {
@@ -90,39 +125,6 @@ impl vst::plugin::Plugin for Plugin {
 
 		self.host.process_events( self.buffer.events() );
 		self.playing = playing;
-	}
-}
-
-impl Plugin {
-	fn new_inner( host: vst::plugin::HostCallback ) -> Self {
-		let shared = sync::Arc::new( sync::Mutex::new( SharedData{
-			events: Vec::new(),
-			changed: false,
-		} ) );
-
-		{
-			let shared = shared.clone();
-			// XXX: finalization.
-			thread::spawn( move || {
-				loop {
-					memol_cli::ipc::Bus::new().connect( REMOTE_ADDR, |msg| {
-						if let memol_cli::ipc::Message::Success{ events: evs } = msg {
-							let mut shared = shared.lock().unwrap();
-							shared.events = evs.into_iter().map( |e| e.into() ).collect();
-							shared.changed = true;
-						}
-					} ).ok();
-					thread::sleep( time::Duration::new( 3, 0 ) );
-				}
-			} );
-		}
-
-		Plugin{
-			host: host,
-			shared: shared,
-			buffer: events::EventBuffer::new(),
-			playing: false,
-		}
 	}
 }
 

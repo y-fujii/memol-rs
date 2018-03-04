@@ -3,7 +3,7 @@ inconsolata_regular.ttf:
 	 author: Raph Levien
 	license: SIL Open Font License 1.1
 
-awesome.ttf:
+awesome_solid.ttf:
 	    url: https://github.com/FortAwesome/Font-Awesome/
 	 author: Dave Gandy
 	license: SIL Open Font License 1.1

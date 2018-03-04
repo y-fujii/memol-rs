@@ -293,6 +293,8 @@ pub fn init_imgui( scale: f32 ) {
 		imgui::ImVec4::new( 0.05, 0.05, 0.05, 1.0 ),
 	);
 	unsafe {
+		imgui::get_style().FramePadding = imgui::ImVec2::new( 4.0, 4.0 );
+		imgui::get_style().ItemSpacing  = imgui::ImVec2::new( 4.0, 4.0 );
 		imgui::get_style().ScaleAllSizes( scale );
 
 		let mut cfg = imgui::ImFontConfig::new();
@@ -306,7 +308,7 @@ pub fn init_imgui( scale: f32 ) {
 		);
 		cfg.MergeMode     = true;
 		cfg.GlyphOffset.y = 0.0;
-		let font = include_bytes!( "../fonts/awesome.otf" );
+		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
 			font.len() as i32, (12.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),

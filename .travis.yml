@@ -10,8 +10,9 @@ matrix:
           script:
               - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
-              - strip --strip-all memol_cli memol_gui libmemol_vst.so
-              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.so
+              - mv libmemol_vst.so memol_vst.so
+              - strip --strip-all memol_cli memol_gui memol_vst.so
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
           env: >-
               TARGET=aarch64-unknown-linux-gnu
@@ -22,8 +23,9 @@ matrix:
               - rustup target add ${TARGET}
               - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
-              - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui libmemol_vst.so
-              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.so
+              - mv libmemol_vst.so memol_vst.so
+              - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui memol_vst.so
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
           env: TARGET=x86_64-pc-windows-gnu
           script:
@@ -39,8 +41,9 @@ matrix:
               - brew install p7zip curl
               - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
+              - mv libmemol_vst.dylib memol_vst.dylib
               - strip memol_cli memol_gui
-              - 7z a memol-${TARGET}.zip memol_cli memol_gui libmemol_vst.dylib
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.dylib
 
 addons:
     apt:

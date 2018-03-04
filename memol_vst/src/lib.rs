@@ -48,7 +48,8 @@ impl vst::plugin::Plugin for Plugin {
 	fn can_do( &self, can_do: vst::plugin::CanDo ) -> vst::api::Supported {
 		match can_do {
 			vst::plugin::CanDo::SendEvents |
-			vst::plugin::CanDo::SendMidiEvent =>
+			vst::plugin::CanDo::SendMidiEvent |
+			vst::plugin::CanDo::ReceiveTimeInfo =>
 				vst::api::Supported::Yes,
 			_ =>
 				vst::api::Supported::No,

@@ -7,8 +7,6 @@ use std::*;
 use memol_cli::*;
 
 
-const SERVER_ADDR: &'static str = "127.0.0.1:27182";
-
 fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>> {
 	let timer = time::SystemTime::now();
 	let rng = memol::random::Generator::new();
@@ -34,6 +32,7 @@ fn main() {
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
 		opts.optmulti( "c", "connect", "Connect to a JACK port.", "PORT" );
+		opts.optopt  ( "a", "address", "WebSocket address.", "ADDR:PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
 			print!( "{}", opts.usage( "Usage: memol_cli [options] FILE" ) );
@@ -52,10 +51,11 @@ fn main() {
 		}
 
 		// initialize IPC.
+		let addr = args.opt_str( "a" ).unwrap_or( "127.0.0.1:27182".into() );
 		let bus = ipc::Bus::new();
 		let sender: ipc::Sender<ipc::Message> = bus.create_sender();
 		thread::spawn( move || {
-			if let Err( err ) = bus.listen( SERVER_ADDR, |_| () ) {
+			if let Err( err ) = bus.listen( addr, |_| () ) {
 				eprintln!( "IPC: {}", err );
 			}
 		} );

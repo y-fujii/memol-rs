@@ -19,7 +19,6 @@ use memol_cli::player::Player;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
-const SERVER_ADDR: &'static str = "127.0.0.1:27182";
 
 enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
@@ -347,9 +346,10 @@ fn main() {
 
 		// parse command line.
 		let mut opts = getopts::Options::new();
-		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE" );
-		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"  );
-		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"  );
+		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE"     );
+		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );
+		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"      );
+		opts.optopt  ( "a", "address",   "WebSocket address.",    "ADDR:PORT" );
 		let args = match opts.parse( env::args().skip( 1 ) ) {
 			Ok ( v ) => v,
 			Err( _ ) => {
@@ -362,10 +362,11 @@ fn main() {
 		}
 
 		// initialize IPC.
+		let addr = args.opt_str( "a" ).unwrap_or( "127.0.0.1:27182".into() );
 		let bus = ipc::Bus::new();
 		let bus_tx: ipc::Sender<ipc::Message> = bus.create_sender();
 		thread::spawn( move || {
-			if let Err( err ) = bus.listen( SERVER_ADDR, |_| () ) {
+			if let Err( err ) = bus.listen( addr, |_| () ) {
 				eprintln!( "IPC: {}", err );
 			}
 		} );

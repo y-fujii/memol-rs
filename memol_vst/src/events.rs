@@ -31,7 +31,7 @@ impl EventBuffer {
 			}
 		};
 		for i in 0 .. BUFFER_SIZE {
-			(*this.holder)[i] = vst::api::MidiEvent{
+			this.holder[i] = vst::api::MidiEvent{
 				event_type: vst::api::EventType::Midi,
 				byte_size: mem::size_of::<vst::api::MidiEvent>() as i32,
 				delta_frames: 0,
@@ -45,7 +45,7 @@ impl EventBuffer {
 				_reserved1: 0,
 				_reserved2: 0,
 			};
-			this.buffer.events[i] = &mut (*this.holder)[i];
+			this.buffer.events[i] = &mut this.holder[i];
 		}
 		this
 	}
@@ -57,9 +57,7 @@ impl EventBuffer {
 	pub fn push( &mut self, msg: &[u8], frame: i32 ) {
 		let ev = &mut self.holder[self.buffer.num_events as usize];
 		ev.delta_frames = frame;
-		for i in 0 .. 3 {
-			ev.midi_data[i] = msg[i];
-		}
+		ev.midi_data.copy_from_slice( &msg[..3] );
 		self.buffer.num_events += 1;
 	}
 

@@ -18,8 +18,9 @@ struct SharedData {
 
 struct Plugin {
 	host: vst::plugin::HostCallback,
-	shared: sync::Arc<sync::Mutex<SharedData>>,
+	block_size: i64,
 	buffer: events::EventBuffer,
+	shared: sync::Arc<sync::Mutex<SharedData>>,
 	playing: bool,
 }
 
@@ -27,11 +28,12 @@ impl default::Default for Plugin {
 	fn default() -> Self {
 		Plugin{
 			host: vst::plugin::HostCallback::default(),
+			block_size: 0,
+			buffer: events::EventBuffer::new(),
 			shared: sync::Arc::new( sync::Mutex::new( SharedData{
 				events: Vec::new(),
 				changed: false,
 			} ) ),
-			buffer: events::EventBuffer::new(),
 			playing: false,
 		}
 	}
@@ -63,8 +65,9 @@ impl vst::plugin::Plugin for Plugin {
 
 		Plugin{
 			host: host,
-			shared: shared,
+			block_size: 0,
 			buffer: events::EventBuffer::new(),
+			shared: shared,
 			playing: false,
 		}
 	}
@@ -78,6 +81,10 @@ impl vst::plugin::Plugin for Plugin {
 			category: vst::plugin::Category::Synth,
 			.. Default::default()
 		}
+	}
+
+	fn set_block_size( &mut self, size: i64 ) {
+		self.block_size = size;
 	}
 
 	fn can_do( &self, can_do: vst::plugin::CanDo ) -> vst::api::Supported {
@@ -94,7 +101,8 @@ impl vst::plugin::Plugin for Plugin {
 	fn process( &mut self, _: &mut vst::buffer::AudioBuffer<f32> ) {
 		self.buffer.clear();
 
-		let size = self.host.get_block_size() as f64;
+		//let size = self.host.get_block_size() as f64;
+		let size = self.block_size as f64;
 		let info = match self.host.get_time_info( 0 ) {
 			Some( v ) => v,
 			None      => return,

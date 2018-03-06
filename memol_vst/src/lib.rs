@@ -18,23 +18,23 @@ struct SharedData {
 
 struct Plugin {
 	host: vst::plugin::HostCallback,
-	block_size: i64,
 	buffer: events::EventBuffer,
 	shared: sync::Arc<sync::Mutex<SharedData>>,
 	playing: bool,
+	location: isize,
 }
 
 impl default::Default for Plugin {
 	fn default() -> Self {
 		Plugin{
 			host: vst::plugin::HostCallback::default(),
-			block_size: 0,
 			buffer: events::EventBuffer::new(),
 			shared: sync::Arc::new( sync::Mutex::new( SharedData{
 				events: Vec::new(),
 				changed: false,
 			} ) ),
 			playing: false,
+			location: 0,
 		}
 	}
 }
@@ -65,10 +65,10 @@ impl vst::plugin::Plugin for Plugin {
 
 		Plugin{
 			host: host,
-			block_size: 0,
 			buffer: events::EventBuffer::new(),
 			shared: shared,
 			playing: false,
+			location: 0,
 		}
 	}
 
@@ -83,10 +83,6 @@ impl vst::plugin::Plugin for Plugin {
 		}
 	}
 
-	fn set_block_size( &mut self, size: i64 ) {
-		self.block_size = size;
-	}
-
 	fn can_do( &self, can_do: vst::plugin::CanDo ) -> vst::api::Supported {
 		match can_do {
 			vst::plugin::CanDo::SendEvents |
@@ -98,41 +94,42 @@ impl vst::plugin::Plugin for Plugin {
 		}
 	}
 
-	fn process( &mut self, _: &mut vst::buffer::AudioBuffer<f32> ) {
+	fn process( &mut self, buffer: &mut vst::buffer::AudioBuffer<f32> ) {
 		self.buffer.clear();
 
-		//let size = self.host.get_block_size() as f64;
-		let size = self.block_size as f64;
+		let size = buffer.samples() as isize;
 		let info = match self.host.get_time_info( 0 ) {
 			Some( v ) => v,
 			None      => return,
 		};
-		let playing = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
+		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
+		let location = info.sample_pos as isize;
 
 		let mut shared = match self.shared.try_lock() {
 			Ok ( v ) => v,
 			Err( _ ) => return,
 		};
 
-		if shared.changed || playing != self.playing {
+		if shared.changed || playing != self.playing || location != self.location {
 			for ch in 0 .. 16 {
-				// all notes off message.
-				self.buffer.push( &[ 0xb0 + ch, 0x7b, 0x00 ], 0 );
+				// all sound off message.
+				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );
 			}
 			shared.changed = false;
 		}
 
 		if playing {
-			let frame = |ev: &midi::Event| (ev.time * info.sample_rate - info.sample_pos).round();
-			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (0.0,  i16::MIN) );
-			let iend = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (size, i16::MIN) );
+			let frame = |ev: &midi::Event| (ev.time * info.sample_rate).round() as isize - location;
+			let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0    );
+			let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size );
 			for ev in shared.events[ibgn .. iend].iter() {
 				self.buffer.push( &ev.msg, frame( ev ) as i32 );
 			}
 		}
 
 		self.host.process_events( self.buffer.events() );
-		self.playing = playing;
+		self.playing  = playing;
+		self.location = location + size;
 	}
 }
 

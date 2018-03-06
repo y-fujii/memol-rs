@@ -187,7 +187,7 @@ impl Player {
 			};
 
 			if shared.changed {
-				this.write_all_note_off( buf, 0 );
+				this.write_all_sound_off( buf, 0 );
 				shared.changed = false;
 			}
 
@@ -197,9 +197,9 @@ impl Player {
 				_ => return 0,
 			}
 
-			let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64 - pos.frame as f64).round();
-			let ibgn = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (0.0  as f64, i16::MIN) );
-			let iend = misc::bsearch_boundary( &shared.events, |ev| (frame( ev ), ev.prio) < (size as f64, i16::MIN) );
+			let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as isize - pos.frame as isize;
+			let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0 );
+			let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size as isize );
 			for ev in shared.events[ibgn .. iend].iter() {
 				(this.lib.midi_event_write)( buf, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
 			}
@@ -212,9 +212,9 @@ impl Player {
 		0
 	}
 
-	unsafe fn write_all_note_off( &self, buf: *mut jack::PortBuffer, frame: u32 ) {
+	unsafe fn write_all_sound_off( &self, buf: *mut jack::PortBuffer, frame: u32 ) {
 		for ch in 0 .. 16 {
-			let msg: [u8; 3] = [ 0xb0 + ch, 0x7b, 0x00 ];
+			let msg: [u8; 3] = [ 0xb0 + ch, 0x78, 0x00 ];
 			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
 		}
 	}

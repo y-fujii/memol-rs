@@ -103,7 +103,7 @@ impl vst::plugin::Plugin for Plugin {
 			None      => return,
 		};
 		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
-		let location = info.sample_pos as isize;
+		let location = info.sample_pos.round() as isize;
 
 		let mut shared = match self.shared.try_lock() {
 			Ok ( v ) => v,

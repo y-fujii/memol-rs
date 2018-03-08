@@ -30,7 +30,7 @@ pub enum Note<'a> {
 	Repeat( cell::Cell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i64 ),
 	OctaveByNote( char, i64, i64 ),
-	Chord( Vec<Box<Ast<Note<'a>>>> ),
+	Chord( Vec<(Box<Ast<Note<'a>>>, i64)> ),
 	Group( Vec<(Box<Ast<Note<'a>>>, i64)> ),
 	Tie( Box<Ast<Note<'a>>> ),
 }

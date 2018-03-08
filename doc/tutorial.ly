@@ -291,15 +291,16 @@ score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 </lilypond>
 
 <h2>Tie</h2>
+<p><strong style="color: #e02020">Recently, tie related specification is
+fundamentally changed.  It might be buggy for now.</strong>
 <p>Tie is noted by adding <code>"^"</code> after the note which the tie begins.
 Composite notes such as group and chord also can be tied.  A tied chord means
 all child notes are tied.  A tied group means the last note is tied.
 <pre>
-score $out.0() = { [c:3 c]^c [c:3 c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) | c^ E^ G^ (c E G) }
+score $out.0() = { [c:3 c]^c [c:3 c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) }
 </pre>
 <lilypond relative="1">
-	\set tieWaitForNote = ##t
-	{ c8. c16 ~ c4 c8. c16 ~ c4 <c e g>2~ <c e g>2 <c~ e~ g>2 <c e g>2 c4~ e4~ g4~ <c, e g>4 }
+	c8. c16 ~ c4 c8. c16 ~ c4 <c e g>2~ <c e g>2 <c~ e~ g>2 <c e g>2
 </lilypond>
 
 <h2>Repeat</h2>
@@ -308,15 +309,17 @@ recent simple note or chord in postordered depth-first traversal.  The ties of
 child notes are inherited if a target is composite (the tie attached to itself
 is not inherited).
 <pre>
-score $out.0() = { (c E G) / | (c [E /]) | ([c:3 E]) / }
+score $out.0() = { (c E G) / | (c [E /]) | ([c:3 E]) / | c^(/ E)^(/ G) }
 </pre>
 <lilypond relative="1">
+	\set tieWaitForNote = ##t
 	<c e g>2 <c e g>2
 	<<
 		\new Voice = "one" { \voiceOne e e }
 		\new Voice = "two" { \voiceTwo c1 }
 	>>
 	c4. e8 c4. e8
+	c4~ e4~ g4~ <c, e g>4
 </lilypond>
 
 <h2>Score level composition</h2>

@@ -11,7 +11,8 @@ pub type ScoreIr = Vec<FlatNote>;
 pub struct ScoreState<'a> {
 	nnum: i64,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
-	ties: collections::HashMap<i64, Ratio>,
+	prev_ties: Vec<(i64, Ratio)>,
+	next_ties: Vec<(i64, Ratio)>,
 }
 
 impl<'a> Generator<'a> {
@@ -39,16 +40,17 @@ impl<'a> Generator<'a> {
 				let mut state = ScoreState{
 					nnum: 60,
 					note: None,
-					ties: collections::HashMap::new(),
+					prev_ties: Vec::new(),
+					next_ties: Vec::new(),
 				};
 				for (i, n) in ns.iter().enumerate() {
 					let span = Span{ t0: span.t0 + span.dt * i as i64, .. *span };
 					self.generate_score_note( n, &span, &mut state, dst )?;
+					self.resolve_ties( span.t0, &mut state, dst );
 				}
-				if !state.ties.is_empty() {
-					return misc::error( &span.path, score.end, "unpaired tie." );
-				}
-				span.t0 + span.dt * ns.len() as i64
+				let t1 = span.t0 + span.dt * ns.len() as i64;
+				self.resolve_ties( t1, &mut state, dst );
+				t1
 			},
 			ast::Score::Symbol( ref key ) => {
 				let &(ref path, ref s) = match self.defs.scores.get( key ) {
@@ -159,12 +161,12 @@ impl<'a> Generator<'a> {
 					ast::Dir::Lower => if nnum <= state.nnum { 0 } else { -12 },
 					ast::Dir::Upper => if nnum >= state.nnum { 0 } else {  12 },
 				};
-				let t0 = match state.ties.remove( &nnum ) {
-					Some( v ) => v,
+				let t0 = match state.prev_ties.iter().position( |e| e.0 == nnum ) {
+					Some( i ) => state.prev_ties.remove( i ).1,
 					None      => span.t0,
 				};
 				if span.tied {
-					state.ties.insert( nnum, t0 );
+					state.next_ties.push( (nnum, t0) );
 				}
 				else {
 					dst.push( FlatNote{
@@ -203,47 +205,26 @@ impl<'a> Generator<'a> {
 				}
 			},
 			ast::Note::Chord( ref ns ) => {
-				let mut del_ties = Vec::new();
-				let mut new_ties = Vec::new();
-				let mut s = ScoreState{
-					ties: collections::HashMap::new(),
-					.. *state
-				};
-				for (i, n) in ns.iter().enumerate() {
-					s.ties = state.ties.clone();
-					self.generate_score_note( n, span, &mut s, dst )?;
-					for k in state.ties.keys() {
-						match s.ties.get( k ) {
-							Some( v ) if *v < span.t0 => (),
-							_ => del_ties.push( *k ),
-						}
+				let mut nnum = state.nnum;
+				let mut acc = 0;
+				for &(ref n, i) in ns.iter() {
+					self.generate_score_note( n, span, state, dst )?;
+					if i > 0 && acc == 0 {
+						nnum = state.nnum;
 					}
-					for (k, v) in s.ties.iter() {
-						if *v >= span.t0 {
-							new_ties.push( (*k, *v) );
-						}
-					}
-					if i == 0 {
-						state.nnum = s.nnum;
-					}
+					acc += i;
 				}
+				state.nnum = nnum;
 				state.note = Some( note );
-				for k in del_ties.iter() {
-					if let None = state.ties.remove( k ) {
-						return misc::error( &span.path, note.bgn, "unpaired tie." );
-					}
-				}
-				for &(k, v) in new_ties.iter() {
-					if let Some( _ ) = state.ties.insert( k, v ) {
-						return misc::error( &span.path, note.end, "unpaired tie." );
-					}
-				}
 			},
 			ast::Note::Group( ref ns ) => {
-				let tot = ns.iter().map( |&(_, i)| i ).sum();
+				let tot = ns.iter().map( |e| e.1 ).sum();
 				if tot == 0 {
 					return misc::error( &span.path, note.end, "zero length group." );
 				}
+
+				let mut prev_ties = Vec::new();
+				let mut next_ties = Vec::new();
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					let span = Span{
@@ -253,8 +234,20 @@ impl<'a> Generator<'a> {
 						.. *span
 					};
 					self.generate_score_note( n, &span, state, dst )?;
+					// the most non-trivial part is here...
+					if i > 0 {
+						if acc == 0 {
+							prev_ties = mem::replace( &mut state.prev_ties, Vec::new() );
+						}
+						if acc + i == tot {
+							next_ties = mem::replace( &mut state.next_ties, Vec::new() );
+						}
+						self.resolve_ties( span.t0, state, dst );
+					}
 					acc += i;
 				}
+				state.prev_ties = prev_ties;
+				state.next_ties = next_ties;
 			},
 			ast::Note::Tie( ref n ) => {
 				let span = Span{ tied: true, .. *span };
@@ -263,7 +256,7 @@ impl<'a> Generator<'a> {
 			_ => {
 				return misc::error( &span.path, note.bgn, "syntax error." );
 			},
-		};
+		}
 		Ok( () )
 	}
 
@@ -278,5 +271,16 @@ impl<'a> Generator<'a> {
 			None      => return misc::error( &span.path, note.bgn, "note does not exist." ),
 		};
 		Ok( f.nnum )
+	}
+
+	fn resolve_ties( &self, t1: Ratio, state: &mut ScoreState, dst: &mut ScoreIr ) {
+		let ties = mem::replace( &mut state.prev_ties, mem::replace( &mut state.next_ties, Vec::new() ) );
+		for (nnum, t0) in ties.into_iter() {
+			dst.push( FlatNote{
+				t0: t0,
+				t1: t1,
+				nnum: Some( nnum ),
+			} );
+		}
 	}
 }

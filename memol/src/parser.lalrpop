@@ -208,15 +208,15 @@ group_content: Vec<(Box<Ast<Note<'a>>>, i64)> = {
 	=> Vec::new(),
 };
 
-chord_content: Vec<Box<Ast<Note<'a>>>> = {
+chord_content: Vec<(Box<Ast<Note<'a>>>, i64)> = {
 	<a:chord_content> <b:note> => {
 		let mut a = a;
-		a.push( b );
+		a.push( (b, 1) );
 		a
 	},
 	<a:chord_content> <b:octave> => {
 		let mut a = a;
-		a.push( b );
+		a.push( (b, 0) );
 		a
 	},
 	=> Vec::new(),

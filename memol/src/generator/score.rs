@@ -237,10 +237,10 @@ impl<'a> Generator<'a> {
 					// the most non-trivial part is here...
 					if i > 0 {
 						if acc == 0 {
-							prev_ties = mem::replace( &mut state.prev_ties, Vec::new() );
+							mem::swap( &mut prev_ties, &mut state.prev_ties );
 						}
 						if acc + i == tot {
-							next_ties = mem::replace( &mut state.next_ties, Vec::new() );
+							mem::swap( &mut next_ties, &mut state.next_ties );
 						}
 						self.resolve_ties( span.t0, state, dst );
 					}
@@ -274,13 +274,14 @@ impl<'a> Generator<'a> {
 	}
 
 	fn resolve_ties( &self, t1: Ratio, state: &mut ScoreState, dst: &mut ScoreIr ) {
-		let ties = mem::replace( &mut state.prev_ties, mem::replace( &mut state.next_ties, Vec::new() ) );
-		for (nnum, t0) in ties.into_iter() {
+		for &(nnum, t0) in state.prev_ties.iter() {
 			dst.push( FlatNote{
 				t0: t0,
 				t1: t1,
 				nnum: Some( nnum ),
 			} );
 		}
+		state.prev_ties.clear();
+		mem::swap( &mut state.prev_ties, &mut state.next_ties );
 	}
 }

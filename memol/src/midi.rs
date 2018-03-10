@@ -82,7 +82,7 @@ impl<'a> Generator<'a> {
 
 	pub fn add_pitch( &mut self, ch: usize, ir: &generator::ValueIr ) {
 		let evaluator = generator::Evaluator::new( self.rng );
-		let mut prev_v = 0;
+		let mut prev_v = 8192;
 		for i in self.bgn .. self.end {
 			let t = Ratio::new( i, self.tick );
 			let v = (evaluator.eval( ir, t ) * 8192.0 + 8192.0).round().max( 0.0 ).min( 16383.0 ) as usize;

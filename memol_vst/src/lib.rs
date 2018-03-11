@@ -112,8 +112,10 @@ impl vst::plugin::Plugin for Plugin {
 
 		if shared.changed || playing != self.playing || location != self.location {
 			for ch in 0 .. 16 {
-				// all sound off message.
+				// all sound off.
 				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );
+				// reset all controllers.
+				self.buffer.push( &[ 0xb0 + ch, 0x79, 0x00 ], 0 );
 			}
 			shared.changed = false;
 		}

@@ -353,7 +353,7 @@ fn main() {
 		let args = match opts.parse( env::args().skip( 1 ) ) {
 			Ok ( v ) => v,
 			Err( _ ) => {
-				print!( "{}", opts.usage( "Usage: memol_gui [options] FILE" ) );
+				print!( "{}", opts.usage( "Usage: memol_gui [options] [FILE]" ) );
 				return Ok( () );
 			},
 		};

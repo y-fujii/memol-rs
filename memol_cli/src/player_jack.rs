@@ -214,7 +214,9 @@ impl Player {
 
 	unsafe fn write_all_sound_off( &self, buf: *mut jack::PortBuffer, frame: u32 ) {
 		for ch in 0 .. 16 {
-			let msg: [u8; 3] = [ 0xb0 + ch, 0x78, 0x00 ];
+			let msg: [u8; 3] = [ 0xb0 + ch, 0x78, 0x00 ]; // all sound off.
+			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
+			let msg: [u8; 3] = [ 0xb0 + ch, 0x79, 0x00 ]; // reset all controllers.
 			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
 		}
 	}

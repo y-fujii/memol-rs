@@ -191,7 +191,7 @@ impl<'a> Generator<'a> {
 					None => match state.note {
 						Some( n ) => n,
 						None      => return misc::error( &span.path, note.bgn, "previous note does not exist." ),
-					}
+					},
 				};
 				cn.set( Some( rn ) );
 				self.generate_score_note( rn, span, state, dst )?

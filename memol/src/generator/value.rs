@@ -19,9 +19,10 @@ pub enum ValueIr {
 	NoteNth,
 }
 
-pub struct ValueState {
+pub struct ValueState<'a> {
 	t: Ratio,
 	v: Ratio,
+	note: Option<&'a ast::Ast<ast::Note<'a>>>,
 }
 
 impl<'a> Generator<'a> {
@@ -44,17 +45,18 @@ impl<'a> Generator<'a> {
 
 	pub fn generate_value_inner( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span ) -> Result<(ValueIr, Ratio), misc::Error> {
 		let dst = match track.ast {
-			ast::Score::Score( ref vs ) => {
+			ast::Score::Score( ref ns ) => {
 				let mut irs = Vec::new();
 				let mut state = ValueState{
 					t: span.t0,
 					v: Ratio::zero(),
+					note: None,
 				};
-				for (i, v) in vs.iter().enumerate() {
+				for (i, v) in ns.iter().enumerate() {
 					let span = Span{ t0: span.t0 + span.dt * i as i64, .. *span };
 					self.generate_value_note( v, &span, &mut state, &mut irs )?;
 				}
-				let t1 = span.t0 + span.dt * vs.len() as i64;
+				let t1 = span.t0 + span.dt * ns.len() as i64;
 				if state.t != t1 {
 					return misc::error( &span.path, track.end, "the last value must be specified." );
 				}
@@ -137,8 +139,8 @@ impl<'a> Generator<'a> {
 		Ok( dst )
 	}
 
-	pub fn generate_value_note( &self, value: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ValueState, dst: &mut Vec<(ValueIr, Ratio)> ) -> Result<(), misc::Error> {
-		match value.ast {
+	pub fn generate_value_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ValueState<'a>, dst: &mut Vec<(ValueIr, Ratio)> ) -> Result<(), misc::Error> {
+		match note.ast {
 			ast::Note::Value( v0, v1 ) => {
 				if let Some( v0 ) = v0 {
 					if state.t != span.t0 {
@@ -153,22 +155,45 @@ impl<'a> Generator<'a> {
 					state.t = t1;
 					state.v = v1;
 				}
+				state.note = Some( note );
 			},
-			ast::Note::Group( ref vs ) => {
-				let tot = vs.iter().map( |&(_, i)| i ).sum();
+			ast::Note::Repeat( ref cn ) => {
+				let rn = match cn.get() {
+					Some( n ) => n,
+					None => match state.note {
+						Some( n ) => n,
+						None      => return misc::error( &span.path, note.bgn, "previous note does not exist." ),
+					},
+				};
+				cn.set( Some( rn ) );
+				self.generate_value_note( rn, span, state, dst )?
+			},
+			ast::Note::Chord( ref ns ) => {
 				let mut acc = 0;
-				for &(ref v, i) in vs.iter() {
+				for &(ref n, i) in ns.iter() {
+					if acc > 0 {
+						return misc::error( &span.path, note.bgn, "syntax error." );
+					}
+					self.generate_value_note( n, span, state, dst )?;
+					acc += i;
+				}
+				state.note = Some( note );
+			},
+			ast::Note::Group( ref ns ) => {
+				let tot = ns.iter().map( |&(_, i)| i ).sum();
+				let mut acc = 0;
+				for &(ref n, i) in ns.iter() {
 					let span = Span{
 						t0: span.t0 + span.dt * Ratio::new( acc, tot ),
 						dt: span.dt * Ratio::new( i, tot ),
 						.. *span
 					};
-					self.generate_value_note( v, &span, state, dst )?;
+					self.generate_value_note( n, &span, state, dst )?;
 					acc += i;
 				}
 			},
 			_ => {
-				return misc::error( &span.path, value.bgn, "syntax error." );
+				return misc::error( &span.path, note.bgn, "syntax error." );
 			},
 		}
 		Ok( () )

@@ -157,7 +157,6 @@ impl Ui {
 		let mut changed = false;
 
 		let padding = get_style().WindowPadding;
-		PushStyleVar1( ImGuiStyleVar_WindowMinSize as i32, &ImVec2::zero() );
 		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(0.5 * padding).round() );
 		SetNextWindowPos( &ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero() );
 		Begin(
@@ -235,7 +234,7 @@ impl Ui {
                 self.compile_tx.send( CompilerMessage::Refresh ).unwrap();
 			}
 		End();
-		PopStyleVar( 2 );
+		PopStyleVar( 1 );
 
 		changed
 	}

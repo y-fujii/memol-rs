@@ -10,6 +10,7 @@ pub mod generator;
 pub mod midi;
 pub mod smf;
 use std::*;
+use ratio::Ratio;
 
 
 pub mod parser {
@@ -67,9 +68,9 @@ pub struct Channel {
 pub struct Assembly {
 	pub channels: Vec<(usize, Channel)>,
 	pub tempo: generator::ValueIr,
-	pub len: ratio::Ratio,
-	pub bgn: ratio::Ratio,
-	pub end: ratio::Ratio,
+	pub len: Ratio,
+	pub bgn: Ratio,
+	pub end: Ratio,
 }
 
 impl default::Default for Assembly {
@@ -77,14 +78,11 @@ impl default::Default for Assembly {
 		Assembly{
 			channels: Vec::new(),
 			tempo: generator::ValueIr::Value(
-				ratio::Ratio::zero(),
-				ratio::Ratio::one(),
-				ratio::Ratio::one(),
-				ratio::Ratio::one(),
+				Ratio::zero(), Ratio::one(), Ratio::one(),  Ratio::one(),
 			),
-			len: ratio::Ratio::zero(),
-			bgn: ratio::Ratio::zero(),
-			end: ratio::Ratio::zero(),
+			len: Ratio::zero(),
+			bgn: Ratio::zero(),
+			end: Ratio::zero(),
 		}
 	}
 }
@@ -106,26 +104,17 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 	for (ch, score) in scores.into_iter() {
 		let velocity = gen.generate_value( &format!( "out.{}.velocity", ch ) )?
 			.unwrap_or( generator::ValueIr::Value(
-				ratio::Ratio::zero(),
-				ratio::Ratio::one(),
-				ratio::Ratio::new( 5, 8 ),
-				ratio::Ratio::new( 5, 8 ),
+				Ratio::zero(), Ratio::one(), Ratio::new( 5, 8 ), Ratio::new( 5, 8 ),
 			) );
 		let offset = gen.generate_value( &format!( "out.{}.offset", ch ) )?
 			.unwrap_or( generator::ValueIr::Value(
-				ratio::Ratio::zero(),
-				ratio::Ratio::one(),
-				ratio::Ratio::zero(),
-				ratio::Ratio::zero(),
+				Ratio::zero(), Ratio::one(), Ratio::zero(), Ratio::zero(),
 			) );
 		let duration = gen.generate_value( &format!( "out.{}.duration", ch ) )?
 			.unwrap_or( generator::ValueIr::NoteLen );
 		let pitch = gen.generate_value( &format!( "out.{}.pitch", ch ) )?
 			.unwrap_or( generator::ValueIr::Value(
-				ratio::Ratio::zero(),
-				ratio::Ratio::one(),
-				ratio::Ratio::zero(),
-				ratio::Ratio::zero(),
+				Ratio::zero(), Ratio::one(), Ratio::zero(), Ratio::zero(),
 			) );
 		let mut ccs = Vec::new();
 		for cc in 0 .. 128 {
@@ -145,25 +134,22 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 
 	let tempo = gen.generate_value( "out.tempo" )?
 		.unwrap_or( generator::ValueIr::Value(
-			ratio::Ratio::zero(),
-			ratio::Ratio::one(),
-			ratio::Ratio::one(),
-			ratio::Ratio::one(),
+			Ratio::zero(), Ratio::one(), Ratio::one(), Ratio::one(),
 		) );
 
 	let len = channels.iter()
 		.flat_map( |&(_, ref v)| v.score.iter() )
 		.map( |v| v.t1 )
 		.max()
-		.unwrap_or( ratio::Ratio::zero() );
+		.unwrap_or( Ratio::zero() );
 
 	let evaluator = generator::Evaluator::new( rng );
 	let bgn = match gen.generate_value( "out.begin" )? {
-		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		Some( ir ) => (evaluator.eval( &ir, Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => 0,
 	};
 	let end = match gen.generate_value( "out.end" )? {
-		Some( ir ) => (evaluator.eval( &ir, ratio::Ratio::zero() ) * TICK as f64).round() as i64,
+		Some( ir ) => (evaluator.eval( &ir, Ratio::zero() ) * TICK as f64).round() as i64,
 		None       => (len * TICK).round()
 	};
 
@@ -171,8 +157,8 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 		channels: channels,
 		tempo: tempo,
 		len: len,
-		bgn: ratio::Ratio::new( bgn, TICK ),
-		end: ratio::Ratio::new( end, TICK ),
+		bgn: Ratio::new( bgn, TICK ),
+		end: Ratio::new( end, TICK ),
 	} )
 }
 

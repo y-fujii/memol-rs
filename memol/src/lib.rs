@@ -134,7 +134,7 @@ pub fn compile( rng: &random::Generator, src: &path::Path ) -> Result<Assembly, 
 
 	let tempo = gen.generate_value( "out.tempo" )?
 		.unwrap_or( generator::ValueIr::Value(
-			Ratio::zero(), Ratio::one(), Ratio::one(), Ratio::one(),
+			Ratio::zero(), Ratio::one(), Ratio::new( 1, 2 ), Ratio::new( 1, 2 ),
 		) );
 
 	let len = channels.iter()

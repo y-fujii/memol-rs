@@ -5,8 +5,8 @@ image::https://travis-ci.org/y-fujii/memol-rs.svg?branch=master["Build Status", 
 memol is a music description language which features:
 
 Well-structured::
-    Essentially, memol describes a score as recursive composition of two
-    constructs only: group "[...]" and chord "(...)".
+    Essentially, a score is described as recursive compositions of two
+    constructs: group "[...]" and chord "(...)".
 Orthogonal::
     Some musical elements like scale, chord and backing pattern can be
     described independently and composite them each other.  "with" syntax

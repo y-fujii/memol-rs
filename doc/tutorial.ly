@@ -70,8 +70,8 @@ and different from the latest implementation.</strong>
 <p>memol is a music description language which features:
 <dl>
 	<dt>Well-structured
-	<dd>Essentially, memol describes a score as recursive composition of two
-	constructs only: group <code>"[...]"</code> and chord <code>"(...)"</code>.
+	<dd>Essentially, a score is described as recursive compositions of two
+	constructs: group <code>"[...]"</code> and chord <code>"(...)"</code>.
 	<dt>Orthogonal
 	<dd>Some musical elements like scale, chord and backing pattern can be
 	described independently and composite them each other.  <code>"with"</code>
@@ -160,6 +160,7 @@ features for practical use.
 <p>Note that macOS binaries are never tested since I don't have a Mac...
 
 <h2>Build and install</h2>
+<p>This section is only necessary for users who want to build memol themselves.
 <p>Although memol can run potentially on any platforms which support Rust and
 JACK, I develop it primary on Linux and sometimes test it on Windows
 (<code>x86_64-pc-windows-gnu</code> target).  Please make sure that following
@@ -174,15 +175,16 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 </pre>
 <p>and everything should be done.
 <p>Recent version of memol has experimental GUI program.
-<a href="https://clang.llvm.org/">clang</a> must be installed to build one.
+<a href="https://clang.llvm.org/">Clang</a> must be installed to build one.
 <pre>
 $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
 </pre>
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
+<p>Building memol_gui on Windows requires a workaround due to
+<a href="https://github.com/rust-lang/rust/issues/47048">issue #47048"</a> for
+now.  I recommended to use prebuild binaries above.
 
 <h2>Run</h2>
-<p>Current implementation of memol is a simple command line program which emits
-MIDI messages to JACK or generates a MIDI file.
 <pre>
 $ memol_cli
 Usage: memol_cli [options] FILE
@@ -190,10 +192,30 @@ Options:
     -v, --verbose
     -b, --batch         Generate a MIDI file.
     -c, --connect PORT  Connect to a JACK port.
+    -a, --address ADDR:PORT
+                        WebSocket address.
+
+$ memol_gui
+Usage: memol_gui [options] [FILE]
+Options:
+    -s, --scale VALUE   Set DPI scaling.
+    -w, --wallpaper FILE
+                        Set background image.
+    -c, --connect PORT  Connect to JACK port.
+    -a, --address ADDR:PORT
+                        WebSocket address.
+
 </pre>
+<p>There are three way to interact with other applications.
+<ul>
+	<li>Generates MIDI file.
+	<li>Use JACK (recommended if available).
+	<li>Use VST plugin (experimental).
+</ul>
+<p>XXX
+<p>XXX
 <p>PORT can be specified multiple times and then the memol output port is being
-connected to them.  Experimental GUI (memol_gui) can be launched without
-command line arguments.
+connected to them.
 <p>memol keeps watching the change of the file and reflects it immediately.  If
 <code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
@@ -384,9 +406,11 @@ value $out.0.cc11()     = { 3..* | 4..* | *..* | *..1 } / 4
 </pre>
 <p>There are some special symbols: <code>$note.len(), $note.cnt(), $note.nth()</code>.
 <p>XXX
-<p>Score can be filtered by value:
+<p>XXX
 <pre>
-score $top_notes = filter $note.nth() == 0 { (cEGB) | (cEFA) }
+score $top_notes()  = filter $note.nth() == 0 { (cEGB) | (cEFA) }
+score $transposed() = transpose 3 { (cEGB) | (cEFA) }
+score $sliced()     = slice 0 3/2 { (cEGB) | (cEFA) }
 </pre>
 
 <h2>MIDI channels</h2>

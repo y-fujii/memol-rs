@@ -38,21 +38,24 @@ pub mod parser {
 			.read_to_string( &mut buf )
 			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?;
 
-		match parse_definition( path, &remove_comments( &buf ) ) {
-			Ok ( v ) => Ok( v ),
-			Err( e ) => {
-				match e {
-					ParseError::InvalidToken{ location: i } |
-					ParseError::UnrecognizedToken{ token: Some( (i, _, _) ), .. } |
-					ParseError::ExtraToken{ token: (i, _, _) } =>
-						::misc::error( path, i, "unexpected token." ),
-					ParseError::UnrecognizedToken{ token: None, .. } =>
-						::misc::error( path, buf.len(), "unexpected EOF." ),
-					ParseError::User{ error: err } =>
-						Err( err ),
+		thread_local!( static PARSER: definitionParser = definitionParser::new() );
+		PARSER.with( |parser|
+			match parser.parse( path, &remove_comments( &buf ) ) {
+				Ok ( v ) => Ok( v ),
+				Err( e ) => {
+					match e {
+						ParseError::InvalidToken{ location: i } |
+						ParseError::UnrecognizedToken{ token: Some( (i, _, _) ), .. } |
+						ParseError::ExtraToken{ token: (i, _, _) } =>
+							::misc::error( path, i, "unexpected token." ),
+						ParseError::UnrecognizedToken{ token: None, .. } =>
+							::misc::error( path, buf.len(), "unexpected EOF." ),
+						ParseError::User{ error: err } =>
+							Err( err ),
+					}
 				}
 			}
-		}
+		)
 	}
 }
 

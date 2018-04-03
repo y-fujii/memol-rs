@@ -2,5 +2,7 @@
 members = ["memol", "memol_cli", "memol_gui", "memol_vst"]
 
 [profile.release]
-lto = true
 panic = "abort"
+lto = true
+codegen-units = 1
+incremental = false

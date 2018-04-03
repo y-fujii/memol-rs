@@ -8,7 +8,7 @@ matrix:
         - os: linux
           env: TARGET=x86_64-unknown-linux-gnu
           script:
-              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
               - strip --strip-all memol_cli memol_gui memol_vst.so
@@ -21,7 +21,7 @@ matrix:
           script:
               - sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
               - rustup target add ${TARGET}
-              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
               - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui memol_vst.so
@@ -31,7 +31,7 @@ matrix:
           script:
               - sed -i 's|<Windows\.h>|<windows.h>|g' memol_gui/imgui/imgui.cpp
               - rustup target add ${TARGET}
-              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - x86_64-w64-mingw32-strip --strip-all memol_cli.exe memol_gui.exe memol_vst.dll
               - 7z a memol-${TARGET}.zip memol_cli.exe memol_gui.exe memol_vst.dll
@@ -39,7 +39,7 @@ matrix:
           env: TARGET=x86_64-apple-darwin
           script:
               - brew install p7zip curl
-              - CC=clang CXX=clang++ CARGO_INCREMENTAL=0 cargo build --release --target=${TARGET}
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.dylib memol_vst.dylib
               - strip memol_cli memol_gui

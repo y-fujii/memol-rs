@@ -9,4 +9,4 @@ lalrpop-util = "*"
 regex = "*"
 
 [build-dependencies]
-lalrpop = { git = "https://github.com/lalrpop/lalrpop.git" }
+lalrpop = "*"

@@ -179,5 +179,5 @@ pub fn set_theme( base: ImVec4, fg: ImVec4, bg: ImVec4 ) {
 	style.Colors[ImGuiCol_FrameBg              as usize] = normal;
 	style.Colors[ImGuiCol_FrameBgHovered       as usize] = hovered;
 	style.Colors[ImGuiCol_FrameBgActive        as usize] = active;
-	style.Colors[ImGuiCol_CheckMark            as usize] = active;
+	style.Colors[ImGuiCol_CheckMark            as usize] = fg;
 }

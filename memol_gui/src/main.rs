@@ -284,7 +284,6 @@ fn compile_task( rx: sync::mpsc::Receiver<CompilerMessage>, ui_tx: window::Messa
 
 pub fn init_imgui( scale: f32 ) {
 	let io = imgui::get_io();
-	io.IniFilename = ptr::null();
 	imutil::set_theme(
 		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
 		imgui::ImVec4::new( 1.00, 1.00, 1.00, 1.0 ),

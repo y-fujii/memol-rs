@@ -66,7 +66,7 @@ pub struct Renderer {
 	vao: u32,
 	vbo: u32,
 	ebo: u32,
-	_tex_font: Texture,
+	tex_font: Texture,
 }
 
 impl Drop for Renderer {
@@ -82,9 +82,6 @@ impl Drop for Renderer {
 			for s in shaders.iter() {
 				gl::DeleteShader( *s );
 			}
-
-			(*imgui::get_io().Fonts).TexID = ptr::null_mut();
-			imgui::Shutdown();
 		}
 	}
 }
@@ -130,18 +127,6 @@ unsafe fn compile_shader( ty: u32, code: &[&str] ) -> u32 {
 impl Renderer {
 	pub fn new( es_profile: bool ) -> Self {
 		unsafe {
-			let io = imgui::get_io();
-
-			// font texture.
-			let mut data = ptr::null_mut();
-			let mut w = 0;
-			let mut h = 0;
-			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() );
-
-			let mut tex_font = Texture::new();
-			tex_font.upload_a8( data, w, h );
-			(*io.Fonts).TexID = tex_font.id as *mut _;
-
 			// shader program.
 			let version = if es_profile { "#version 300 es\n" } else { "#version 330\n" };
 			let vert = compile_shader( gl::VERTEX_SHADER,   &[ version, VERT_SHADER_CODE ] );
@@ -150,7 +135,7 @@ impl Renderer {
 			gl::AttachShader( prog, vert );
 			gl::AttachShader( prog, frag );
 			gl::LinkProgram( prog );
-
+			gl::UseProgram( prog );
 			gl::Uniform1i( gl::GetUniformLocation( prog, c_str!( "Texture" ) ), 0 );
 			let loc_scale = gl::GetUniformLocation( prog, c_str!( "Scale" ) );
 
@@ -177,6 +162,7 @@ impl Renderer {
 			gl::VertexAttribPointer( 2, 4, gl::UNSIGNED_BYTE, gl::TRUE,  size, 16 as *const _ );
 
 			// unbind.
+			gl::UseProgram( 0 );
 			gl::BindTexture( gl::TEXTURE_2D, 0 );
 			gl::BindVertexArray( 0 );
 			gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, 0 );
@@ -188,16 +174,27 @@ impl Renderer {
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
-				_tex_font: tex_font,
+				tex_font: Texture::new(),
 			}
 		}
 	}
 
-	pub fn render( &mut self ) {
+	pub fn update_font( &mut self ) {
+		let io = imgui::get_io();
 		unsafe {
-			let io = imgui::get_io();
-			let draw_data = imgui::get_draw_data();
+			let mut data = ptr::null_mut();
+			let mut w = 0;
+			let mut h = 0;
+			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() );
+			self.tex_font.upload_a8( data, w, h );
+			(*io.Fonts).TexID = self.tex_font.id as *mut _;
+		}
+	}
 
+	pub fn render( &mut self ) {
+		let io = imgui::get_io();
+		let draw_data = imgui::get_draw_data();
+		unsafe {
 			gl::Enable( gl::BLEND );
 			// XXX: premultiplied alpha is better for interpolation.
 			gl::BlendEquation( gl::FUNC_ADD );

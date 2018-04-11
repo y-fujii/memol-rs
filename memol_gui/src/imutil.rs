@@ -159,11 +159,12 @@ pub fn set_theme( base: ImVec4, fg: ImVec4, bg: ImVec4 ) {
 	let bg      = srgb_linear_to_gamma( bg );
 
 	let style = get_style();
-	style.WindowRounding = 0.0;
-	style.ChildRounding  = 0.0;
-	style.PopupRounding  = 0.0;
-	style.FrameRounding  = 0.0;
-	style.WindowMinSize  = ImVec2::zero();
+	style.WindowBorderSize = 0.0;
+	style.WindowRounding   = 0.0;
+	style.ChildRounding    = 0.0;
+	style.PopupRounding    = 0.0;
+	style.FrameRounding    = 0.0;
+	style.WindowMinSize    = ImVec2::zero();
 	style.Colors[ImGuiCol_Text                 as usize] = fg;
 	style.Colors[ImGuiCol_Border               as usize] = normal;
 	style.Colors[ImGuiCol_WindowBg             as usize] = bg;

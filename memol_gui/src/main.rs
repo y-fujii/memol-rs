@@ -208,7 +208,7 @@ impl Ui {
 				OpenPopup( c_str!( "ports" ) );
 				self.ports = self.player.ports().unwrap_or_default();
 			}
-			if BeginPopup( c_str!( "ports" ) ) {
+			if BeginPopup( c_str!( "ports" ), 0 ) {
 				for &mut (ref port, ref mut is_conn) in self.ports.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
@@ -298,14 +298,14 @@ pub fn init_imgui( scale: f32 ) {
 		let mut cfg = imgui::ImFontConfig::new();
 		cfg.FontDataOwnedByAtlas = false;
 		cfg.MergeMode     = false;
-		cfg.GlyphOffset.y = (-1.0 * scale).round();
+		cfg.GlyphOffset.y = 0.0;
 		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
 			font.len() as i32, (12.0 * scale).round(), &cfg, ptr::null(),
 		);
 		cfg.MergeMode     = true;
-		cfg.GlyphOffset.y = 0.0;
+		cfg.GlyphOffset.y = (0.5 * scale).round();
 		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
@@ -373,9 +373,12 @@ fn main() {
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 
 		// initialize window.
-		let scaling = args.opt_str( "s" ).map( |e| e.parse() ).unwrap_or( Ok( 2.0 ) )?;
-		init_imgui( scaling );
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
+		let scaling = args.opt_str( "s" )
+			.map( |e| e.parse() )
+			.unwrap_or( Ok( window.hidpi_factor() ) )?;
+		init_imgui( scaling );
+		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {
 			let mut wallpaper = renderer::Texture::new();
 			let mut img = image::open( path )?.to_rgba();

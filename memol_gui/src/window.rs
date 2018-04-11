@@ -26,6 +26,7 @@ impl<T> MessageSender<T> {
 }
 
 pub struct Window<T, U: Ui<T>> {
+	context: *mut imgui::ImGuiContext,
 	looper: glutin::EventsLoop,
 	window: glutin::GlWindow,
 	renderer: renderer::Renderer,
@@ -35,8 +36,16 @@ pub struct Window<T, U: Ui<T>> {
 	rx: sync::mpsc::Receiver<T>,
 }
 
+impl<T, U: Ui<T>> Drop for Window<T, U> {
+	fn drop( &mut self ) {
+		unsafe { imgui::DestroyContext( self.context ) };
+	}
+}
+
 impl<T, U: Ui<T>> Window<T, U> {
 	pub fn new( ui: U ) -> Result<Self, Box<error::Error>> {
+		let context = unsafe { imgui::CreateContext( ptr::null_mut() ) };
+
 		let io = imgui::get_io();
 		io.KeyMap[imgui::ImGuiKey_Tab        as usize] = glutin::VirtualKeyCode::Tab as i32;
 		io.KeyMap[imgui::ImGuiKey_LeftArrow  as usize] = glutin::VirtualKeyCode::Left as i32;
@@ -59,15 +68,17 @@ impl<T, U: Ui<T>> Window<T, U> {
 		io.KeyMap[imgui::ImGuiKey_Z          as usize] = glutin::VirtualKeyCode::Z as i32;
 
 		let looper = glutin::EventsLoop::new();
-		let builder = glutin::WindowBuilder::new();
-		let context = glutin::ContextBuilder::new()
-			.with_gl( glutin::GlRequest::GlThenGles{
-				opengl_version:   (3, 3),
-				opengles_version: (3, 0),
-			} )
-			.with_gl_profile( glutin::GlProfile::Core )
-			.with_vsync( true );
-		let window = glutin::GlWindow::new( builder, context, &looper )?;
+		let window = {
+			let builder = glutin::WindowBuilder::new();
+			let context = glutin::ContextBuilder::new()
+				.with_gl( glutin::GlRequest::GlThenGles{
+					opengl_version:   (3, 3),
+					opengles_version: (3, 0),
+				} )
+				.with_gl_profile( glutin::GlProfile::Core )
+				.with_vsync( true );
+			glutin::GlWindow::new( builder, context, &looper )?
+		};
 		unsafe {
 			window.make_current()?;
 			gl::load_with( |s| window.get_proc_address( s ) as *const os::raw::c_void );
@@ -76,6 +87,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 
 		let (tx, rx) = sync::mpsc::channel();
 		Ok( Window {
+			context: context,
 			looper: looper,
 			window: window,
 			renderer: renderer,
@@ -88,6 +100,14 @@ impl<T, U: Ui<T>> Window<T, U> {
 
 	pub fn ui_mut( &mut self ) -> &mut U {
 		&mut self.ui
+	}
+
+	pub fn hidpi_factor( &self ) -> f32 {
+		self.window.hidpi_factor()
+	}
+
+	pub fn update_font( &mut self ) {
+		self.renderer.update_font()
 	}
 
 	pub fn create_sender( &self ) -> MessageSender<T> {

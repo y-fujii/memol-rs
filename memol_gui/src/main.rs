@@ -373,9 +373,10 @@ fn main() {
 
 		// initialize window.
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
-		let scaling = args.opt_str( "s" )
-			.map( |e| e.parse() )
-			.unwrap_or( Ok( window.hidpi_factor() ) )?;
+		let scaling = match args.opt_str( "s" ) {
+			Some( e ) => e.parse()?,
+			None      => window.hidpi_factor(),
+		};
 		init_imgui( scaling );
 		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {

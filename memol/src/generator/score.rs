@@ -169,21 +169,25 @@ impl<'a> Generator<'a> {
 					state.next_ties.push( (nnum, t0) );
 				}
 				else {
-					dst.push( FlatNote{
-						t0: t0,
-						t1: span.t0 + span.dt,
-						nnum: Some( nnum ),
-					} );
+					if span.dt != Ratio::zero() {
+						dst.push( FlatNote{
+							t0: t0,
+							t1: span.t0 + span.dt,
+							nnum: Some( nnum ),
+						} );
+					}
 				}
 				state.nnum = nnum;
 				state.note = Some( note );
 			},
 			ast::Note::Rest => {
-				dst.push( FlatNote{
-					t0: span.t0,
-					t1: span.t0 + span.dt,
-					nnum: None,
-				} );
+				if span.dt != Ratio::zero() {
+					dst.push( FlatNote{
+						t0: span.t0,
+						t1: span.t0 + span.dt,
+						nnum: None,
+					} );
+				}
 			},
 			ast::Note::Repeat( ref cn ) => {
 				let rn = match cn.get() {

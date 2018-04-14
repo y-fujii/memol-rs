@@ -180,8 +180,8 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
 </pre>
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
-<p>Building memol_gui on Windows requires a workaround due to
-<a href="https://github.com/rust-lang/rust/issues/47048">issue #47048"</a> for
+<p>Building <code>memol_gui</code> on Windows requires a workaround due to
+<a href="https://github.com/rust-lang/rust/issues/47048">issue #47048</a> for
 now.  I recommended to use prebuild binaries above.
 
 <h2>Run</h2>

@@ -232,7 +232,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 				WindowEvent::DroppedFile( ref path ) => {
 					n = cmp::max( n, ui.on_file_dropped( path ) );
 				},
-				WindowEvent::Closed => {
+				WindowEvent::CloseRequested => {
 					return None;
 				}
 				_ => (),

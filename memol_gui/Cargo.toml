@@ -16,5 +16,5 @@ memol_cli = { path = "../memol_cli" }
 cc = "*"
 bindgen = "*"
 
-[target.'cfg(windows)'.dependencies]
-libloading = "*"
+[target.'cfg(windows)'.build-dependencies]
+winres = "*"

@@ -298,14 +298,14 @@ pub fn init_imgui( scale: f32 ) {
 		cfg.FontDataOwnedByAtlas = false;
 		cfg.MergeMode     = false;
 		cfg.GlyphOffset.y = 0.0;
-		let font = include_bytes!( "../res/inconsolata_regular.ttf" );
+		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
 			font.len() as i32, (12.0 * scale).round(), &cfg, ptr::null(),
 		);
 		cfg.MergeMode     = true;
 		cfg.GlyphOffset.y = (0.5 * scale).round();
-		let font = include_bytes!( "../res/awesome_solid.ttf" );
+		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
 			font.len() as i32, (12.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),
@@ -334,6 +334,14 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
+		#[cfg( windows )]
+		unsafe {
+			extern crate libloading;
+			let lib = libloading::Library::new( "user32.dll" )?;
+			let set_process_dpi_aware: libloading::Symbol<extern fn()> = lib.get( b"SetProcessDPIAware" )?;
+			set_process_dpi_aware();
+		}
+
 		// parse command line.
 		let mut opts = getopts::Options::new();
 		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE"     );

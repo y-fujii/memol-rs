@@ -45,12 +45,4 @@ fn main() {
 		.compile( "libimgui.a" );
 
 	println!( "cargo:rerun-if-changed=imgui/" );
-
-	#[cfg( windows )]
-	{
-		extern crate winres;
-		let mut res = winres::WindowsResource::new();
-		res.set_manifest_file( "res/memol_gui.exe.manifest" );
-		res.compile().unwrap();
-	}
 }

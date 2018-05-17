@@ -136,8 +136,8 @@ impl Renderer {
 			gl::AttachShader( prog, frag );
 			gl::LinkProgram( prog );
 			gl::UseProgram( prog );
-			gl::Uniform1i( gl::GetUniformLocation( prog, c_str!( "Texture" ) ), 0 );
-			let loc_scale = gl::GetUniformLocation( prog, c_str!( "Scale" ) );
+			gl::Uniform1i( gl::GetUniformLocation( prog, "Texture\0".as_ptr() as _ ), 0 );
+			let loc_scale = gl::GetUniformLocation( prog, "Scale\0".as_ptr() as _ );
 
 			// vertex objects.
 			let mut vao = 0;

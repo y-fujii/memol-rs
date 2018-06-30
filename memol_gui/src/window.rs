@@ -104,8 +104,8 @@ impl<T, U: Ui<T>> Window<T, U> {
 		&mut self.ui
 	}
 
-	pub fn hidpi_factor( &self ) -> f32 {
-		self.window.hidpi_factor()
+	pub fn hidpi_factor( &self ) -> f64 {
+		self.window.get_hidpi_factor()
 	}
 
 	pub fn update_font( &mut self ) {
@@ -120,66 +120,63 @@ impl<T, U: Ui<T>> Window<T, U> {
 	}
 
 	pub fn event_loop( &mut self ) -> result::Result<(), Box<error::Error>> {
-		let size = self.window.get_inner_size().unwrap_or( (640, 480) );
 		let io = imgui::get_io();
-		io.DisplaySize.x = size.0 as f32 / io.DisplayFramebufferScale.x;
-		io.DisplaySize.y = size.1 as f32 / io.DisplayFramebufferScale.y;
 
-		let ui = &mut self.ui;
-		let rx = &mut self.rx;
-
-		let mut closed = false;
-		let mut n = 1;
+		let mut n: i32 = 1;
+		let mut events = Vec::new();
 		loop {
-			while n > 0 {
+			if n > 0 {
 				self.looper.poll_events( |ev|
 					if let glutin::Event::DeviceEvent{ .. } = ev {} else {
-						match Self::handle_event( ui, rx, &ev ) {
-							Some( k ) => n = cmp::max( n, k + 1 ),
-							None      => closed = true,
-						}
+						events.push( ev );
 					}
 				);
-				if closed {
-					return Ok( () );
-				}
-				if (0 .. 3).any( |i| io.MouseDown[i] ) {
-					n = cmp::max( n, 1 + 1 );
-				}
-
-				let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
-				let delta = self.timer.duration_since( timer )?;
-				imgui::get_io().DeltaTime = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
-
-				unsafe { imgui::NewFrame() };
-				n = cmp::max( n, ui.on_draw() + 1 );
-				unsafe { imgui::Render() };
-
-				self.renderer.render();
-				self.window.swap_buffers()?;
-
-				n -= 1;
 			}
-
-			self.looper.run_forever( |ev| {
-				if let glutin::Event::DeviceEvent{ .. } = ev {
-					glutin::ControlFlow::Continue
-				}
-				else {
-					match Self::handle_event( ui, rx, &ev ) {
-						Some( k ) => n = k + 1,
-						None      => closed = true,
+			else {
+				self.looper.run_forever( |ev| {
+					if let glutin::Event::DeviceEvent{ .. } = ev {
+						glutin::ControlFlow::Continue
 					}
-					glutin::ControlFlow::Break
-				}
-			} );
-			if closed {
-				return Ok( () );
+					else {
+						events.push( ev );
+						glutin::ControlFlow::Break
+					}
+				} );
 			}
+
+			if events.is_empty() {
+				n = cmp::max( n - 1, self.handle_ui()? );
+			}
+			while let Some( ev ) = events.pop() {
+				let k = match self.handle_event( &ev ) {
+					Some( k ) => k,
+					None      => return Ok( () ),
+				};
+				n = cmp::max( n - 1, k );
+				n = cmp::max( n, self.handle_ui()? );
+			}
+
+			if (0 .. 3).any( |i| io.MouseDown[i] ) {
+				n = cmp::max( n, 1 );
+			}
+
+			self.renderer.render();
+			self.window.swap_buffers()?;
 		}
 	}
 
-	fn handle_event( ui: &mut U, rx: &mut sync::mpsc::Receiver<T>, ev: &glutin::Event ) -> Option<i32> {
+	fn handle_ui( &mut self ) -> result::Result<i32, Box<error::Error>> {
+		let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
+		let delta = self.timer.duration_since( timer )?;
+		imgui::get_io().DeltaTime = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
+
+		unsafe { imgui::NewFrame() };
+		let n = self.ui.on_draw();
+		unsafe { imgui::Render() };
+		Ok( n )
+	}
+
+	fn handle_event( &mut self, ev: &glutin::Event ) -> Option<i32> {
 		use glutin::*;
 
 		let mut n = 1;
@@ -209,28 +206,36 @@ impl<T, U: Ui<T>> Window<T, U> {
 				WindowEvent::ReceivedCharacter( c ) => {
 					unsafe { io.AddInputCharacter( c as u16 ) };
 				},
-				WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta ( x, y ), phase: TouchPhase::Moved, .. } => {
+				WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta( x, y ), phase: TouchPhase::Moved, .. } => {
 					let scale = 1.0 / 5.0;
 					io.MouseWheelH = scale * x;
 					io.MouseWheel  = scale * y;
 				},
-				WindowEvent::MouseWheel{ delta: MouseScrollDelta::PixelDelta( x, y ), phase: TouchPhase::Moved, .. } => {
+				WindowEvent::MouseWheel{ delta: MouseScrollDelta::PixelDelta( delta ), phase: TouchPhase::Moved, .. } => {
+					// XXX
+					let delta = delta.to_physical( self.window.get_hidpi_factor() );
 					let scale = 1.0 / (5.0 * unsafe { imgui::GetFontSize() });
-					io.MouseWheelH = scale * x;
-					io.MouseWheel  = scale * y;
+					io.MouseWheelH = scale * delta.x as f32;
+					io.MouseWheel  = scale * delta.y as f32;
 				},
-				WindowEvent::CursorMoved{ position: ref pos, .. } => {
-					io.MousePos = imgui::ImVec2::new(
-						pos.0 as f32 / io.DisplayFramebufferScale.x,
-						pos.1 as f32 / io.DisplayFramebufferScale.y
-					);
+				WindowEvent::CursorMoved{ position: pos, .. } => {
+					// XXX
+					let pos = pos.to_physical( self.window.get_hidpi_factor() );
+					io.MousePos.x = pos.x as f32;
+					io.MousePos.y = pos.y as f32;
 				},
-				WindowEvent::Resized( x, y ) => {
-					io.DisplaySize.x = x as f32 / io.DisplayFramebufferScale.x;
-					io.DisplaySize.y = y as f32 / io.DisplayFramebufferScale.y;
+				WindowEvent::Resized( _ ) |
+				WindowEvent::HiDpiFactorChanged( _ ) => {
+					// XXX
+					let size = self.window
+						.get_inner_size()
+						.unwrap()
+						.to_physical( self.window.get_hidpi_factor() );
+					io.DisplaySize.x = size.width  as f32;
+					io.DisplaySize.y = size.height as f32;
 				},
 				WindowEvent::DroppedFile( ref path ) => {
-					n = cmp::max( n, ui.on_file_dropped( path ) );
+					n = cmp::max( n, self.ui.on_file_dropped( path ) );
 				},
 				WindowEvent::CloseRequested => {
 					return None;
@@ -239,8 +244,8 @@ impl<T, U: Ui<T>> Window<T, U> {
 			}
 		}
 
-		while let Ok( v ) = rx.try_recv() {
-			n = cmp::max( n, ui.on_message( v ) );
+		while let Ok( v ) = self.rx.try_recv() {
+			n = cmp::max( n, self.ui.on_message( v ) );
 		}
 		Some( n )
 	}

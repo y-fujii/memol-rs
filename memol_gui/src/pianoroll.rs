@@ -126,7 +126,7 @@ impl PianoRoll {
 			let (lt, rb) = ctx.transform_rect( x0, x1 );
 			SetCursorScreenPos( &lt );
 			Dummy( &(rb - lt) );
-			if IsItemHovered( ImGuiHoveredFlags_Default as i32 ) {
+			if IsItemHovered( 0 ) {
 				BeginTooltip();
 					let sym = match nnum % 12 {
 						 0 => "C",  1 => "C+",

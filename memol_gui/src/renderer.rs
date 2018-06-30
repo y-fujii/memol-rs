@@ -204,10 +204,7 @@ impl Renderer {
 			gl::Enable( gl::SCISSOR_TEST );
 			gl::ActiveTexture( gl::TEXTURE0 );
 
-			gl::Viewport( 0, 0,
-				(io.DisplaySize.x * io.DisplayFramebufferScale.x) as i32,
-				(io.DisplaySize.y * io.DisplayFramebufferScale.y) as i32,
-			);
+			gl::Viewport( 0, 0, io.DisplaySize.x as i32, io.DisplaySize.y as i32 );
 			gl::UseProgram( self.program );
 			gl::Uniform2f( self.loc_scale, 2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
 			gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
@@ -239,10 +236,10 @@ impl Renderer {
 					else {
 						gl::BindTexture( gl::TEXTURE_2D, cmd.TextureId as u32 );
 						gl::Scissor(
-							(io.DisplayFramebufferScale.x * cmd.ClipRect.x) as i32,
-							(io.DisplayFramebufferScale.y * (io.DisplaySize.y - cmd.ClipRect.w)) as i32,
-							(io.DisplayFramebufferScale.x * (cmd.ClipRect.z   - cmd.ClipRect.x)) as i32,
-							(io.DisplayFramebufferScale.y * (cmd.ClipRect.w   - cmd.ClipRect.y)) as i32,
+							cmd.ClipRect.x as i32,
+							(io.DisplaySize.y - cmd.ClipRect.w) as i32,
+							(cmd.ClipRect.z   - cmd.ClipRect.x) as i32,
+							(cmd.ClipRect.w   - cmd.ClipRect.y) as i32,
 						);
 						debug_assert!( mem::size_of::<imgui::ImDrawIdx>() == 2 );
 						gl::DrawElements( gl::TRIANGLES, cmd.ElemCount as i32, gl::UNSIGNED_SHORT, offset as *const _ );

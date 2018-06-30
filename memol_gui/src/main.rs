@@ -334,17 +334,8 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 
 fn main() {
 	|| -> Result<(), Box<error::Error>> {
-		#[cfg( windows )]
-		unsafe {
-			extern crate libloading;
-			let lib = libloading::Library::new( "user32.dll" )?;
-			let set_process_dpi_aware: libloading::Symbol<extern fn()> = lib.get( b"SetProcessDPIAware" )?;
-			set_process_dpi_aware();
-		}
-
 		// parse command line.
 		let mut opts = getopts::Options::new();
-		opts.optopt  ( "s", "scale",     "Set DPI scaling.",      "VALUE"     );
 		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );
 		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"      );
 		opts.optopt  ( "a", "address",   "WebSocket address.",    "ADDR:PORT" );
@@ -373,11 +364,7 @@ fn main() {
 
 		// initialize window.
 		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
-		let scaling = match args.opt_str( "s" ) {
-			Some( e ) => e.parse()?,
-			None      => window.hidpi_factor(),
-		};
-		init_imgui( scaling );
+		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {
 			let mut wallpaper = renderer::Texture::new();

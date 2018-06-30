@@ -45,7 +45,8 @@ impl PianoRoll {
 
 			let mut seek = None;
 			if self.dragging {
-				SetScrollX( GetScrollX() + 0.25 * GetMouseDragDelta( 0, -1.0 ).x );
+				let a = 15.0 * get_io().DeltaTime;
+				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 0, -1.0 ).x );
 			}
 			else if clicked {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
@@ -53,7 +54,8 @@ impl PianoRoll {
 			}
 			else if follow {
 				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
-				SetScrollX( (31.0 / 32.0) * GetScrollX() + (1.0 / 32.0) * next );
+				let a = f32::exp( -2.0 * get_io().DeltaTime );
+				SetScrollX( a * GetScrollX() + (1.0 - a) * next );
 			}
 
 			self.dragging &= !IsMouseReleased( 0 );

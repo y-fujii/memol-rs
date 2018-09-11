@@ -26,7 +26,7 @@ pub mod parser {
 			re.replace_all( src, |caps: &Captures|
 				caps.get( 0 ).unwrap().as_str().chars().map( |c|
 					if c == '\r' || c == '\n' { c } else { ' ' }
-				).collect()
+				).collect::<String>()
 			)
 		)
 	}

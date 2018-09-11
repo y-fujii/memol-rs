@@ -42,6 +42,7 @@ fn main() {
 		.define( "IMGUI_DISABLE_OBSOLETE_FUNCTIONS", None )
 		.file( "imgui/imgui.cpp" )
 		.file( "imgui/imgui_draw.cpp" )
+		.file( "imgui/imgui_widgets.cpp" )
 		.compile( "libimgui.a" );
 
 	println!( "cargo:rerun-if-changed=imgui/" );

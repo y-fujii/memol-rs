@@ -1,7 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 extern crate regex;
 extern crate lalrpop_util;
-#[macro_use]
 pub mod misc;
 pub mod random;
 pub mod ratio;

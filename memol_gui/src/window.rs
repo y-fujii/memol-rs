@@ -123,7 +123,10 @@ impl<T, U: Ui<T>> Window<T, U> {
 		let io = imgui::get_io();
 
 		let mut n: i32 = 1;
-		let mut events = Vec::new();
+		let mut events = vec![ glutin::Event::WindowEvent{
+			window_id: self.window.id(),
+			event: glutin::WindowEvent::Resized( glutin::dpi::LogicalSize::new( f64::NAN, f64::NAN ) ),
+		} ];
 		loop {
 			if n > 0 {
 				self.looper.poll_events( |ev|
@@ -183,19 +186,19 @@ impl<T, U: Ui<T>> Window<T, U> {
 
 		let io = imgui::get_io();
 		if let Event::WindowEvent{ event: ref ev, .. } = *ev {
-			match *ev {
+			match ev {
 				WindowEvent::KeyboardInput{ input: KeyboardInput{ state, virtual_keycode: Some( code ), .. }, .. } => {
-					let pressed = state == ElementState::Pressed;
+					let pressed = *state == ElementState::Pressed;
 					match code {
 						VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl  = pressed,
 						VirtualKeyCode::LShift   | VirtualKeyCode::RShift   => io.KeyShift = pressed,
 						VirtualKeyCode::LAlt     | VirtualKeyCode::RAlt     => io.KeyAlt   = pressed,
 						VirtualKeyCode::LWin     | VirtualKeyCode::RWin     => io.KeySuper = pressed,
-						c => io.KeysDown[c as usize] = pressed,
+						c => io.KeysDown[*c as usize] = pressed,
 					}
 				},
 				WindowEvent::MouseInput{ state, button, .. } => {
-					let pressed = state == ElementState::Pressed;
+					let pressed = *state == ElementState::Pressed;
 					match button {
 						MouseButton::Left   => io.MouseDown[0] = pressed,
 						MouseButton::Right  => io.MouseDown[1] = pressed,
@@ -204,7 +207,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 					}
 				}
 				WindowEvent::ReceivedCharacter( c ) => {
-					unsafe { io.AddInputCharacter( c as u16 ) };
+					unsafe { io.AddInputCharacter( *c as u16 ) };
 				},
 				WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta( x, y ), phase: TouchPhase::Moved, .. } => {
 					let scale = 1.0 / 5.0;
@@ -233,6 +236,8 @@ impl<T, U: Ui<T>> Window<T, U> {
 						.to_physical( self.window.get_hidpi_factor() );
 					io.DisplaySize.x = size.width  as f32;
 					io.DisplaySize.y = size.height as f32;
+					// Wayland needs to resize context manually.
+					self.window.context().resize( size );
 				},
 				WindowEvent::DroppedFile( ref path ) => {
 					n = cmp::max( n, self.ui.on_file_dropped( path ) );

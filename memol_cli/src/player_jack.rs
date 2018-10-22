@@ -8,6 +8,7 @@ use jack;
 
 struct SharedData {
 	events: Vec<midi::Event>,
+	immediate: Vec<midi::Event>,
 	changed: bool,
 }
 
@@ -77,6 +78,12 @@ impl player::Player for Player {
 				return Self::error( "jack_disconnect()." );
 			}
 		}
+		Ok( () )
+	}
+
+	fn send( &self, evs: &[midi::Event] ) -> io::Result<()> {
+		let mut shared = self.shared.lock().unwrap();
+		shared.immediate.extend( evs.iter().cloned() );
 		Ok( () )
 	}
 
@@ -151,6 +158,7 @@ impl Player {
 				port: port,
 				shared: sync::Mutex::new( SharedData{
 					events: Vec::new(),
+					immediate: Vec::new(),
 					changed: false,
 				} ),
 			} );
@@ -189,6 +197,10 @@ impl Player {
 			if shared.changed {
 				this.write_all_sound_off( buf, 0 );
 				shared.changed = false;
+			}
+
+			for ev in shared.immediate.drain( .. ) {
+				(this.lib.midi_event_write)( buf, 0, ev.msg.as_ptr(), ev.len as usize );
 			}
 
 			let mut pos: jack::Position = mem::uninitialized();

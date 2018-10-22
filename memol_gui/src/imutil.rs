@@ -55,6 +55,23 @@ impl<'a> DrawContext<'a> {
 		}
 	}
 
+	#[allow( dead_code )]
+	pub fn add_invisible_button( &mut self, v0: ImVec2, v1: ImVec2, text: &str ) -> bool {
+		let (lt, rb) = self.transform_rect( v0, v1 );
+		unsafe {
+			SetCursorScreenPos( &lt );
+			InvisibleButton( text.as_ptr() as *const _, &(rb - lt) )
+		}
+	}
+
+	pub fn add_dummy( &mut self, v0: ImVec2, v1: ImVec2 ) {
+		let (lt, rb) = self.transform_rect( v0, v1 );
+		unsafe {
+			SetCursorScreenPos( &lt );
+			Dummy( &(rb - lt) );
+		}
+	}
+
 	pub fn transform_loc( &self, v: ImVec2 ) -> ImVec2 {
 		self.a * v + self.b
 	}

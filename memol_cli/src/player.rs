@@ -8,6 +8,7 @@ pub trait Player: Send {
 	fn ports( &self ) -> io::Result<Vec<(String, bool)>>;
 	fn connect( &self, &str ) -> io::Result<()>;
 	fn disconnect( &self, &str ) -> io::Result<()>;
+	fn send( &self, &[midi::Event] ) -> io::Result<()>;
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
 	fn seek( &self, f64 ) -> io::Result<()>;
@@ -34,6 +35,10 @@ impl Player for DummyPlayer {
 	}
 
 	fn disconnect( &self, _: &str ) -> io::Result<()> {
+		Ok( () )
+	}
+
+	fn send( &self, _: &[midi::Event] ) -> io::Result<()> {
 		Ok( () )
 	}
 

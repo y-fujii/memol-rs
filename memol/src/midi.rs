@@ -15,7 +15,7 @@ pub struct Event {
 }
 
 impl Event {
-	fn new( time: f64, prio: i16, msg: &[u8] ) -> Event {
+	pub fn new( time: f64, prio: i16, msg: &[u8] ) -> Event {
 		let mut this = Event{
 			time: time,
 			prio: prio,

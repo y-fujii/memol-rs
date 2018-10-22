@@ -11,7 +11,7 @@ mod imutil;
 mod imgui;
 mod renderer;
 mod window;
-mod pianoroll;
+mod piano_roll;
 use std::*;
 use memol::*;
 use memol_cli::{ notify, ipc, player, player_jack };
@@ -39,7 +39,7 @@ struct Ui {
 	tempo: f64, // XXX
 	text: Option<String>,
 	player: Box<player::Player>,
-	piano_roll: pianoroll::PianoRoll,
+	piano_roll: piano_roll::PianoRoll,
 	channel: usize,
 	follow: bool,
 	autoplay: bool,
@@ -100,7 +100,7 @@ impl Ui {
 			tempo: 1.0,
 			text: None,
 			player: player::DummyPlayer::new(),
-			piano_roll: pianoroll::PianoRoll::new(),
+			piano_roll: piano_roll::PianoRoll::new(),
 			channel: 0,
 			follow: true,
 			autoplay: true,
@@ -127,20 +127,33 @@ impl Ui {
 			if let Some( &(_, ref ch) ) = self.assembly.channels
 				.iter().filter( |&&(i, _)| i == self.channel ).next()
 			{
-				let result = self.piano_roll.draw(
+				self.piano_roll.draw(
 					&ch.score, self.assembly.len.to_float() as f32,
 					(location * self.tempo) as f32,
 					is_playing && self.follow, size,
 				);
-				if let Some( loc ) = result {
-					self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).ok();
-					changed = true;
+				for ev in self.piano_roll.events.drain( .. ) {
+					match ev {
+						piano_roll::Event::Seek( loc ) => {
+							self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).ok();
+							changed = true;
+						},
+						piano_roll::Event::NoteOn( n ) => {
+							let mev = midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, n as u8, 0x40 ] );
+							self.player.send( &[ mev ] ).ok();
+						},
+						piano_roll::Event::NoteClear => {
+							// all notes offf.
+							let mev = midi::Event::new( 0.0, 1, &[ 0xb0 + self.channel as u8, 0x7b, 0x00 ] );
+							self.player.send( &[ mev ] ).ok();
+						},
+					}
 				}
 			}
 			if let Some( ref wallpaper ) = self.wallpaper {
 				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
 				let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
-				let v0 = GetWindowPos() + self.piano_roll.scroll * (size - wsize);
+				let v0 = GetWindowPos() + self.piano_roll.scroll_ratio * (size - wsize);
 				(*GetWindowDrawList()).AddImage(
 					wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
 				);

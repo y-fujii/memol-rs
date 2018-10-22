@@ -2,16 +2,16 @@
 use std::*;
 
 
-pub type Generator = XoroShiro128Plus;
+pub type Generator = XoroShiro128StarStar;
 
-// Xoroshiro128+ PRNG, by David Blackman and Sebastiano Vigna.
-// ref. <http://vigna.di.unimi.it/xorshift/xoroshiro128plus.c>
-pub struct XoroShiro128Plus {
+// Xoroshiro128** PRNG, by David Blackman and Sebastiano Vigna <vigna@acm.org>.
+// ref. <http://xoshiro.di.unimi.it/xoroshiro128starstar.c>
+pub struct XoroShiro128StarStar {
 	s0: cell::Cell<u64>,
 	s1: cell::Cell<u64>,
 }
 
-impl XoroShiro128Plus {
+impl XoroShiro128StarStar {
 	pub fn new() -> Self {
 		Self{
 			s0: cell::Cell::new( 0x243f_6a88_85a3_08d3 ), // OEIS A062964.
@@ -23,9 +23,9 @@ impl XoroShiro128Plus {
 		let s0 = self.s0.get();
 		let s1 = self.s1.get();
 		let t = s0 ^ s1;
-		self.s0.set( s0.rotate_left( 55 ) ^ t ^ (t << 14) );
-		self.s1.set( t.rotate_left( 36 ) );
-		u64::wrapping_add( s0, s1 )
+		self.s0.set( s0.rotate_left( 24 ) ^ t ^ (t << 16) );
+		self.s1.set( t.rotate_left( 37 ) );
+		s0.wrapping_mul( 5 ).rotate_left( 7 ).wrapping_mul( 9 )
 	}
 
 	pub fn next_f64( &self ) -> f64 {
@@ -39,7 +39,7 @@ impl XoroShiro128Plus {
 	}
 
 	pub fn jump( &self ) {
-		const JUMP: [u64; 2] = [ 0xbeac_0467_eba5_facb, 0xd86b_048b_86aa_9922 ];
+		const JUMP: [u64; 2] = [ 0xdf90_0294_d8f5_54a5, 0x1708_65df_4b32_01fc ];
 
 		let mut s0 = 0;
 		let mut s1 = 0;
@@ -57,15 +57,13 @@ impl XoroShiro128Plus {
 	}
 }
 
-
 #[test]
 fn test() {
 	let rng = Generator::new();
-	assert!( rng.next_u64() == 13259673089262997623 );
-	assert!( rng.next_u64() == 11416876112584488370 );
-	assert!( rng.next_u64() ==  2822159522531543094 );
-	assert!( rng.next_u64() ==  7148299523015547248 );
-	let rng = Generator::new();
+	assert!( rng.next_u64() == 10582614419484085930 );
+	assert!( rng.next_u64() == 16147916016143995109 );
+	assert!( rng.next_u64() ==  5691192622506874316 );
+	assert!( rng.next_u64() == 14606526736076162211 );
 	rng.jump();
-	assert!( rng.next_u64() ==  6516743372915791242 );
+	assert!( rng.next_u64() ==  4275479514889395181 );
 }

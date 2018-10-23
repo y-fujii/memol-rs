@@ -125,7 +125,7 @@ impl vst::plugin::Plugin for Plugin {
 			Err( _ ) => return,
 		};
 
-		if shared.changed || playing != self.playing || location != self.location {
+		if shared.changed || playing != self.playing || (playing && location != self.location) {
 			for ch in 0 .. 16 {
 				// all sound off.
 				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );

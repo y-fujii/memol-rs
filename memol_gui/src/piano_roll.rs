@@ -56,7 +56,7 @@ impl PianoRoll {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if IsMouseReleased( 1 ) {
+			else if self.notes.is_empty() && IsMouseReleased( 1 ) {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 				self.events.push( Event::Seek( x ) );
 			}
@@ -86,7 +86,7 @@ impl PianoRoll {
 					self.notes.push( y );
 					self.events.push( Event::NoteOn( y ) );
 				}
-				if IsMouseReleased( 1 ) {
+				if !self.notes.is_empty() && IsMouseReleased( 1 ) {
 					self.notes.clear();
 					self.events.push( Event::NoteClear );
 				}

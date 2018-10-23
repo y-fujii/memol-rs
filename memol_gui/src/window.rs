@@ -123,10 +123,11 @@ impl<T, U: Ui<T>> Window<T, U> {
 		let io = imgui::get_io();
 
 		let mut n: i32 = 1;
-		let mut events = vec![ glutin::Event::WindowEvent{
+		let mut events = Vec::new();
+		events.push( glutin::Event::WindowEvent{
 			window_id: self.window.id(),
 			event: glutin::WindowEvent::Resized( glutin::dpi::LogicalSize::new( f64::NAN, f64::NAN ) ),
-		} ];
+		} );
 		loop {
 			if n > 0 {
 				self.looper.poll_events( |ev|
@@ -150,7 +151,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 			if events.is_empty() {
 				n = cmp::max( n - 1, self.handle_ui()? );
 			}
-			while let Some( ev ) = events.pop() {
+			for ev in events.drain( .. ) {
 				let k = match self.handle_event( &ev ) {
 					Some( k ) => k,
 					None      => return Ok( () ),
@@ -171,7 +172,9 @@ impl<T, U: Ui<T>> Window<T, U> {
 	fn handle_ui( &mut self ) -> result::Result<i32, Box<error::Error>> {
 		let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
 		let delta = self.timer.duration_since( timer )?;
-		imgui::get_io().DeltaTime = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
+		let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
+		// DeltaTime == 0.0 cause repeating clicks.
+		imgui::get_io().DeltaTime = f32::max( delta, f32::EPSILON );
 
 		unsafe { imgui::NewFrame() };
 		let n = self.ui.on_draw();
@@ -205,7 +208,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 						MouseButton::Middle => io.MouseDown[2] = pressed,
 						_ => (),
 					}
-				}
+				},
 				WindowEvent::ReceivedCharacter( c ) => {
 					unsafe { io.AddInputCharacter( *c as u16 ) };
 				},
@@ -244,7 +247,7 @@ impl<T, U: Ui<T>> Window<T, U> {
 				},
 				WindowEvent::CloseRequested => {
 					return None;
-				}
+				},
 				_ => (),
 			}
 		}

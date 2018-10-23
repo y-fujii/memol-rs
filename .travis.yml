@@ -29,7 +29,6 @@ matrix:
         - os: linux
           env: TARGET=x86_64-pc-windows-gnu
           script:
-              - sed -i 's|<Windows\.h>|<windows.h>|g' memol_gui/imgui/imgui.cpp
               - rustup target add ${TARGET}
               - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release

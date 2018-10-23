@@ -40,6 +40,7 @@ impl Into<midi::Event> for Event {
 pub enum Message {
 	Success{ events: Vec<Event> },
 	Failure{ message: String },
+	Immediate{ events: Vec<Event> },
 	Control{ is_playing: Option<bool>, location: Option<f64> },
 	Status{ is_playing: bool, location: f64 },
 }
@@ -47,6 +48,15 @@ pub enum Message {
 pub struct Sender<T> {
 	senders: sync::Arc<sync::Mutex<Vec<ws::Sender>>>,
 	phantom: marker::PhantomData<T>,
+}
+
+impl<T> Clone for Sender<T> {
+	fn clone( &self ) -> Self {
+		Sender{
+			senders: self.senders.clone(),
+			phantom: marker::PhantomData,
+		}
+	}
 }
 
 impl<T: serde::Serialize> Sender<T> {

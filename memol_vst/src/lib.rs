@@ -13,6 +13,7 @@ const REMOTE_ADDR: &'static str = "ws://127.0.0.1:27182";
 
 struct SharedData {
 	events: Vec<midi::Event>,
+	immediate: Vec<midi::Event>,
 	changed: bool,
 }
 
@@ -31,6 +32,7 @@ impl default::Default for Plugin {
 			buffer: events::EventBuffer::new(),
 			shared: sync::Arc::new( sync::Mutex::new( SharedData{
 				events: Vec::new(),
+				immediate: Vec::new(),
 				changed: false,
 			} ) ),
 			playing: false,
@@ -43,6 +45,7 @@ impl vst::plugin::Plugin for Plugin {
 	fn new( host: vst::plugin::HostCallback ) -> Self {
 		let shared = sync::Arc::new( sync::Mutex::new( SharedData{
 			events: Vec::new(),
+			immediate: Vec::new(),
 			changed: false,
 		} ) );
 
@@ -52,10 +55,22 @@ impl vst::plugin::Plugin for Plugin {
 			thread::spawn( move || {
 				loop {
 					memol_cli::ipc::Bus::new().connect( REMOTE_ADDR, |msg| {
-						if let memol_cli::ipc::Message::Success{ events: evs } = msg {
-							let mut shared = shared.lock().unwrap();
-							shared.events = evs.into_iter().map( |e| e.into() ).collect();
-							shared.changed = true;
+						match msg {
+							memol_cli::ipc::Message::Success{ events: evs } => {
+								let mut shared = shared.lock().unwrap();
+								shared.events = evs.into_iter().map( |e| e.into() ).collect();
+								shared.changed = true;
+							},
+							memol_cli::ipc::Message::Failure{ .. } => {
+								let mut shared = shared.lock().unwrap();
+								shared.events.clear();
+								shared.changed = true;
+							},
+							memol_cli::ipc::Message::Immediate{ events: evs } => {
+								let mut shared = shared.lock().unwrap();
+								shared.immediate.extend( evs.into_iter().map( |e| e.into() ) );
+							},
+							_ => (),
 						}
 					} ).ok();
 					thread::sleep( time::Duration::new( 3, 0 ) );
@@ -118,6 +133,10 @@ impl vst::plugin::Plugin for Plugin {
 				self.buffer.push( &[ 0xb0 + ch, 0x79, 0x00 ], 0 );
 			}
 			shared.changed = false;
+		}
+
+		for ev in shared.immediate.drain( .. ) {
+			self.buffer.push( &ev.msg, 0 );
 		}
 
 		if playing {

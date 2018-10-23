@@ -33,6 +33,7 @@ enum CompilerMessage {
 
 struct Ui {
 	compile_tx: sync::mpsc::Sender<CompilerMessage>,
+	bus_tx: ipc::Sender<ipc::Message>,
 	path: path::PathBuf,
 	assembly: Assembly,
 	events: Vec<midi::Event>,
@@ -91,8 +92,9 @@ impl window::Ui<UiMessage> for Ui {
 }
 
 impl Ui {
-	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage> ) -> Ui {
+	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage>, bus_tx: ipc::Sender<ipc::Message> ) -> Ui {
 		Ui {
+			bus_tx: bus_tx,
 			compile_tx: compile_tx,
 			path: path::PathBuf::new(),
 			assembly: Assembly::default(),
@@ -139,13 +141,19 @@ impl Ui {
 							changed = true;
 						},
 						piano_roll::Event::NoteOn( n ) => {
-							let mev = midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, n as u8, 0x40 ] );
-							self.player.send( &[ mev ] ).ok();
+							let evs = [ midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, n as u8, 0x40 ] ) ];
+							self.player.send( &evs ).ok();
+							self.bus_tx.send( &ipc::Message::Immediate{
+								events: evs.iter().map( |e| e.clone().into() ).collect()
+							} ).unwrap();
 						},
 						piano_roll::Event::NoteClear => {
-							// all notes offf.
-							let mev = midi::Event::new( 0.0, 1, &[ 0xb0 + self.channel as u8, 0x7b, 0x00 ] );
-							self.player.send( &[ mev ] ).ok();
+							// all sound off.
+							let evs = [ midi::Event::new( 0.0, 1, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
+							self.player.send( &evs ).ok();
+							self.bus_tx.send( &ipc::Message::Immediate{
+								events: evs.iter().map( |e| e.clone().into() ).collect()
+							} ).unwrap();
 						},
 					}
 				}
@@ -296,6 +304,7 @@ fn compile_task( rx: sync::mpsc::Receiver<CompilerMessage>, ui_tx: window::Messa
 }
 
 pub fn init_imgui( scale: f32 ) {
+	let scale = f32::sqrt( scale );
 	let io = imgui::get_io();
 	imutil::set_theme(
 		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
@@ -314,14 +323,14 @@ pub fn init_imgui( scale: f32 ) {
 		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, (12.0 * scale).round(), &cfg, ptr::null(),
+			font.len() as i32, (14.0 * scale).round(), &cfg, ptr::null(),
 		);
 		cfg.MergeMode     = true;
 		cfg.GlyphOffset.y = (0.5 * scale).round();
 		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, (12.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),
+			font.len() as i32, (14.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),
 		);
 	}
 }
@@ -376,7 +385,7 @@ fn main() {
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 
 		// initialize window.
-		let mut window = window::Window::new( Ui::new( compile_tx.clone() ) )?;
+		let mut window = window::Window::new( Ui::new( compile_tx.clone(), bus_tx.clone() ) )?;
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {

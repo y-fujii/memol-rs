@@ -7,7 +7,7 @@ use imgui;
 use renderer;
 
 
-pub trait Ui<T> {
+pub trait Handler<T> {
 	fn on_draw( &mut self ) -> i32 { 0 }
 	fn on_file_dropped( &mut self, &path::PathBuf ) -> i32 { 0 }
 	fn on_message( &mut self, T ) -> i32 { 0 }
@@ -25,7 +25,7 @@ impl<T> MessageSender<T> {
 	}
 }
 
-pub struct Window<T, U: Ui<T>> {
+pub struct Window<T, U: Handler<T>> {
 	context: *mut imgui::ImGuiContext,
 	looper: glutin::EventsLoop,
 	window: glutin::GlWindow,
@@ -36,13 +36,13 @@ pub struct Window<T, U: Ui<T>> {
 	rx: sync::mpsc::Receiver<T>,
 }
 
-impl<T, U: Ui<T>> Drop for Window<T, U> {
+impl<T, U: Handler<T>> Drop for Window<T, U> {
 	fn drop( &mut self ) {
 		unsafe { imgui::DestroyContext( self.context ) };
 	}
 }
 
-impl<T, U: Ui<T>> Window<T, U> {
+impl<T, U: Handler<T>> Window<T, U> {
 	pub fn new( ui: U ) -> Result<Self, Box<error::Error>> {
 		let context = unsafe { imgui::CreateContext( ptr::null_mut() ) };
 

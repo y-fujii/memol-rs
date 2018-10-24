@@ -31,7 +31,7 @@ enum CompilerMessage {
     Refresh,
 }
 
-struct Ui {
+struct WindowHandler {
 	compile_tx: sync::mpsc::Sender<CompilerMessage>,
 	bus_tx: ipc::Sender<ipc::Message>,
 	path: path::PathBuf,
@@ -48,7 +48,7 @@ struct Ui {
 	wallpaper: Option<renderer::Texture>,
 }
 
-impl window::Ui<UiMessage> for Ui {
+impl window::Handler<UiMessage> for WindowHandler {
 	fn on_draw( &mut self ) -> i32 {
 		unsafe { self.draw_all() }
 	}
@@ -91,9 +91,9 @@ impl window::Ui<UiMessage> for Ui {
 	}
 }
 
-impl Ui {
-	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage>, bus_tx: ipc::Sender<ipc::Message> ) -> Ui {
-		Ui {
+impl WindowHandler {
+	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage>, bus_tx: ipc::Sender<ipc::Message> ) -> WindowHandler {
+		WindowHandler{
 			bus_tx: bus_tx,
 			compile_tx: compile_tx,
 			path: path::PathBuf::new(),
@@ -385,7 +385,7 @@ fn main() {
 		let (compile_tx, compile_rx) = sync::mpsc::channel();
 
 		// initialize window.
-		let mut window = window::Window::new( Ui::new( compile_tx.clone(), bus_tx.clone() ) )?;
+		let mut window = window::Window::new( WindowHandler::new( compile_tx.clone(), bus_tx.clone() ) )?;
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {

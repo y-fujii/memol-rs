@@ -393,7 +393,7 @@ fn main() {
 			let mut img = image::open( path )?.to_rgba();
 			lighten_image( &mut img, 0.5 );
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
-			window.ui_mut().wallpaper = Some( wallpaper );
+			window.handler_mut().wallpaper = Some( wallpaper );
 		}
 
 		// initialize compiler.

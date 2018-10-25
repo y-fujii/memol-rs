@@ -31,7 +31,7 @@ pub struct Window<T, U: Handler<T>> {
 	window: glutin::GlWindow,
 	renderer: renderer::Renderer,
 	timer: time::SystemTime,
-	ui: U,
+	handler: U,
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
 }
@@ -43,7 +43,7 @@ impl<T, U: Handler<T>> Drop for Window<T, U> {
 }
 
 impl<T, U: Handler<T>> Window<T, U> {
-	pub fn new( ui: U ) -> Result<Self, Box<error::Error>> {
+	pub fn new( handler: U ) -> Result<Self, Box<error::Error>> {
 		let context = unsafe { imgui::CreateContext( ptr::null_mut() ) };
 
 		let io = imgui::get_io();
@@ -94,14 +94,14 @@ impl<T, U: Handler<T>> Window<T, U> {
 			window: window,
 			renderer: renderer,
 			timer: time::SystemTime::now(),
-			ui: ui,
+			handler: handler,
 			tx: tx,
 			rx: rx,
 		} )
 	}
 
-	pub fn ui_mut( &mut self ) -> &mut U {
-		&mut self.ui
+	pub fn handler_mut( &mut self ) -> &mut U {
+		&mut self.handler
 	}
 
 	pub fn hidpi_factor( &self ) -> f64 {
@@ -149,7 +149,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 			}
 
 			if events.is_empty() {
-				n = cmp::max( n - 1, self.handle_ui()? );
+				n = cmp::max( n - 1, self.draw()? );
 			}
 			for ev in events.drain( .. ) {
 				let k = match self.handle_event( &ev ) {
@@ -157,7 +157,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 					None      => return Ok( () ),
 				};
 				n = cmp::max( n - 1, k );
-				n = cmp::max( n, self.handle_ui()? );
+				n = cmp::max( n, self.draw()? );
 			}
 
 			if (0 .. 3).any( |i| io.MouseDown[i] ) {
@@ -169,7 +169,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 		}
 	}
 
-	fn handle_ui( &mut self ) -> result::Result<i32, Box<error::Error>> {
+	fn draw( &mut self ) -> result::Result<i32, Box<error::Error>> {
 		let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
 		let delta = self.timer.duration_since( timer )?;
 		let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
@@ -177,7 +177,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 		imgui::get_io().DeltaTime = f32::max( delta, f32::EPSILON );
 
 		unsafe { imgui::NewFrame() };
-		let n = self.ui.on_draw();
+		let n = self.handler.on_draw();
 		unsafe { imgui::Render() };
 		Ok( n )
 	}
@@ -243,7 +243,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 					self.window.context().resize( size );
 				},
 				WindowEvent::DroppedFile( ref path ) => {
-					n = cmp::max( n, self.ui.on_file_dropped( path ) );
+					n = cmp::max( n, self.handler.on_file_dropped( path ) );
 				},
 				WindowEvent::CloseRequested => {
 					return None;
@@ -253,7 +253,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 		}
 
 		while let Ok( v ) = self.rx.try_recv() {
-			n = cmp::max( n, self.ui.on_message( v ) );
+			n = cmp::max( n, self.handler.on_message( v ) );
 		}
 		Some( n )
 	}

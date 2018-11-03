@@ -4,6 +4,7 @@ extern crate getopts;
 extern crate gl;
 extern crate glutin;
 extern crate image;
+extern crate clipboard;
 extern crate memol;
 extern crate memol_cli;
 #[macro_use]

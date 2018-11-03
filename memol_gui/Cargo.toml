@@ -9,6 +9,7 @@ getopts = "*"
 gl = "*"
 glutin = "*"
 image = "*"
+clipboard = "*"
 memol = { path = "../memol" }
 memol_cli = { path = "../memol_cli" }
 

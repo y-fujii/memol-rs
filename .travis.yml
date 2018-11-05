@@ -19,8 +19,8 @@ matrix:
           script:
               - sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
               - rustup target add ${TARGET}
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --lib
               - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --bin memol_cli
-              - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --bin memol_vst
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
               - aarch64-linux-gnu-strip --strip-all memol_cli memol_vst.so

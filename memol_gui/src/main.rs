@@ -253,7 +253,7 @@ impl WindowHandler {
 			}
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
-                self.compile_tx.send( CompilerMessage::Refresh ).unwrap();
+				self.compile_tx.send( CompilerMessage::Refresh ).unwrap();
 			}
 		End();
 		PopStyleVar( 1 );
@@ -431,7 +431,7 @@ fn main() {
 
 		window.event_loop()
 	}().unwrap_or_else( |e| {
-		println!( "Error: {}", e );
+		eprintln!( "Error: {}", e );
 		process::exit( -1 );
 	} );
 }

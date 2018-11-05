@@ -88,6 +88,6 @@ fn main() {
 		}
 	};
 	if let Err( e ) = f() {
-		println!( "{}", e );
+		eprintln!( "{}", e );
 	}
 }

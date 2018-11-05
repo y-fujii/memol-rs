@@ -21,7 +21,8 @@ pub struct PianoRoll {
 	dragging: bool,
 	time_scale: f32,
 	line_width: f32,
-	clipboard: clipboard::ClipboardContext,
+	use_sharp: bool,
+	clipboard: Option<clipboard::ClipboardContext>,
 	color_line_0: u32,
 	color_line_1: u32,
 	color_note_0: u32,
@@ -38,7 +39,8 @@ impl PianoRoll {
 			dragging: false,
 			time_scale: 24.0,
 			line_width: 0.25,
-			clipboard: clipboard::ClipboardProvider::new().unwrap(),
+			use_sharp: false,
+			clipboard: clipboard::ClipboardProvider::new().ok(),
 			color_line_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 0.50 ) ) ),
 			color_line_1:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 0.25 ) ) ),
 			color_note_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
@@ -91,7 +93,9 @@ impl PianoRoll {
 					self.events.push( Event::NoteOn( y ) );
 				}
 				if !self.notes.is_empty() && IsMouseReleased( 1 ) {
-					self.clipboard.set_contents( Self::note_symbols( &self.notes ) ).ok();
+					if let Some( ref mut clipboard ) = self.clipboard {
+						clipboard.set_contents( Self::note_symbols( &self.notes, self.use_sharp ) ).ok();
+					}
 					self.notes.clear();
 					self.events.push( Event::NoteClear );
 				}
@@ -100,7 +104,7 @@ impl PianoRoll {
 		}
 		if self.notes.len() > 0 {
 			BeginTooltip();
-				imutil::show_text( &Self::note_symbols( &self.notes ) );
+				imutil::show_text( &Self::note_symbols( &self.notes, self.use_sharp ) );
 			EndTooltip();
 		}
 
@@ -163,7 +167,7 @@ impl PianoRoll {
 			ctx.add_dummy( x0, x1 );
 			if IsItemHovered( 0 ) {
 				BeginTooltip();
-					imutil::show_text( &format!( "     note = {}", Self::note_symbol( nnum ) ) );
+					imutil::show_text( &format!( "     note = {}", Self::note_symbol( nnum, self.use_sharp ) ) );
 					imutil::show_text( &format!( "gate time = {} + {}/{}",
 						misc::idiv( note.t0.y, note.t0.x ),
 						misc::imod( note.t0.y, note.t0.x ),
@@ -182,7 +186,7 @@ impl PianoRoll {
 		ctx.add_line( v0, v1, self.color_note_1, self.line_width );
 	}
 
-	fn note_symbols( notes: &[i64] ) -> String {
+	fn note_symbols( notes: &[i64], use_sharp: bool ) -> String {
 		let mut buf = String::new();
 		let mut n0 = notes[0];
 		for &n1 in notes.iter() {
@@ -190,7 +194,7 @@ impl PianoRoll {
 			for _ in 0 .. (n1 - n0).abs() / 12 {
 				buf.push_str( sym );
 			}
-			let sym = Self::note_symbol( n1 );
+			let sym = Self::note_symbol( n1, use_sharp );
 			let sym = if n1 <= n0 { sym.to_lowercase() } else { sym.to_uppercase() };
 			buf.push_str( &sym );
 			n0 = n1;
@@ -198,21 +202,13 @@ impl PianoRoll {
 		buf
 	}
 
-	fn note_symbol( n: i64 ) -> &'static str {
-		match misc::imod( n, 12 ) {
-			 0 => "c",
-			 1 => "d-",
-			 2 => "d",
-			 3 => "e-",
-			 4 => "e",
-			 5 => "f",
-			 6 => "g-",
-			 7 => "g",
-			 8 => "a-",
-			 9 => "a",
-			10 => "b-",
-			11 => "b",
-			 _ => panic!(),
+	fn note_symbol( n: i64, use_sharp: bool ) -> &'static str {
+		let syms = if use_sharp {
+			[ "c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b" ]
 		}
+		else {
+			[ "c", "d-", "d", "e-", "e", "f", "g-", "g", "a-", "a", "b-", "b" ]
+		};
+		syms[misc::imod( n, 12 ) as usize]
 	}
 }

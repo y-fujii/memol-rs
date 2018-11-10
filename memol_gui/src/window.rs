@@ -126,7 +126,9 @@ impl<T, U: Handler<T>> Window<T, U> {
 		let mut events = Vec::new();
 		events.push( glutin::Event::WindowEvent{
 			window_id: self.window.id(),
-			event: glutin::WindowEvent::Resized( glutin::dpi::LogicalSize::new( f64::NAN, f64::NAN ) ),
+			event: glutin::WindowEvent::Resized(
+				self.window.get_inner_size().unwrap_or( glutin::dpi::LogicalSize::new( 640.0, 480.0 ) )
+			),
 		} );
 		loop {
 			if n > 0 {
@@ -230,17 +232,21 @@ impl<T, U: Handler<T>> Window<T, U> {
 					io.MousePos.x = pos.x as f32;
 					io.MousePos.y = pos.y as f32;
 				},
-				WindowEvent::Resized( _ ) |
-				WindowEvent::HiDpiFactorChanged( _ ) => {
-					// XXX
-					let size = self.window
-						.get_inner_size()
-						.unwrap()
-						.to_physical( self.window.get_hidpi_factor() );
-					io.DisplaySize.x = size.width  as f32;
-					io.DisplaySize.y = size.height as f32;
+				WindowEvent::Resized( logical ) => {
+					let physical = logical.to_physical( self.window.get_hidpi_factor() );
+					io.DisplaySize.x = physical.width  as f32;
+					io.DisplaySize.y = physical.height as f32;
 					// Wayland needs to resize context manually.
-					self.window.context().resize( size );
+					self.window.resize( physical );
+				},
+				WindowEvent::HiDpiFactorChanged( factor ) => {
+					if let Some( logical ) = self.window.get_inner_size() {
+						let physical = logical.to_physical( *factor );
+						io.DisplaySize.x = physical.width  as f32;
+						io.DisplaySize.y = physical.height as f32;
+						// Wayland needs to resize context manually.
+						self.window.resize( physical );
+					}
 				},
 				WindowEvent::DroppedFile( ref path ) => {
 					n = cmp::max( n, self.handler.on_file_dropped( path ) );

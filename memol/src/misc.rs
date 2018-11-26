@@ -58,7 +58,7 @@ pub fn u32_to_bytes_be( i: u32 ) -> [u8; 4] {
 	[ (i >> 24) as u8, (i >> 16) as u8, (i >> 8) as u8, i as u8 ]
 }
 
-#[derive(Debug)]
+#[derive( Debug )]
 pub struct Error {
 	pub path: path::PathBuf,
 	pub index: usize,

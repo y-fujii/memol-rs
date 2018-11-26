@@ -66,7 +66,7 @@ fn main() {
 			Err( _ ) => player::DummyPlayer::new(),
 		};
 		for port in args.opt_strs( "c" ) {
-			player.connect( &port )?;
+			player.connect_to( &port )?;
 		}
 
 		// main loop.

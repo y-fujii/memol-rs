@@ -9,6 +9,13 @@ pub const PORT_IS_OUTPUT: usize = 2;
 pub const DEFAULT_MIDI_TYPE: *const u8 = b"8 bit raw midi\0" as *const _;
 
 #[repr( C )]
+pub struct MidiEvent {
+	pub time: u32,
+	pub size: usize,
+	pub buffer: *mut u8,
+}
+
+#[repr( C )]
 pub enum TransportState {
 	Stopped,
 	Rolling,
@@ -20,6 +27,7 @@ pub enum TransportState {
 pub enum Client     {}
 pub enum Port       {}
 pub enum PortBuffer {}
+pub enum RingBuffer {}
 
 #[repr( C )]
 pub struct Position {
@@ -57,11 +65,18 @@ pub struct Library {
 	pub get_current_transport_frame: unsafe extern "C" fn( *const Client ) -> u32,
 	pub get_ports:                   unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize ) -> *const *const u8,
 	pub midi_clear_buffer:           unsafe extern "C" fn( *mut PortBuffer ) -> (),
+	pub midi_event_get:              unsafe extern "C" fn( *mut MidiEvent, *mut PortBuffer, u32 ) -> i32,
 	pub midi_event_write:            unsafe extern "C" fn( *mut PortBuffer, u32, *const u8, usize ) -> i32,
 	pub port_connected_to:           unsafe extern "C" fn( *const Port, *const u8 ) -> i32,
 	pub port_get_buffer:             unsafe extern "C" fn( *mut Port, u32 ) -> *mut PortBuffer,
 	pub port_name:                   unsafe extern "C" fn( *const Port ) -> *const u8,
 	pub port_register:               unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize, usize ) -> *mut Port,
+	pub ringbuffer_create:           unsafe extern "C" fn( usize ) -> *mut RingBuffer,
+	pub ringbuffer_free:             unsafe extern "C" fn( *mut RingBuffer ) -> (),
+	pub ringbuffer_read:             unsafe extern "C" fn( *mut RingBuffer, *mut u8, usize ) -> usize,
+	pub ringbuffer_read_space:       unsafe extern "C" fn( *mut RingBuffer ) -> usize,
+	pub ringbuffer_write:            unsafe extern "C" fn( *mut RingBuffer, *const u8, usize ) -> usize,
+	pub ringbuffer_write_space:      unsafe extern "C" fn( *mut RingBuffer ) -> usize,
 	pub set_process_callback:        unsafe extern "C" fn( *mut Client, ProcessCallback, *const any::Any ) -> i32,
 	pub set_sync_callback:           unsafe extern "C" fn( *mut Client, SyncCallback, *const any::Any ) -> i32,
 	pub transport_locate:            unsafe extern "C" fn( *mut Client, u32 ) -> i32,
@@ -92,11 +107,18 @@ impl Library {
 			get_current_transport_frame: *lib.get( b"jack_get_current_transport_frame\0" )?,
 			get_ports:                   *lib.get( b"jack_get_ports\0" )?,
 			midi_clear_buffer:           *lib.get( b"jack_midi_clear_buffer\0" )?,
+			midi_event_get:              *lib.get( b"jack_midi_event_get\0" )?,
 			midi_event_write:            *lib.get( b"jack_midi_event_write\0" )?,
 			port_connected_to:           *lib.get( b"jack_port_connected_to\0" )?,
 			port_get_buffer:             *lib.get( b"jack_port_get_buffer\0" )?,
 			port_name:                   *lib.get( b"jack_port_name\0" )?,
 			port_register:               *lib.get( b"jack_port_register\0" )?,
+			ringbuffer_create:           *lib.get( b"jack_ringbuffer_create\0" )?,
+			ringbuffer_free:             *lib.get( b"jack_ringbuffer_free\0" )?,
+			ringbuffer_read:             *lib.get( b"jack_ringbuffer_read\0" )?,
+			ringbuffer_read_space:       *lib.get( b"jack_ringbuffer_read_space\0" )?,
+			ringbuffer_write:            *lib.get( b"jack_ringbuffer_write\0" )?,
+			ringbuffer_write_space:      *lib.get( b"jack_ringbuffer_write_space\0" )?,
 			set_process_callback:        *lib.get( b"jack_set_process_callback\0" )?,
 			set_sync_callback:           *lib.get( b"jack_set_sync_callback\0" )?,
 			transport_locate:            *lib.get( b"jack_transport_locate\0" )?,

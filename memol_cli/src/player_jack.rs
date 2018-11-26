@@ -6,9 +6,10 @@ use player;
 use jack;
 
 
+const BUFFER_LEN: usize = 65536 / 16; // mem::size_of<MidiEvent>() == 16.
+
 struct SharedData {
 	events: Vec<midi::Event>,
-	immediate: Vec<midi::Event>,
 	changed: bool,
 }
 
@@ -16,7 +17,10 @@ struct SharedData {
 pub struct Player {
 	lib: jack::Library,
 	jack: *mut jack::Client,
-	port: *mut jack::Port,
+	port_send: *mut jack::Port,
+	port_recv: *mut jack::Port,
+	immediate_send: *mut jack::RingBuffer,
+	immediate_recv: *mut jack::RingBuffer,
 	shared: sync::Mutex<SharedData>,
 }
 
@@ -26,6 +30,8 @@ impl Drop for Player {
 	fn drop( &mut self ) {
 		unsafe {
 			(self.lib.client_close)( self.jack );
+			(self.lib.ringbuffer_free)( self.immediate_recv );
+			(self.lib.ringbuffer_free)( self.immediate_send );
 		}
 	}
 }
@@ -37,53 +43,54 @@ impl player::Player for Player {
 		shared.changed = true;
 	}
 
-	fn ports( &self ) -> io::Result<Vec<(String, bool)>> {
+	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>> {
+		self.ports( jack::PORT_IS_OUTPUT )
+	}
+
+	fn connect_from( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			let c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT );
-			if c_result.is_null() {
-				return Self::error( "jack_get_ports()." );
-			}
-			let mut r_result = Vec::new();
-			let mut it = c_result;
-			while !(*it).is_null() {
-				match ffi::CStr::from_ptr( *it as *const _ ).to_str() {
-					Ok( v ) => {
-						let is_conn = (self.lib.port_connected_to)( self.port, *it );
-						r_result.push( (v.into(), is_conn != 0) );
-					},
-					Err( _ ) => {
-						(self.lib.free)( c_result );
-						return Self::error( "jack_get_ports()." );
-					},
-				}
-				it = it.offset( 1 );
-			}
-			(self.lib.free)( c_result );
-			Ok( r_result )
+			self.connect( format!( "{}\0", port ).as_ptr(), (self.lib.port_name)( self.port_recv ) )
 		}
 	}
 
-	fn connect( &self, port: &str ) -> io::Result<()> {
+	fn disconnect_from( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			if (self.lib.connect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
-				return Self::error( "jack_connect()." );
-			}
+			self.disconnect( format!( "{}\0", port ).as_ptr(), (self.lib.port_name)( self.port_recv ) )
 		}
-		Ok( () )
 	}
 
-	fn disconnect( &self, port: &str ) -> io::Result<()> {
+	fn ports_to( &self ) -> io::Result<Vec<(String, bool)>> {
+		self.ports( jack::PORT_IS_INPUT )
+	}
+
+	fn connect_to( &self, port: &str ) -> io::Result<()> {
 		unsafe {
-			if (self.lib.disconnect)( self.jack, (self.lib.port_name)( self.port ), format!( "{}\0", port ).as_ptr() ) != 0 {
-				return Self::error( "jack_disconnect()." );
-			}
+			self.connect( (self.lib.port_name)( self.port_send ), format!( "{}\0", port ).as_ptr() )
 		}
-		Ok( () )
+	}
+
+	fn disconnect_to( &self, port: &str ) -> io::Result<()> {
+		unsafe {
+			self.disconnect( (self.lib.port_name)( self.port_send ), format!( "{}\0", port ).as_ptr() )
+		}
 	}
 
 	fn send( &self, evs: &[midi::Event] ) -> io::Result<()> {
-		let mut shared = self.shared.lock().unwrap();
-		shared.immediate.extend( evs.iter().cloned() );
+		unsafe {
+			let mut i = 0;
+			while i > evs.len() {
+				i += self.rb_write_block( self.immediate_send, &evs[i ..] );
+			}
+		}
+		Ok( () )
+	}
+
+	fn recv( &self, evs: &mut Vec<midi::Event> ) -> io::Result<()> {
+		unsafe {
+			let mut buf: [midi::Event; BUFFER_LEN] = mem::uninitialized();
+			let len = self.rb_read_block( self.immediate_recv, &mut buf );
+			evs.extend_from_slice( &buf[0 .. len] );
+		}
 		Ok( () )
 	}
 
@@ -145,20 +152,38 @@ impl Player {
 			if jack.is_null() {
 				return Self::error( "jack_client_open()." );
 			}
-
-			let port = (lib.port_register)( jack, "out\0".as_ptr(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
-			if port.is_null() {
+			let port_send = (lib.port_register)( jack, "out\0".as_ptr(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_OUTPUT, 0 );
+			if port_send.is_null() {
 				(lib.client_close)( jack );
 				return Self::error( "jack_port_register()." );
+			}
+			let port_recv = (lib.port_register)( jack, "in\0".as_ptr(), jack::DEFAULT_MIDI_TYPE, jack::PORT_IS_INPUT, 0 );
+			if port_recv.is_null() {
+				(lib.client_close)( jack );
+				return Self::error( "jack_port_register()." );
+			}
+
+			let immediate_send = (lib.ringbuffer_create)( mem::size_of::<midi::Event>() * BUFFER_LEN );
+			if immediate_send.is_null() {
+				(lib.client_close)( jack );
+				return Self::error( "jack_ringbuffer_create()." );
+			}
+			let immediate_recv = (lib.ringbuffer_create)( mem::size_of::<midi::Event>() * BUFFER_LEN );
+			if immediate_recv.is_null() {
+				(lib.ringbuffer_free)( immediate_send );
+				(lib.client_close)( jack );
+				return Self::error( "jack_ringbuffer_create()." );
 			}
 
 			let this = Box::new( Player{
 				lib: lib,
 				jack: jack,
-				port: port,
+				port_send: port_send,
+				port_recv: port_recv,
+				immediate_send: immediate_send,
+				immediate_recv: immediate_recv,
 				shared: sync::Mutex::new( SharedData{
 					events: Vec::new(),
-					immediate: Vec::new(),
 					changed: false,
 				} ),
 			} );
@@ -178,16 +203,93 @@ impl Player {
 		}
 	}
 
+	fn ports( &self, port_type: usize ) -> io::Result<Vec<(String, bool)>> {
+		unsafe {
+			let self_port = match port_type {
+				jack::PORT_IS_INPUT  => self.port_send,
+				jack::PORT_IS_OUTPUT => self.port_recv,
+				_                    => panic!(),
+			};
+
+			let c_result = (self.lib.get_ports)( self.jack, ptr::null(), jack::DEFAULT_MIDI_TYPE, port_type );
+			if c_result.is_null() {
+				return Self::error( "jack_get_ports()." );
+			}
+			let mut r_result = Vec::new();
+			let mut it = c_result;
+			while !(*it).is_null() {
+				match ffi::CStr::from_ptr( *it as *const _ ).to_str() {
+					Ok( v ) => {
+						let is_conn = (self.lib.port_connected_to)( self_port, *it );
+						r_result.push( (v.into(), is_conn != 0) );
+					},
+					Err( _ ) => {
+						(self.lib.free)( c_result );
+						return Self::error( "jack_get_ports()." );
+					},
+				}
+				it = it.offset( 1 );
+			}
+			(self.lib.free)( c_result );
+			Ok( r_result )
+		}
+	}
+
+	unsafe fn connect( &self, from: *const u8, to: *const u8 ) -> io::Result<()> {
+		if (self.lib.connect)( self.jack, from, to ) != 0 {
+			return Self::error( "jack_connect()." );
+		}
+		Ok( () )
+	}
+
+	unsafe fn disconnect( &self, from: *const u8, to: *const u8 ) -> io::Result<()> {
+		if (self.lib.disconnect)( self.jack, from, to ) != 0 {
+			return Self::error( "jack_disconnect()." );
+		}
+		Ok( () )
+	}
+
 	fn error<T>( text: &str ) -> io::Result<T> {
 		Err( io::Error::new( io::ErrorKind::Other, text ) )
+	}
+
+	unsafe fn rb_write_block<T>( &self, rb: *mut jack::RingBuffer, buf: &[T] ) -> usize {
+		let len = cmp::min( (self.lib.ringbuffer_write_space)( rb ) / mem::size_of::<T>(), buf.len() );
+		(self.lib.ringbuffer_write)( rb, buf.as_ptr() as *const u8, len * mem::size_of::<T>() );
+		len
+	}
+
+	unsafe fn rb_read_block<T>( &self, rb: *mut jack::RingBuffer, buf: &mut [T] ) -> usize {
+		let len = cmp::min( (self.lib.ringbuffer_read_space)( rb ) / mem::size_of::<T>(), buf.len() );
+		(self.lib.ringbuffer_read)( rb, buf.as_mut_ptr() as *mut u8, len * mem::size_of::<T>() );
+		len
 	}
 
 	extern "C" fn process_callback( size: u32, this: *const any::Any ) -> i32 {
 		unsafe {
 			let this = &*(this as *const Player);
 
-			let buf = (this.lib.port_get_buffer)( this.port, size );
-			(this.lib.midi_clear_buffer)( buf );
+			let buf_send = (this.lib.port_get_buffer)( this.port_send, size );
+			let buf_recv = (this.lib.port_get_buffer)( this.port_recv, size );
+			(this.lib.midi_clear_buffer)( buf_send );
+
+			let mut pos: jack::Position = mem::uninitialized();
+			let state = (this.lib.transport_query)( this.jack, &mut pos );
+
+			for i in 0 .. {
+				let mut ev = mem::uninitialized();
+				if (this.lib.midi_event_get)( &mut ev, buf_recv, i ) != 0 {
+					break;
+				}
+				let msg = slice::from_raw_parts( ev.buffer, ev.size );
+				this.rb_write_block( this.immediate_recv, &[ midi::Event::new( ev.time as f64 / pos.frame_rate as f64, 0, msg ) ] );
+			}
+
+			let mut evs: [midi::Event; BUFFER_LEN] = mem::uninitialized();
+			let len = this.rb_read_block( this.immediate_send, &mut evs );
+			for ev in evs[0 .. len].iter() {
+				(this.lib.midi_event_write)( buf_send, 0, ev.msg.as_ptr(), ev.len as usize );
+			}
 
 			let mut shared = match this.shared.try_lock() {
 				Err( _ ) => return 0,
@@ -195,30 +297,22 @@ impl Player {
 			};
 
 			if shared.changed {
-				this.write_all_sound_off( buf, 0 );
+				this.write_all_sound_off( buf_send, 0 );
 				shared.changed = false;
 			}
 
-			for ev in shared.immediate.drain( .. ) {
-				(this.lib.midi_event_write)( buf, 0, ev.msg.as_ptr(), ev.len as usize );
-			}
+			if let jack::TransportState::Rolling = state {
+				let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as isize - pos.frame as isize;
+				let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0 );
+				let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size as isize );
+				for ev in shared.events[ibgn .. iend].iter() {
+					(this.lib.midi_event_write)( buf_send, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
+				}
 
-			let mut pos: jack::Position = mem::uninitialized();
-			match (this.lib.transport_query)( this.jack, &mut pos ) {
-				jack::TransportState::Rolling => (),
-				_ => return 0,
-			}
-
-			let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as isize - pos.frame as isize;
-			let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0 );
-			let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size as isize );
-			for ev in shared.events[ibgn .. iend].iter() {
-				(this.lib.midi_event_write)( buf, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
-			}
-
-			if ibgn == shared.events.len() {
-				(this.lib.transport_stop)( this.jack );
-				shared.changed = true;
+				if ibgn == shared.events.len() {
+					(this.lib.transport_stop)( this.jack );
+					shared.changed = true;
+				}
 			}
 		}
 		0

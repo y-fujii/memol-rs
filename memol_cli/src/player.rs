@@ -5,10 +5,14 @@ use memol::midi;
 
 pub trait Player: Send {
 	fn set_data( &self, Vec<midi::Event> );
-	fn ports( &self ) -> io::Result<Vec<(String, bool)>>;
-	fn connect( &self, &str ) -> io::Result<()>;
-	fn disconnect( &self, &str ) -> io::Result<()>;
+	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>>;
+	fn connect_from( &self, &str ) -> io::Result<()>;
+	fn disconnect_from( &self, &str ) -> io::Result<()>;
+	fn ports_to( &self ) -> io::Result<Vec<(String, bool)>>;
+	fn connect_to( &self, &str ) -> io::Result<()>;
+	fn disconnect_to( &self, &str ) -> io::Result<()>;
 	fn send( &self, &[midi::Event] ) -> io::Result<()>;
+	fn recv( &self, &mut Vec<midi::Event> ) -> io::Result<()>;
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
 	fn seek( &self, f64 ) -> io::Result<()>;
@@ -26,19 +30,35 @@ impl Player for DummyPlayer {
 	fn set_data( &self, _: Vec<midi::Event> ) {
 	}
 
-	fn ports( &self ) -> io::Result<Vec<(String, bool)>> {
+	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>> {
 		Ok( Vec::new() )
 	}
 
-	fn connect( &self, _: &str ) -> io::Result<()> {
+	fn connect_from( &self, _: &str ) -> io::Result<()> {
 		Ok( () )
 	}
 
-	fn disconnect( &self, _: &str ) -> io::Result<()> {
+	fn disconnect_from( &self, _: &str ) -> io::Result<()> {
+		Ok( () )
+	}
+
+	fn ports_to( &self ) -> io::Result<Vec<(String, bool)>> {
+		Ok( Vec::new() )
+	}
+
+	fn connect_to( &self, _: &str ) -> io::Result<()> {
+		Ok( () )
+	}
+
+	fn disconnect_to( &self, _: &str ) -> io::Result<()> {
 		Ok( () )
 	}
 
 	fn send( &self, _: &[midi::Event] ) -> io::Result<()> {
+		Ok( () )
+	}
+
+	fn recv( &self, _: &mut Vec<midi::Event> ) -> io::Result<()> {
 		Ok( () )
 	}
 

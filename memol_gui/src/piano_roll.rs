@@ -5,6 +5,7 @@ use clipboard::ClipboardProvider;
 use imgui::*;
 use imutil;
 use memol::misc;
+use memol::midi;
 use memol::generator;
 
 
@@ -17,7 +18,8 @@ pub enum Event {
 pub struct PianoRoll {
 	pub events: Vec<Event>,
 	pub scroll_ratio: f32,
-	notes: Vec<i64>,
+	notes_midi: [bool; 128],
+	notes_mouse: Vec<i64>,
 	dragging: bool,
 	time_scale: f32,
 	line_width: f32,
@@ -35,7 +37,8 @@ impl PianoRoll {
 		Self {
 			events: Vec::new(),
 			scroll_ratio: 0.0,
-			notes: Vec::new(),
+			notes_midi: [false; 128],
+			notes_mouse: Vec::new(),
 			dragging: false,
 			time_scale: 24.0,
 			line_width: 0.25,
@@ -46,6 +49,31 @@ impl PianoRoll {
 			color_note_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
 			color_note_1:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.80, 0.40, 0.10, 1.00 ) ) ),
 			color_hovered: imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 1.00, 0.60, 0.30, 0.50 ) ) ),
+		}
+	}
+
+	pub fn handle_midi_inputs<'a, T: Iterator<Item=&'a midi::Event>>( &mut self, events: T ) {
+		for ev in events {
+			match ev.msg[0] & 0xf0 {
+				0x80 => self.notes_midi[ev.msg[1] as usize] = false,
+				0x90 => self.notes_midi[ev.msg[1] as usize] = true,
+				0xb0 => {
+					if ev.msg[1] == 64 && ev.msg[2] >= 64 {
+						if let Some( ref mut clipboard ) = self.clipboard {
+							let notes: Vec<_> = self.notes_midi
+								.iter()
+								.enumerate()
+								.filter( |(_, &b)| b )
+								.map( |(i, _)| i as i64 )
+								.collect();
+							if !notes.is_empty() {
+								clipboard.set_contents( Self::note_symbols( &notes[..], self.use_sharp ) ).ok();
+							}
+						}
+					}
+				},
+				_    => (),
+			}
 		}
 	}
 
@@ -62,7 +90,7 @@ impl PianoRoll {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if self.notes.is_empty() && IsMouseReleased( 1 ) {
+			else if self.notes_mouse.is_empty() && IsMouseReleased( 1 ) {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 				self.events.push( Event::Seek( x ) );
 			}
@@ -73,6 +101,7 @@ impl PianoRoll {
 			}
 
 			let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
+			self.draw_indicator( &mut ctx, time_len );
 			self.draw_background( &mut ctx, time_len );
 			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
@@ -81,33 +110,36 @@ impl PianoRoll {
 		EndChild();
 	}
 
-	unsafe fn draw_background( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
-		// mouse operations.
+	unsafe fn draw_indicator( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
 		for y in 0 .. 128 {
 			let v0 = ImVec2::new( self.time_scale * 0.0     , y as f32 );
 			let v1 = ImVec2::new( self.time_scale * time_len, y as f32 + 1.0 );
 			ctx.add_dummy( v0, v1 );
 			if IsItemHovered( 0 ) {
 				if IsMouseClicked( 0, false ) {
-					self.notes.push( y );
+					self.notes_mouse.push( y );
 					self.events.push( Event::NoteOn( y ) );
 				}
-				if !self.notes.is_empty() && IsMouseReleased( 1 ) {
+				if !self.notes_mouse.is_empty() && IsMouseReleased( 1 ) {
 					if let Some( ref mut clipboard ) = self.clipboard {
-						clipboard.set_contents( Self::note_symbols( &self.notes, self.use_sharp ) ).ok();
+						clipboard.set_contents( Self::note_symbols( &self.notes_mouse, self.use_sharp ) ).ok();
 					}
-					self.notes.clear();
+					self.notes_mouse.clear();
 					self.events.push( Event::NoteClear );
 				}
+			}
+			if IsItemHovered( 0 ) || self.notes_midi[y as usize] {
 				ctx.add_rect_filled( v0, v1, self.color_hovered, 0.0, !0 );
 			}
 		}
-		if self.notes.len() > 0 {
+		if self.notes_mouse.len() > 0 {
 			BeginTooltip();
-				imutil::show_text( &Self::note_symbols( &self.notes, self.use_sharp ) );
+				imutil::show_text( &Self::note_symbols( &self.notes_mouse, self.use_sharp ) );
 			EndTooltip();
 		}
+	}
 
+	unsafe fn draw_background( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
 		// vertical lines.
 		for i in 0 .. time_len.floor() as i32 + 1 {
 			let ys = [

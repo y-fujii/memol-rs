@@ -45,7 +45,8 @@ struct WindowHandler {
 	channel: usize,
 	follow: bool,
 	autoplay: bool,
-	ports: Vec<(String, bool)>,
+	ports_from: Vec<(String, bool)>,
+	ports_to: Vec<(String, bool)>,
 	wallpaper: Option<renderer::Texture>,
 }
 
@@ -107,7 +108,8 @@ impl WindowHandler {
 			channel: 0,
 			follow: true,
 			autoplay: true,
-			ports: Vec::new(),
+			ports_from: Vec::new(),
+			ports_to: Vec::new(),
 			wallpaper: None,
 		}
 	}
@@ -117,6 +119,10 @@ impl WindowHandler {
 
 		let is_playing = self.player.is_playing();
 		let location   = self.player.location();
+
+		let mut events = Vec::new();
+		self.player.recv( &mut events ).ok();
+		self.piano_roll.handle_midi_inputs( events.iter() );
 
 		if let Some( ref text ) = self.text {
 			imutil::message_dialog( "Message", text );
@@ -150,7 +156,7 @@ impl WindowHandler {
 						},
 						piano_roll::Event::NoteClear => {
 							// all sound off.
-							let evs = [ midi::Event::new( 0.0, 1, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
+							let evs = [ midi::Event::new( 0.0, 0, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
 							self.player.send( &evs ).ok();
 							self.bus_tx.send( &ipc::Message::Immediate{
 								events: evs.iter().map( |e| e.clone().into() ).collect()
@@ -214,7 +220,7 @@ impl WindowHandler {
 
 			SameLine( 0.0, -1.0 );
 			ImGui::PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
-			if BeginCombo( c_str!( "##Channel" ), c_str!( "Channel {:2}", self.channel ), 0 ) {
+			if BeginCombo( c_str!( "##channel" ), c_str!( "Channel {:2}", self.channel ), 0 ) {
 				for &(i, _) in self.assembly.channels.iter() {
 					if Selectable( c_str!( "Channel {:2}", i ), i == self.channel, 0, &ImVec2::zero() ) {
 						self.channel = i;
@@ -225,19 +231,40 @@ impl WindowHandler {
 			}
 			PopItemWidth();
 
+			// ports from.
 			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Ports..." ), &ImVec2::zero() ) {
-				OpenPopup( c_str!( "ports" ) );
-				self.ports = self.player.ports().unwrap_or_default();
+			if Button( c_str!( "Input from..." ), &ImVec2::zero() ) {
+				OpenPopup( c_str!( "ports from" ) );
+				self.ports_from = self.player.ports_from().unwrap_or_default();
 			}
-			if BeginPopup( c_str!( "ports" ), 0 ) {
-				for &mut (ref port, ref mut is_conn) in self.ports.iter_mut() {
+			if BeginPopup( c_str!( "ports from" ), 0 ) {
+				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
-							self.player.connect( port ).is_ok()
+							self.player.connect_from( port ).is_ok()
 						}
 						else {
-							self.player.disconnect( port ).is_err()
+							self.player.disconnect_from( port ).is_err()
+						}
+					}
+				}
+				EndPopup();
+			}
+
+			// ports to.
+			SameLine( 0.0, -1.0 );
+			if Button( c_str!( "Output to..." ), &ImVec2::zero() ) {
+				OpenPopup( c_str!( "ports to" ) );
+				self.ports_to = self.player.ports_to().unwrap_or_default();
+			}
+			if BeginPopup( c_str!( "ports to" ), 0 ) {
+				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
+					if Checkbox( c_str!( "{}", port ), is_conn ) {
+						*is_conn = if *is_conn {
+							self.player.connect_to( port ).is_ok()
+						}
+						else {
+							self.player.disconnect_to( port ).is_err()
 						}
 					}
 				}
@@ -421,7 +448,7 @@ fn main() {
 				},
 			};
 			for port in ports {
-				if let Err( v ) = player.connect( &port ) {
+				if let Err( v ) = player.connect_to( &port ) {
 					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
 					return;
 				}

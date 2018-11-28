@@ -13,9 +13,10 @@ mod imgui;
 mod renderer;
 mod window;
 mod piano_roll;
+mod compile_thread;
 use std::*;
 use memol::*;
-use memol_cli::{ notify, ipc, player, player_jack };
+use memol_cli::{ ipc, player, player_jack };
 use memol_cli::player::Player;
 
 
@@ -27,13 +28,8 @@ enum UiMessage {
 	Player( Box<player::Player> ),
 }
 
-enum CompilerMessage {
-    File( path::PathBuf ),
-    Refresh,
-}
-
 struct WindowHandler {
-	compile_tx: sync::mpsc::Sender<CompilerMessage>,
+	compile_tx: sync::mpsc::Sender<compile_thread::Message>,
 	bus_tx: ipc::Sender<ipc::Message>,
 	path: path::PathBuf,
 	assembly: Assembly,
@@ -56,7 +52,7 @@ impl window::Handler<UiMessage> for WindowHandler {
 	}
 
 	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
-		self.compile_tx.send( CompilerMessage::File( path.clone() ) ).unwrap();
+		self.compile_tx.send( compile_thread::Message::File( path.clone() ) ).unwrap();
 		JACK_FRAME_WAIT
 	}
 
@@ -94,7 +90,7 @@ impl window::Handler<UiMessage> for WindowHandler {
 }
 
 impl WindowHandler {
-	fn new( compile_tx: sync::mpsc::Sender<CompilerMessage>, bus_tx: ipc::Sender<ipc::Message> ) -> WindowHandler {
+	fn new( compile_tx: sync::mpsc::Sender<compile_thread::Message>, bus_tx: ipc::Sender<ipc::Message> ) -> WindowHandler {
 		WindowHandler{
 			bus_tx: bus_tx,
 			compile_tx: compile_tx,
@@ -280,7 +276,7 @@ impl WindowHandler {
 			}
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
-				self.compile_tx.send( CompilerMessage::Refresh ).unwrap();
+				self.compile_tx.send( compile_thread::Message::Refresh ).unwrap();
 			}
 		End();
 		PopStyleVar( 1 );
@@ -293,41 +289,6 @@ impl WindowHandler {
 		let mut buf = io::BufWriter::new( fs::File::create( smf )? );
 		memol::smf::write_smf( &mut buf, &self.events, 480 )?;
 		Ok( () )
-	}
-}
-
-fn compile_task( rx: sync::mpsc::Receiver<CompilerMessage>, ui_tx: window::MessageSender<UiMessage>, bus_tx: ipc::Sender<ipc::Message> ) {
-	let mut path = path::PathBuf::new();
-	let mut modified = time::UNIX_EPOCH;
-	loop {
-		match notify::wait_file_or_channel( &path, &rx, modified ) {
-			notify::WaitResult::File( v ) => {
-				modified = v;
-			},
-			notify::WaitResult::Channel( CompilerMessage::File( v ) ) => {
-				path = v;
-				modified = time::UNIX_EPOCH;
-				continue;
-			},
-			notify::WaitResult::Channel( CompilerMessage::Refresh ) => (),
-			notify::WaitResult::Disconnect => break,
-		}
-		if path == path::PathBuf::new() {
-			continue;
-		}
-
-		let msg = || -> Result<_, misc::Error> {
-			let rng = random::Generator::new();
-			let asm = compile( &rng, &path )?;
-			let evs = assemble( &rng, &asm )?;
-			bus_tx.send( &ipc::Message::Success{
-				events: evs.iter().map( |e| e.clone().into() ).collect()
-			} ).unwrap();
-			Ok( UiMessage::Data( path.clone(), asm, evs ) )
-		}().unwrap_or_else( |e| {
-			UiMessage::Text( format!( "{}", e ) )
-		} );
-		ui_tx.send( msg );
 	}
 }
 
@@ -410,10 +371,10 @@ fn main() {
 			}
 		} );
 
-		let (compile_tx, compile_rx) = sync::mpsc::channel();
+		let mut compiler = compile_thread::CompileThread::new();
 
 		// initialize window.
-		let mut window = window::Window::new( WindowHandler::new( compile_tx.clone(), bus_tx.clone() ) )?;
+		let mut window = window::Window::new( WindowHandler::new( compiler.create_sender(), bus_tx.clone() ) )?;
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
 		if let Some( path ) = args.opt_str( "w" ) {
@@ -425,16 +386,30 @@ fn main() {
 		}
 
 		// initialize compiler.
-		let window_tx = window.create_sender();
-		thread::spawn( move || compile_task( compile_rx, window_tx, bus_tx ) );
+		compiler.on_success( {
+			let window_tx = window.create_sender();
+			move |path, asm, evs| {
+				bus_tx.send( &ipc::Message::Success{
+					events: evs.iter().map( |e| e.clone().into() ).collect()
+				} ).unwrap();
+				window_tx.send( UiMessage::Data( path.clone(), asm, evs ) );
+			}
+		} );
+		compiler.on_failure( {
+			let window_tx = window.create_sender();
+			move |text| {
+				window_tx.send( UiMessage::Text( text ) );
+			}
+		} );
 		if let Some( path ) = args.free.first() {
-			compile_tx.send( CompilerMessage::File( path.into() ) ).unwrap();
+			compiler.create_sender().send( compile_thread::Message::File( path.into() ) ).unwrap();
 		}
 		else {
 			window.create_sender().send( UiMessage::Text(
 				"Drag and drop to open a file.".into()
 			) );
 		}
+		compiler.spawn();
 
 		// initialize player.
 		let ports = args.opt_strs( "c" );

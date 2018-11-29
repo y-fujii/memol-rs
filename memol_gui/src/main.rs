@@ -14,6 +14,8 @@ mod renderer;
 mod window;
 mod piano_roll;
 mod compile_thread;
+mod transport_widget;
+mod main_widget;
 use std::*;
 use memol::*;
 use memol_cli::{ ipc, player, player_jack };
@@ -28,271 +30,7 @@ enum UiMessage {
 	Player( Box<player::Player> ),
 }
 
-struct WindowHandler {
-	compile_tx: sync::mpsc::Sender<compile_thread::Message>,
-	bus_tx: ipc::Sender<ipc::Message>,
-	path: path::PathBuf,
-	assembly: Assembly,
-	events: Vec<midi::Event>,
-	tempo: f64, // XXX
-	text: Option<String>,
-	player: Box<player::Player>,
-	piano_roll: piano_roll::PianoRoll,
-	channel: usize,
-	follow: bool,
-	autoplay: bool,
-	ports_from: Vec<(String, bool)>,
-	ports_to: Vec<(String, bool)>,
-	wallpaper: Option<renderer::Texture>,
-}
-
-impl window::Handler<UiMessage> for WindowHandler {
-	fn on_draw( &mut self ) -> i32 {
-		unsafe { self.draw_all() }
-	}
-
-	fn on_file_dropped( &mut self, path: &path::PathBuf ) -> i32 {
-		self.compile_tx.send( compile_thread::Message::File( path.clone() ) ).unwrap();
-		JACK_FRAME_WAIT
-	}
-
-	fn on_message( &mut self, msg: UiMessage ) -> i32 {
-		match msg {
-			UiMessage::Data( path, asm, evs ) => {
-				self.path     = path;
-				self.assembly = asm;
-				self.events   = evs;
-				self.text     = None;
-				let rng = random::Generator::new(); // XXX
-				let evaluator = generator::Evaluator::new( &rng );
-				self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
-			},
-			UiMessage::Text( text ) => {
-				self.text = Some( text );
-			},
-			UiMessage::Player( player ) => {
-				self.player = player;
-			},
-		}
-
-		let bgn = match self.events.get( 0 ) {
-			Some( ev ) => ev.time.max( 0.0 ),
-			None       => 0.0,
-		};
-		self.player.set_data( self.events.clone() );
-		if self.autoplay && !self.player.is_playing() {
-			self.player.seek( bgn ).ok();
-			self.player.play().ok();
-		}
-
-		JACK_FRAME_WAIT
-	}
-}
-
-impl WindowHandler {
-	fn new( compile_tx: sync::mpsc::Sender<compile_thread::Message>, bus_tx: ipc::Sender<ipc::Message> ) -> WindowHandler {
-		WindowHandler{
-			bus_tx: bus_tx,
-			compile_tx: compile_tx,
-			path: path::PathBuf::new(),
-			assembly: Assembly::default(),
-			events: Vec::new(),
-			tempo: 1.0,
-			text: None,
-			player: player::DummyPlayer::new(),
-			piano_roll: piano_roll::PianoRoll::new(),
-			channel: 0,
-			follow: true,
-			autoplay: true,
-			ports_from: Vec::new(),
-			ports_to: Vec::new(),
-			wallpaper: None,
-		}
-	}
-
-	unsafe fn draw_all( &mut self ) -> i32 {
-		use imgui::*;
-
-		let is_playing = self.player.is_playing();
-		let location   = self.player.location();
-
-		let mut events = Vec::new();
-		self.player.recv( &mut events ).ok();
-		self.piano_roll.handle_midi_inputs( events.iter() );
-
-		if let Some( ref text ) = self.text {
-			imutil::message_dialog( "Message", text );
-		}
-
-		let mut changed = self.draw_transport();
-
-		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffffffff );
-		imutil::root_begin( 0 );
-			let size = GetWindowSize();
-			if let Some( &(_, ref ch) ) = self.assembly.channels
-				.iter().filter( |&&(i, _)| i == self.channel ).next()
-			{
-				self.piano_roll.draw(
-					&ch.score, self.assembly.len.to_float() as f32,
-					(location * self.tempo) as f32,
-					is_playing && self.follow, size,
-				);
-				for ev in self.piano_roll.events.drain( .. ) {
-					match ev {
-						piano_roll::Event::Seek( loc ) => {
-							self.player.seek( f64::max( loc as f64, 0.0 ) / self.tempo ).ok();
-							changed = true;
-						},
-						piano_roll::Event::NoteOn( n ) => {
-							let evs = [ midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, n as u8, 0x40 ] ) ];
-							self.player.send( &evs ).ok();
-							self.bus_tx.send( &ipc::Message::Immediate{
-								events: evs.iter().map( |e| e.clone().into() ).collect()
-							} ).unwrap();
-						},
-						piano_roll::Event::NoteClear => {
-							// all sound off.
-							let evs = [ midi::Event::new( 0.0, 0, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
-							self.player.send( &evs ).ok();
-							self.bus_tx.send( &ipc::Message::Immediate{
-								events: evs.iter().map( |e| e.clone().into() ).collect()
-							} ).unwrap();
-						},
-					}
-				}
-			}
-			if let Some( ref wallpaper ) = self.wallpaper {
-				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
-				let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
-				let v0 = GetWindowPos() + self.piano_roll.scroll_ratio * (size - wsize);
-				(*GetWindowDrawList()).AddImage(
-					wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
-				);
-			}
-		imutil::root_end();
-		PopStyleColor( 1 );
-
-		if changed { JACK_FRAME_WAIT } else if is_playing { 1 } else { 0 }
-	}
-
-	unsafe fn draw_transport( &mut self ) -> bool {
-		use imgui::*;
-
-		let mut changed = false;
-
-		let padding = get_style().WindowPadding;
-		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &(0.5 * padding).round() );
-		SetNextWindowPos( &ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero() );
-		Begin(
-			c_str!( "Transport" ), ptr::null_mut(),
-			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
-			 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar) as i32
-		);
-			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
-			if Button( c_str!( "\u{f048}" ), &size ) {
-				self.player.seek( 0.0 ).ok();
-				changed = true;
-			}
-			SameLine( 0.0, 1.0 );
-			if Button( c_str!( "\u{f04b}" ), &size ) {
-				self.player.play().ok();
-				changed = true;
-			}
-			SameLine( 0.0, 1.0 );
-			if Button( c_str!( "\u{f04d}" ), &size ) {
-				self.player.stop().ok();
-				changed = true;
-			}
-			SameLine( 0.0, 1.0 );
-			if Button( c_str!( "\u{f051}" ), &size ) {
-				self.player.seek( self.assembly.len.to_float() / self.tempo ).ok();
-				changed = true;
-			}
-
-			SameLine( 0.0, -1.0 );
-			Checkbox( c_str!( "Follow" ), &mut self.follow );
-			SameLine( 0.0, -1.0 );
-			Checkbox( c_str!( "Autoplay" ), &mut self.autoplay );
-
-			SameLine( 0.0, -1.0 );
-			ImGui::PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
-			if BeginCombo( c_str!( "##channel" ), c_str!( "Channel {:2}", self.channel ), 0 ) {
-				for &(i, _) in self.assembly.channels.iter() {
-					if Selectable( c_str!( "Channel {:2}", i ), i == self.channel, 0, &ImVec2::zero() ) {
-						self.channel = i;
-						changed = true;
-					}
-				}
-				EndCombo();
-			}
-			PopItemWidth();
-
-			// ports from.
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Input from..." ), &ImVec2::zero() ) {
-				OpenPopup( c_str!( "ports from" ) );
-				self.ports_from = self.player.ports_from().unwrap_or_default();
-			}
-			if BeginPopup( c_str!( "ports from" ), 0 ) {
-				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
-					if Checkbox( c_str!( "{}", port ), is_conn ) {
-						*is_conn = if *is_conn {
-							self.player.connect_from( port ).is_ok()
-						}
-						else {
-							self.player.disconnect_from( port ).is_err()
-						}
-					}
-				}
-				EndPopup();
-			}
-
-			// ports to.
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Output to..." ), &ImVec2::zero() ) {
-				OpenPopup( c_str!( "ports to" ) );
-				self.ports_to = self.player.ports_to().unwrap_or_default();
-			}
-			if BeginPopup( c_str!( "ports to" ), 0 ) {
-				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
-					if Checkbox( c_str!( "{}", port ), is_conn ) {
-						*is_conn = if *is_conn {
-							self.player.connect_to( port ).is_ok()
-						}
-						else {
-							self.player.disconnect_to( port ).is_err()
-						}
-					}
-				}
-				EndPopup();
-			}
-
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Generate SMF" ), &ImVec2::zero() ) {
-				if let Err( e ) = self.generate_smf() {
-					self.text = Some( format!( "{}", e ) );
-					changed = true;
-				}
-			}
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
-				self.compile_tx.send( compile_thread::Message::Refresh ).unwrap();
-			}
-		End();
-		PopStyleVar( 1 );
-
-		changed
-	}
-
-	fn generate_smf( &self ) -> io::Result<()> {
-		let smf = self.path.with_extension( "mid" );
-		let mut buf = io::BufWriter::new( fs::File::create( smf )? );
-		memol::smf::write_smf( &mut buf, &self.events, 480 )?;
-		Ok( () )
-	}
-}
-
-pub fn init_imgui( scale: f32 ) {
+fn init_imgui( scale: f32 ) {
 	let scale = f32::sqrt( scale );
 	let io = imgui::get_io();
 	imutil::set_theme(
@@ -360,33 +98,52 @@ fn main() {
 		if args.free.len() > 1 {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
-
-		// initialize IPC.
 		let addr = args.opt_str( "a" ).unwrap_or( "127.0.0.1:27182".into() );
-		let bus = ipc::Bus::new();
-		let bus_tx: ipc::Sender<ipc::Message> = bus.create_sender();
-		thread::spawn( move || {
-			if let Err( err ) = bus.listen( addr, |_| () ) {
-				eprintln!( "IPC: {}", err );
-			}
-		} );
+		let ports = args.opt_strs( "c" );
+		let wallpaper = args.opt_str( "w" );
 
+		// create instances.
 		let mut compiler = compile_thread::CompileThread::new();
+		let bus = ipc::Bus::new();
+		let main_widget = cell::RefCell::new( main_widget::MainWidget::new( compiler.create_sender(), bus.create_sender() ) );
+		let mut window = window::Window::new()?;
 
 		// initialize window.
-		let mut window = window::Window::new( WindowHandler::new( compiler.create_sender(), bus_tx.clone() ) )?;
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
-		if let Some( path ) = args.opt_str( "w" ) {
+		window.on_draw( || main_widget.borrow_mut().draw() );
+		window.on_message( |msg| {
+			match msg {
+				UiMessage::Data( path, asm, evs ) => {
+					main_widget.borrow_mut().set_data( path, asm, evs );
+				},
+				UiMessage::Text( text ) => {
+					main_widget.borrow_mut().text = Some( text );
+				},
+				UiMessage::Player( player ) => {
+					main_widget.borrow_mut().player = player;
+				},
+			}
+			JACK_FRAME_WAIT
+		} );
+		window.on_file_dropped( {
+			let compiler_tx = compiler.create_sender();
+			move |path| {
+				compiler_tx.send( compile_thread::Message::File( path.clone() ) ).unwrap();
+				JACK_FRAME_WAIT
+			}
+		} );
+		if let Some( path ) = wallpaper {
 			let mut wallpaper = renderer::Texture::new();
 			let mut img = image::open( path )?.to_rgba();
 			lighten_image( &mut img, 0.5 );
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
-			window.handler_mut().wallpaper = Some( wallpaper );
+			main_widget.borrow_mut().wallpaper = Some( wallpaper );
 		}
 
 		// initialize compiler.
 		compiler.on_success( {
+			let bus_tx = bus.create_sender();
 			let window_tx = window.create_sender();
 			move |path, asm, evs| {
 				bus_tx.send( &ipc::Message::Success{
@@ -409,26 +166,31 @@ fn main() {
 				"Drag and drop to open a file.".into()
 			) );
 		}
-		compiler.spawn();
 
-		// initialize player.
-		let ports = args.opt_strs( "c" );
-		let window_tx = window.create_sender();
+		// spawn threads.
+		compiler.spawn();
 		thread::spawn( move || {
-			let player = match player_jack::Player::new( "memol" ) {
-				Ok ( v ) => v,
-				Err( v ) => {
-					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
-					return;
-				},
-			};
-			for port in ports {
-				if let Err( v ) = player.connect_to( &port ) {
-					window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
-					return;
-				}
+			if let Err( err ) = bus.listen( addr, |_| () ) {
+				eprintln!( "IPC: {}", err );
 			}
-			window_tx.send( UiMessage::Player( player ) );
+		} );
+		thread::spawn( {
+			let window_tx = window.create_sender();
+			move || {
+				let player = match player_jack::Player::new( "memol" ) {
+					Ok ( v ) => v,
+					Err( v ) => {
+						window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
+						return;
+					},
+				};
+				for port in ports {
+					if let Err( v ) = player.connect_to( &port ) {
+						window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
+					}
+				}
+				window_tx.send( UiMessage::Player( player ) );
+			}
 		} );
 
 		window.event_loop()

@@ -5,8 +5,8 @@ use memol_cli::notify;
 
 
 pub enum Message {
-    File( path::PathBuf ),
-    Refresh,
+	File( path::PathBuf ),
+	Refresh,
 	Exit,
 }
 
@@ -82,4 +82,3 @@ impl CompileThread {
 		} )
 	}
 }
-

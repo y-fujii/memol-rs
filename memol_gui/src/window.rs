@@ -7,12 +7,6 @@ use imgui;
 use renderer;
 
 
-pub trait Handler<T> {
-	fn on_draw( &mut self ) -> i32 { 0 }
-	fn on_file_dropped( &mut self, &path::PathBuf ) -> i32 { 0 }
-	fn on_message( &mut self, T ) -> i32 { 0 }
-}
-
 pub struct MessageSender<T> {
 	tx: sync::mpsc::Sender<T>,
 	proxy: glutin::EventsLoopProxy,
@@ -25,25 +19,27 @@ impl<T> MessageSender<T> {
 	}
 }
 
-pub struct Window<T, U: Handler<T>> {
+pub struct Window<'a, T> {
 	context: *mut imgui::ImGuiContext,
 	looper: glutin::EventsLoop,
 	window: glutin::GlWindow,
 	renderer: renderer::Renderer,
 	timer: time::SystemTime,
-	handler: U,
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
+	on_message: Box<'a + Fn( T ) -> i32>,
+	on_draw: Box<'a + Fn() -> i32>,
+	on_file_dropped: Box<'a + Fn( &path::PathBuf ) -> i32>,
 }
 
-impl<T, U: Handler<T>> Drop for Window<T, U> {
+impl<'a, T> Drop for Window<'a, T> {
 	fn drop( &mut self ) {
 		unsafe { imgui::DestroyContext( self.context ) };
 	}
 }
 
-impl<T, U: Handler<T>> Window<T, U> {
-	pub fn new( handler: U ) -> Result<Self, Box<error::Error>> {
+impl<'a, T> Window<'a, T> {
+	pub fn new() -> Result<Self, Box<error::Error>> {
 		let context = unsafe { imgui::CreateContext( ptr::null_mut() ) };
 
 		let io = imgui::get_io();
@@ -94,14 +90,24 @@ impl<T, U: Handler<T>> Window<T, U> {
 			window: window,
 			renderer: renderer,
 			timer: time::SystemTime::now(),
-			handler: handler,
 			tx: tx,
 			rx: rx,
+			on_message: Box::new( |_| 0 ),
+			on_draw: Box::new( || 0 ),
+			on_file_dropped: Box::new( |_| 0 ),
 		} )
 	}
 
-	pub fn handler_mut( &mut self ) -> &mut U {
-		&mut self.handler
+	pub fn on_message<U: 'a + Fn( T ) -> i32>( &mut self, f: U ) {
+		self.on_message = Box::new( f );
+	}
+
+	pub fn on_draw<U: 'a + Fn() -> i32>( &mut self, f: U ) {
+		self.on_draw = Box::new( f );
+	}
+
+	pub fn on_file_dropped<U: 'a + Fn( &path::PathBuf ) -> i32>( &mut self, f: U ) {
+		self.on_file_dropped = Box::new( f );
 	}
 
 	pub fn hidpi_factor( &self ) -> f64 {
@@ -179,7 +185,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 		imgui::get_io().DeltaTime = f32::max( delta, f32::EPSILON );
 
 		unsafe { imgui::NewFrame() };
-		let n = self.handler.on_draw();
+		let n = (self.on_draw)();
 		unsafe { imgui::Render() };
 		Ok( n )
 	}
@@ -249,7 +255,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 					}
 				},
 				WindowEvent::DroppedFile( ref path ) => {
-					n = cmp::max( n, self.handler.on_file_dropped( path ) );
+					n = cmp::max( n, (self.on_file_dropped)( path ) );
 				},
 				WindowEvent::CloseRequested => {
 					return None;
@@ -259,7 +265,7 @@ impl<T, U: Handler<T>> Window<T, U> {
 		}
 
 		while let Ok( v ) = self.rx.try_recv() {
-			n = cmp::max( n, self.handler.on_message( v ) );
+			n = cmp::max( n, (self.on_message)( v ) );
 		}
 		Some( n )
 	}

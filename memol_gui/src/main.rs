@@ -140,6 +140,9 @@ fn main() {
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
 			main_widget.borrow_mut().wallpaper = Some( wallpaper );
 		}
+		else {
+			window.set_background( 1.0, 1.0, 1.0, 1.0 );
+		}
 
 		// initialize compiler.
 		compiler.on_success( {

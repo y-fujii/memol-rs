@@ -85,7 +85,6 @@ impl MainWidget {
 		let channels: Vec<_> = self.assembly.channels.iter().map( |&(i, _)| i ).collect();
 		let changed = self.transport.draw( &*self.player, &channels );
 
-		PushStyleColor( ImGuiCol_WindowBg as i32, 0xffff_ffff );
 		imutil::root_begin( 0 );
 			let size = GetWindowSize();
 			if let Some( &(_, ref ch) ) = self.assembly.channels
@@ -106,7 +105,6 @@ impl MainWidget {
 				);
 			}
 		imutil::root_end();
-		PopStyleColor( 1 );
 
 		if changed { JACK_FRAME_WAIT } else if is_playing { 1 } else { 0 }
 	}

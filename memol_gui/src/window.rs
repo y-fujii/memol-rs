@@ -27,6 +27,7 @@ pub struct Window<'a, T> {
 	timer: time::SystemTime,
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
+	background: Option<(f32, f32, f32, f32)>,
 	on_message: Box<'a + Fn( T ) -> i32>,
 	on_draw: Box<'a + Fn() -> i32>,
 	on_file_dropped: Box<'a + Fn( &path::PathBuf ) -> i32>,
@@ -92,10 +93,15 @@ impl<'a, T> Window<'a, T> {
 			timer: time::SystemTime::now(),
 			tx: tx,
 			rx: rx,
+			background: None,
 			on_message: Box::new( |_| 0 ),
 			on_draw: Box::new( || 0 ),
 			on_file_dropped: Box::new( |_| 0 ),
 		} )
+	}
+
+	pub fn set_background( &mut self, r: f32, g: f32, b: f32, a: f32 ) {
+		self.background = Some( (r, g, b, a) );
 	}
 
 	pub fn on_message<U: 'a + Fn( T ) -> i32>( &mut self, f: U ) {
@@ -172,6 +178,12 @@ impl<'a, T> Window<'a, T> {
 				n = cmp::max( n, 1 );
 			}
 
+			if let Some( (r, g, b, a) ) = self.background {
+				unsafe {
+					gl::ClearColor( r, g, b, a );
+					gl::Clear( gl::COLOR_BUFFER_BIT );
+				}
+			}
 			self.renderer.render();
 			self.window.swap_buffers()?;
 		}

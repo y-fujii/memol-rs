@@ -126,7 +126,8 @@ pub fn root_begin( flags: ImGuiWindowFlags_ ) {
 			c_str!( "root" ), ptr::null_mut(),
 			(ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
 			 ImGuiWindowFlags_NoBringToFrontOnFocus |
-			 ImGuiWindowFlags_NoTitleBar | flags) as i32
+			 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
+			 flags) as i32
 		);
 		PushStyleVar( ImGuiStyleVar_WindowRounding as i32, rounding );
 		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &padding );

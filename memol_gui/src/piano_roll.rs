@@ -18,8 +18,9 @@ pub enum Event {
 pub struct PianoRoll {
 	pub events: Vec<Event>,
 	pub scroll_ratio: f32,
-	notes_midi: [bool; 128],
-	notes_mouse: Vec<i64>,
+	pedal: bool,
+	on_notes: [bool; 128],
+	copying_notes: Vec<i64>,
 	dragging: bool,
 	time_scale: f32,
 	line_width: f32,
@@ -37,8 +38,9 @@ impl PianoRoll {
 		Self {
 			events: Vec::new(),
 			scroll_ratio: 0.0,
-			notes_midi: [false; 128],
-			notes_mouse: Vec::new(),
+			pedal: false,
+			on_notes: [false; 128],
+			copying_notes: Vec::new(),
 			dragging: false,
 			time_scale: 24.0,
 			line_width: 0.25,
@@ -55,21 +57,22 @@ impl PianoRoll {
 	pub fn handle_midi_inputs<'a, T: Iterator<Item=&'a midi::Event>>( &mut self, events: T ) {
 		for ev in events {
 			match ev.msg[0] & 0xf0 {
-				0x80 => self.notes_midi[ev.msg[1] as usize] = false,
-				0x90 => self.notes_midi[ev.msg[1] as usize] = true,
+				0x80 => {
+					self.on_notes[ev.msg[1] as usize] = false;
+				},
+				0x90 => {
+					self.on_notes[ev.msg[1] as usize] = true;
+					if self.pedal {
+						self.copying_notes.push( ev.msg[1] as i64 );
+					}
+				},
 				0xb0 => {
-					if ev.msg[1] == 64 && ev.msg[2] >= 64 {
-						if let Some( ref mut clipboard ) = self.clipboard {
-							let notes: Vec<_> = self.notes_midi
-								.iter()
-								.enumerate()
-								.filter( |(_, &b)| b )
-								.map( |(i, _)| i as i64 )
-								.collect();
-							if !notes.is_empty() {
-								clipboard.set_contents( Self::note_symbols( &notes[..], self.use_sharp ) ).ok();
-							}
+					if ev.msg[1] == 64 {
+						self.pedal = ev.msg[2] >= 64;
+						if !self.pedal && !self.copying_notes.is_empty() {
+							self.copy_notes_to_clipboard();
 						}
+						self.copying_notes.clear();
 					}
 				},
 				_    => (),
@@ -90,7 +93,7 @@ impl PianoRoll {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if self.notes_mouse.is_empty() && IsMouseReleased( 1 ) {
+			else if self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 				self.events.push( Event::Seek( x ) );
 			}
@@ -117,24 +120,22 @@ impl PianoRoll {
 			ctx.add_dummy( v0, v1 );
 			if IsItemHovered( 0 ) {
 				if IsMouseClicked( 0, false ) {
-					self.notes_mouse.push( y );
+					self.copying_notes.push( y );
 					self.events.push( Event::NoteOn( y ) );
 				}
-				if !self.notes_mouse.is_empty() && IsMouseReleased( 1 ) {
-					if let Some( ref mut clipboard ) = self.clipboard {
-						clipboard.set_contents( Self::note_symbols( &self.notes_mouse, self.use_sharp ) ).ok();
-					}
-					self.notes_mouse.clear();
+				if !self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
+					self.copy_notes_to_clipboard();
+					self.copying_notes.clear();
 					self.events.push( Event::NoteClear );
 				}
 			}
-			if IsItemHovered( 0 ) || self.notes_midi[y as usize] {
+			if IsItemHovered( 0 ) || self.on_notes[y as usize] {
 				ctx.add_rect_filled( v0, v1, self.color_hovered, 0.0, !0 );
 			}
 		}
-		if self.notes_mouse.len() > 0 {
+		if self.copying_notes.len() > 0 {
 			BeginTooltip();
-				imutil::show_text( &Self::note_symbols( &self.notes_mouse, self.use_sharp ) );
+				imutil::show_text( &Self::note_symbols( &self.copying_notes, self.use_sharp ) );
 			EndTooltip();
 		}
 	}
@@ -242,5 +243,11 @@ impl PianoRoll {
 			[ "c", "d-", "d", "e-", "e", "f", "g-", "g", "a-", "a", "b-", "b" ]
 		};
 		syms[misc::imod( n, 12 ) as usize]
+	}
+
+	fn copy_notes_to_clipboard( &mut self ) {
+		if let Some( ref mut clipboard ) = self.clipboard {
+			clipboard.set_contents( Self::note_symbols( &self.copying_notes, self.use_sharp ) ).ok();
+		}
 	}
 }

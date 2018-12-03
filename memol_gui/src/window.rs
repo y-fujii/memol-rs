@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-extern crate gl;
-extern crate glutin;
 use std::*;
+use gl;
+use glutin;
 use glutin::GlContext;
 use imgui;
 use renderer;
@@ -28,9 +28,9 @@ pub struct Window<'a, T> {
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
 	background: Option<(f32, f32, f32, f32)>,
-	on_message: Box<'a + Fn( T ) -> i32>,
-	on_draw: Box<'a + Fn() -> i32>,
-	on_file_dropped: Box<'a + Fn( &path::PathBuf ) -> i32>,
+	on_message: Box<'a + FnMut( T ) -> i32>,
+	on_draw: Box<'a + FnMut() -> i32>,
+	on_file_dropped: Box<'a + FnMut( &path::PathBuf ) -> i32>,
 }
 
 impl<'a, T> Drop for Window<'a, T> {
@@ -104,15 +104,15 @@ impl<'a, T> Window<'a, T> {
 		self.background = Some( (r, g, b, a) );
 	}
 
-	pub fn on_message<U: 'a + Fn( T ) -> i32>( &mut self, f: U ) {
+	pub fn on_message<U: 'a + FnMut( T ) -> i32>( &mut self, f: U ) {
 		self.on_message = Box::new( f );
 	}
 
-	pub fn on_draw<U: 'a + Fn() -> i32>( &mut self, f: U ) {
+	pub fn on_draw<U: 'a + FnMut() -> i32>( &mut self, f: U ) {
 		self.on_draw = Box::new( f );
 	}
 
-	pub fn on_file_dropped<U: 'a + Fn( &path::PathBuf ) -> i32>( &mut self, f: U ) {
+	pub fn on_file_dropped<U: 'a + FnMut( &path::PathBuf ) -> i32>( &mut self, f: U ) {
 		self.on_file_dropped = Box::new( f );
 	}
 

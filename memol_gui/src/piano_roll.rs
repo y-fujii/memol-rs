@@ -7,16 +7,10 @@ use imutil;
 use memol::misc;
 use memol::midi;
 use memol::generator;
+use model;
 
-
-pub enum Event {
-	Seek( f32 ),
-	NoteOn( i64 ),
-	NoteClear,
-}
 
 pub struct PianoRoll {
-	pub events: Vec<Event>,
 	pub scroll_ratio: f32,
 	pedal: bool,
 	on_notes: [bool; 128],
@@ -36,7 +30,6 @@ pub struct PianoRoll {
 impl PianoRoll {
 	pub fn new() -> Self {
 		Self {
-			events: Vec::new(),
 			scroll_ratio: 0.0,
 			pedal: false,
 			on_notes: [false; 128],
@@ -80,7 +73,15 @@ impl PianoRoll {
 		}
 	}
 
-	pub unsafe fn draw( &mut self, ir: &generator::ScoreIr, time_len: f32, time_cur: f32, follow: bool, size: ImVec2 ) {
+	pub unsafe fn draw( &mut self, model: &model::Model, size: ImVec2 ) {
+		let ir = match model.assembly.channels.iter().filter( |&&(i, _)| i == model.channel ).next() {
+			Some( ch ) => &ch.1.score,
+			None       => return,
+		};
+		let time_len = model.assembly.len.to_float() as f32;
+		let time_cur = (model.player.location() * model.tempo) as f32;
+		let follow = model.player.is_playing() && model.follow;
+
 		let content_h = size.y - get_style().ScrollbarSize;
 		let unit = content_h / 128.0;
 		let content_w = unit * self.time_scale * (time_len + 1.0);
@@ -95,7 +96,7 @@ impl PianoRoll {
 			}
 			else if self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
-				self.events.push( Event::Seek( x ) );
+				model.player.seek( f64::max( x as f64, 0.0 ) / model.tempo ).ok();
 			}
 			else if follow {
 				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
@@ -104,7 +105,7 @@ impl PianoRoll {
 			}
 
 			let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
-			self.draw_indicator( &mut ctx, time_len );
+			self.draw_indicator( &mut ctx, time_len, model );
 			self.draw_background( &mut ctx, time_len );
 			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
@@ -113,7 +114,7 @@ impl PianoRoll {
 		EndChild();
 	}
 
-	unsafe fn draw_indicator( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
+	unsafe fn draw_indicator( &mut self, ctx: &mut imutil::DrawContext, time_len: f32, model: &model::Model ) {
 		for y in 0 .. 128 {
 			let v0 = ImVec2::new( self.time_scale * 0.0     , y as f32 );
 			let v1 = ImVec2::new( self.time_scale * time_len, y as f32 + 1.0 );
@@ -121,12 +122,12 @@ impl PianoRoll {
 			if IsItemHovered( 0 ) {
 				if IsMouseClicked( 0, false ) {
 					self.copying_notes.push( y );
-					self.events.push( Event::NoteOn( y ) );
+					model.note_on( y as u8 );
 				}
 				if !self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
 					self.copy_notes_to_clipboard();
 					self.copying_notes.clear();
-					self.events.push( Event::NoteClear );
+					model.note_clear();
 				}
 			}
 			if IsItemHovered( 0 ) || self.on_notes[y as usize] {

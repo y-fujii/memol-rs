@@ -12,9 +12,9 @@ mod imutil;
 mod imgui;
 mod renderer;
 mod window;
-mod piano_roll;
 mod compile_thread;
-mod transport_widget;
+mod model;
+mod piano_roll;
 mod main_widget;
 use std::*;
 use memol::*;
@@ -105,44 +105,46 @@ fn main() {
 		// create instances.
 		let mut compiler = compile_thread::CompileThread::new();
 		let bus = ipc::Bus::new();
-		let main_widget = cell::RefCell::new( main_widget::MainWidget::new( compiler.create_sender(), bus.create_sender() ) );
+		let model = cell::RefCell::new( model::Model::new( compiler.create_sender(), bus.create_sender() ) );
+		let mut widget = main_widget::MainWidget::new();
 		let mut window = window::Window::new()?;
 
 		// initialize window.
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
-		window.on_draw( || main_widget.borrow_mut().draw() );
-		window.on_message( |msg| {
-			match msg {
-				UiMessage::Data( path, asm, evs ) => {
-					main_widget.borrow_mut().set_data( path, asm, evs );
-				},
-				UiMessage::Text( text ) => {
-					main_widget.borrow_mut().text = Some( text );
-				},
-				UiMessage::Player( player ) => {
-					main_widget.borrow_mut().player = player;
-				},
-			}
-			JACK_FRAME_WAIT
-		} );
-		window.on_file_dropped( {
-			let compiler_tx = compiler.create_sender();
-			move |path| {
-				compiler_tx.send( compile_thread::Message::File( path.clone() ) ).unwrap();
-				JACK_FRAME_WAIT
-			}
-		} );
 		if let Some( path ) = wallpaper {
-			let mut wallpaper = renderer::Texture::new();
 			let mut img = image::open( path )?.to_rgba();
 			lighten_image( &mut img, 0.5 );
+			let mut wallpaper = renderer::Texture::new();
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );
-			main_widget.borrow_mut().wallpaper = Some( wallpaper );
+			widget.wallpaper = Some( wallpaper );
 		}
 		else {
 			window.set_background( 1.0, 1.0, 1.0, 1.0 );
 		}
+
+		window.on_draw( || {
+			let changed = widget.draw( &mut model.borrow_mut() );
+			if changed { JACK_FRAME_WAIT } else { 0 }
+		} );
+		window.on_message( |msg| {
+			match msg {
+				UiMessage::Data( path, asm, evs ) => {
+					model.borrow_mut().set_data( path, asm, evs );
+				},
+				UiMessage::Text( text ) => {
+					model.borrow_mut().text = Some( text );
+				},
+				UiMessage::Player( player ) => {
+					model.borrow_mut().player = player;
+				},
+			}
+			JACK_FRAME_WAIT
+		} );
+		window.on_file_dropped( |path| {
+			model.borrow_mut().compile_tx.send( compile_thread::Message::File( path.clone() ) ).unwrap();
+			0
+		} );
 
 		// initialize compiler.
 		compiler.on_success( {

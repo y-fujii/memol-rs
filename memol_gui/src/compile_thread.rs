@@ -13,8 +13,8 @@ pub enum Message {
 pub struct CompileThread {
 	tx: sync::mpsc::Sender<Message>,
 	rx: sync::mpsc::Receiver<Message>,
-	on_success: Box<Fn( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>,
-	on_failure: Box<Fn( String ) + marker::Send>,
+	on_success: Box<FnMut( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>,
+	on_failure: Box<FnMut( String ) + marker::Send>,
 }
 
 impl CompileThread {
@@ -28,11 +28,11 @@ impl CompileThread {
 		}
 	}
 
-	pub fn on_success<T: 'static + Fn( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>( &mut self, f: T ) {
+	pub fn on_success<T: 'static + FnMut( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>( &mut self, f: T ) {
 		self.on_success = Box::new( f );
 	}
 
-	pub fn on_failure<T: 'static + Fn( String ) + marker::Send>( &mut self, f: T ) {
+	pub fn on_failure<T: 'static + FnMut( String ) + marker::Send>( &mut self, f: T ) {
 		self.on_failure = Box::new( f );
 	}
 
@@ -40,7 +40,7 @@ impl CompileThread {
 		self.tx.clone()
 	}
 
-	pub fn spawn( self ) -> thread::JoinHandle<()> {
+	pub fn spawn( mut self ) -> thread::JoinHandle<()> {
 		thread::spawn( move || {
 			let mut path = path::PathBuf::new();
 			let mut modified = time::UNIX_EPOCH;

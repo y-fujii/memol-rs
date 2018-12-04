@@ -4,6 +4,7 @@ use memol::midi;
 
 
 pub trait Player: Send {
+	fn on_received_boxed( &mut self, Box<'static + Fn() + Send> );
 	fn set_data( &self, Vec<midi::Event> );
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>>;
 	fn connect_from( &self, &str ) -> io::Result<()>;
@@ -27,6 +28,9 @@ pub struct DummyPlayer {
 unsafe impl Send for DummyPlayer {}
 
 impl Player for DummyPlayer {
+	fn on_received_boxed( &mut self, _: Box<'static + Fn() + Send> ) {
+	}
+
 	fn set_data( &self, _: Vec<midi::Event> ) {
 	}
 

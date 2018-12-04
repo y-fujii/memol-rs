@@ -22,12 +22,19 @@ pub struct Player {
 	immediate_send: *mut jack::RingBuffer,
 	immediate_recv: *mut jack::RingBuffer,
 	shared: sync::Mutex<SharedData>,
+	cb_thread: Option<thread::JoinHandle<()>>,
+	cb_shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)>,
 }
 
 unsafe impl Send for Player {}
 
 impl Drop for Player {
 	fn drop( &mut self ) {
+		if let Some( cb_thread ) = mem::replace( &mut self.cb_thread, None ) {
+			*self.cb_shared.0.lock().unwrap() = true;
+			self.cb_shared.1.notify_all();
+			cb_thread.join().unwrap();
+		}
 		unsafe {
 			(self.lib.client_close)( self.jack );
 			(self.lib.ringbuffer_free)( self.immediate_recv );
@@ -37,6 +44,16 @@ impl Drop for Player {
 }
 
 impl player::Player for Player {
+	fn on_received_boxed( &mut self, f: Box<'static + Fn() + Send> ) {
+		if let Some( cb_thread ) = mem::replace( &mut self.cb_thread, None ) {
+			cb_thread.join().unwrap();
+		}
+		self.cb_thread = Some( thread::spawn( {
+			let cb_shared = self.cb_shared.clone();
+			move || Self::cb_proc( f, cb_shared )
+		} ) );
+	}
+
 	fn set_data( &self, events: Vec<midi::Event> ) {
 		let mut shared = self.shared.lock().unwrap();
 		shared.events = events;
@@ -186,6 +203,8 @@ impl Player {
 					events: Vec::new(),
 					changed: false,
 				} ),
+				cb_shared: sync::Arc::new( (sync::Mutex::new( false ), sync::Condvar::new()) ),
+				cb_thread: None,
 			} );
 
 			if (this.lib.set_process_callback)( this.jack, Player::process_callback, &*this ) != 0 {
@@ -284,6 +303,11 @@ impl Player {
 				let msg = slice::from_raw_parts( ev.buffer, ev.size );
 				this.rb_write_block( this.immediate_recv, &[ midi::Event::new( ev.time as f64 / pos.frame_rate as f64, 0, msg ) ] );
 			}
+			// since we use the condition variable without a locked flag,
+			// notification possibly fails.  we check the buffer every time.
+			if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
+				this.cb_shared.1.notify_one();
+			}
 
 			let mut evs: [midi::Event; BUFFER_LEN] = mem::uninitialized();
 			let len = this.rb_read_block( this.immediate_send, &mut evs );
@@ -338,6 +362,20 @@ impl Player {
 
 			shared.changed = true;
 			1 // ready to roll.
+		}
+	}
+
+	fn cb_proc( on_received: Box<'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
+		let mut guard = shared.0.lock().unwrap();
+		loop {
+			guard = shared.1.wait( guard ).unwrap();
+			if *guard {
+				break;
+			}
+			// XXX: see the comment in process_callback().
+			//if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
+				on_received();
+			//}
 		}
 	}
 }

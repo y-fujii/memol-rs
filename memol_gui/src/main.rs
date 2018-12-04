@@ -28,6 +28,7 @@ enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
 	Text( String ),
 	Player( Box<player::Player> ),
+	Refresh,
 }
 
 fn init_imgui( scale: f32 ) {
@@ -138,6 +139,7 @@ fn main() {
 				UiMessage::Player( player ) => {
 					model.borrow_mut().player = player;
 				},
+				UiMessage::Refresh => (),
 			}
 			JACK_FRAME_WAIT
 		} );
@@ -180,21 +182,25 @@ fn main() {
 			}
 		} );
 		thread::spawn( {
-			let window_tx = window.create_sender();
+			let window_tx_0 = window.create_sender();
+			let window_tx_1 = window.create_sender();
 			move || {
-				let player = match player_jack::Player::new( "memol" ) {
+				let mut player = match player_jack::Player::new( "memol" ) {
 					Ok ( v ) => v,
 					Err( v ) => {
-						window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
+						window_tx_0.send( UiMessage::Text( format!( "Error: {}", v ) ) );
 						return;
 					},
 				};
+				player.on_received_boxed( Box::new(
+					move || window_tx_1.send( UiMessage::Refresh )
+				) );
 				for port in ports {
 					if let Err( v ) = player.connect_to( &port ) {
-						window_tx.send( UiMessage::Text( format!( "Error: {}", v ) ) );
+						window_tx_0.send( UiMessage::Text( format!( "Error: {}", v ) ) );
 					}
 				}
-				window_tx.send( UiMessage::Player( player ) );
+				window_tx_0.send( UiMessage::Player( player ) );
 			}
 		} );
 

@@ -192,8 +192,8 @@ fn main() {
 						return;
 					},
 				};
-				player.on_received_boxed( Box::new(
-					move || window_tx_1.send( UiMessage::Refresh )
+				player.on_received_boxed( Box::new( move ||
+					window_tx_1.send( UiMessage::Refresh )
 				) );
 				for port in ports {
 					if let Err( v ) = player.connect_to( &port ) {

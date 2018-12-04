@@ -80,7 +80,6 @@ impl PianoRoll {
 		};
 		let time_len = model.assembly.len.to_float() as f32;
 		let time_cur = (model.player.location() * model.tempo) as f32;
-		let follow = model.player.is_playing() && model.follow;
 
 		let content_h = size.y - get_style().ScrollbarSize;
 		let unit = content_h / 128.0;
@@ -98,7 +97,7 @@ impl PianoRoll {
 				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 				model.player.seek( f64::max( x as f64, 0.0 ) / model.tempo ).ok();
 			}
-			else if follow {
+			else if model.follow && model.player.is_playing() {
 				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
 				let a = f32::exp( -2.0 * get_io().DeltaTime );
 				SetScrollX( a * GetScrollX() + (1.0 - a) * next );

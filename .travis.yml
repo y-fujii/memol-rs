@@ -1,5 +1,12 @@
-group: travis_latest
 language: rust
+dist: xenial
+addons:
+    apt:
+        packages:
+            - gcc-mingw-w64-x86-64
+            - gcc-aarch64-linux-gnu
+            - libc-dev-arm64-cross
+            - p7zip-full
 
 matrix:
     include:
@@ -42,14 +49,6 @@ matrix:
               - mv libmemol_vst.dylib memol_vst.dylib
               - strip memol_cli memol_gui
               - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.dylib
-
-addons:
-    apt:
-        packages:
-            - gcc-mingw-w64-x86-64
-            - gcc-aarch64-linux-gnu
-            - libc-dev-arm64-cross
-            - p7zip-full
 
 deploy:
     provider: releases

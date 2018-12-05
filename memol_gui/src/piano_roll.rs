@@ -1,25 +1,16 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use clipboard;
-use clipboard::ClipboardProvider;
 use imgui::*;
 use imutil;
 use memol::misc;
-use memol::midi;
-use memol::generator;
 use model;
 
 
 pub struct PianoRoll {
 	pub scroll_ratio: f32,
-	pedal: bool,
-	on_notes: [bool; 128],
-	copying_notes: Vec<i64>,
 	dragging: bool,
 	time_scale: f32,
 	line_width: f32,
-	use_sharp: bool,
-	clipboard: Option<clipboard::ClipboardContext>,
 	color_line_0: u32,
 	color_line_1: u32,
 	color_note_0: u32,
@@ -31,14 +22,9 @@ impl PianoRoll {
 	pub fn new() -> Self {
 		Self {
 			scroll_ratio: 0.0,
-			pedal: false,
-			on_notes: [false; 128],
-			copying_notes: Vec::new(),
 			dragging: false,
 			time_scale: 24.0,
 			line_width: 0.25,
-			use_sharp: false,
-			clipboard: clipboard::ClipboardProvider::new().ok(),
 			color_line_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 0.50 ) ) ),
 			color_line_1:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 0.25 ) ) ),
 			color_note_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 1.00 ) ) ),
@@ -47,37 +33,7 @@ impl PianoRoll {
 		}
 	}
 
-	pub fn handle_midi_inputs<'a, T: Iterator<Item=&'a midi::Event>>( &mut self, events: T ) {
-		for ev in events {
-			match ev.msg[0] & 0xf0 {
-				0x80 => {
-					self.on_notes[ev.msg[1] as usize] = false;
-				},
-				0x90 => {
-					self.on_notes[ev.msg[1] as usize] = true;
-					if self.pedal {
-						self.copying_notes.push( ev.msg[1] as i64 );
-					}
-				},
-				0xb0 => {
-					if ev.msg[1] == 64 {
-						self.pedal = ev.msg[2] >= 64;
-						if !self.pedal && !self.copying_notes.is_empty() {
-							self.copy_notes_to_clipboard();
-						}
-						self.copying_notes.clear();
-					}
-				},
-				_    => (),
-			}
-		}
-	}
-
-	pub unsafe fn draw( &mut self, model: &model::Model, size: ImVec2 ) {
-		let ir = match model.assembly.channels.iter().filter( |&&(i, _)| i == model.channel ).next() {
-			Some( ch ) => &ch.1.score,
-			None       => return,
-		};
+	pub unsafe fn draw( &mut self, model: &mut model::Model, size: ImVec2 ) {
 		let time_len = model.assembly.len.to_float() as f32;
 		let time_cur = (model.player.location() * model.tempo) as f32;
 
@@ -92,9 +48,16 @@ impl PianoRoll {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
-				let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
-				model.player.seek( f64::max( x as f64, 0.0 ) / model.tempo ).ok();
+			else if IsMouseReleased( 1 ) {
+				if model.copying_notes.is_empty() {
+					let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
+					let x = f32::min( f32::max( x, 0.0 ), time_len );
+					model.player.seek( x as f64 / model.tempo ).ok();
+				}
+				else {
+					model.copy_notes_to_clipboard();
+					model.note_off_all();
+				}
 			}
 			else if model.follow && model.player.is_playing() {
 				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
@@ -103,43 +66,36 @@ impl PianoRoll {
 			}
 
 			let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
-			self.draw_indicator( &mut ctx, time_len, model );
+			self.draw_indicator( &mut ctx, model, time_len );
 			self.draw_background( &mut ctx, time_len );
-			self.draw_notes( &mut ctx, &ir, time_cur, self.color_note_0, self.color_note_1 );
+			self.draw_notes( &mut ctx, model, model.channel, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
 
 			self.scroll_ratio = if GetScrollMaxX() > 0.0 { GetScrollX() / GetScrollMaxX() } else { 0.5 };
 		EndChild();
 	}
 
-	unsafe fn draw_indicator( &mut self, ctx: &mut imutil::DrawContext, time_len: f32, model: &model::Model ) {
+	unsafe fn draw_indicator( &mut self, ctx: &mut imutil::DrawContext, model: &mut model::Model, time_len: f32 ) {
 		for y in 0 .. 128 {
 			let v0 = ImVec2::new( self.time_scale * 0.0     , y as f32 );
 			let v1 = ImVec2::new( self.time_scale * time_len, y as f32 + 1.0 );
 			ctx.add_dummy( v0, v1 );
-			if IsItemHovered( 0 ) {
-				if IsMouseClicked( 0, false ) {
-					self.copying_notes.push( y );
-					model.note_on( y as u8 );
-				}
-				if !self.copying_notes.is_empty() && IsMouseReleased( 1 ) {
-					self.copy_notes_to_clipboard();
-					self.copying_notes.clear();
-					model.note_clear();
-				}
+			if IsItemHovered( 0 ) && IsMouseClicked( 0, false ) {
+				model.copying_notes.push( y );
+				model.note_on( y as u8 );
 			}
-			if IsItemHovered( 0 ) || self.on_notes[y as usize] {
+			if IsItemHovered( 0 ) || model.on_notes[y as usize] {
 				ctx.add_rect_filled( v0, v1, self.color_hovered, 0.0, !0 );
 			}
 		}
-		if self.copying_notes.len() > 0 {
+		if model.copying_notes.len() > 0 {
 			BeginTooltip();
-				imutil::show_text( &Self::note_symbols( &self.copying_notes, self.use_sharp ) );
+				imutil::show_text( &model.note_symbols( &model.copying_notes ) );
 			EndTooltip();
 		}
 	}
 
-	unsafe fn draw_background( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
+	fn draw_background( &mut self, ctx: &mut imutil::DrawContext, time_len: f32 ) {
 		// vertical lines.
 		for i in 0 .. time_len.floor() as i32 + 1 {
 			let ys = [
@@ -182,7 +138,11 @@ impl PianoRoll {
 		}
 	}
 
-	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, ir: &generator::ScoreIr, time_cur: f32, color_0: u32, color_1: u32 ) {
+	unsafe fn draw_notes( &self, ctx: &mut imutil::DrawContext, model: &model::Model, ch: usize, time_cur: f32, color_0: u32, color_1: u32 ) {
+		let ir = match model.assembly.channels.iter().filter( |&&(i, _)| i == ch ).next() {
+			Some( ch ) => &ch.1.score,
+			None       => return,
+		};
 		for note in ir.iter() {
 			let nnum = match note.nnum {
 				Some( v ) => v,
@@ -199,7 +159,7 @@ impl PianoRoll {
 			ctx.add_dummy( x0, x1 );
 			if IsItemHovered( 0 ) {
 				BeginTooltip();
-					imutil::show_text( &format!( "     note = {}", Self::note_symbol( nnum, self.use_sharp ) ) );
+					imutil::show_text( &format!( "     note = {}", model.note_symbol( nnum ) ) );
 					imutil::show_text( &format!( "gate time = {} + {}/{}",
 						misc::idiv( note.t0.y, note.t0.x ),
 						misc::imod( note.t0.y, note.t0.x ),
@@ -216,37 +176,5 @@ impl PianoRoll {
 		let v0 = ImVec2::new( self.time_scale * time_cur,   0.0 );
 		let v1 = ImVec2::new( self.time_scale * time_cur, 128.0 );
 		ctx.add_line( v0, v1, self.color_note_1, self.line_width );
-	}
-
-	fn note_symbols( notes: &[i64], use_sharp: bool ) -> String {
-		let mut buf = String::new();
-		let mut n0 = notes[0];
-		for &n1 in notes.iter() {
-			let sym = if n1 <= n0 { ">" } else { "<" };
-			for _ in 0 .. (n1 - n0).abs() / 12 {
-				buf.push_str( sym );
-			}
-			let sym = Self::note_symbol( n1, use_sharp );
-			let sym = if n1 <= n0 { sym.to_lowercase() } else { sym.to_uppercase() };
-			buf.push_str( &sym );
-			n0 = n1;
-		}
-		buf
-	}
-
-	fn note_symbol( n: i64, use_sharp: bool ) -> &'static str {
-		let syms = if use_sharp {
-			[ "c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b" ]
-		}
-		else {
-			[ "c", "d-", "d", "e-", "e", "f", "g-", "g", "a-", "a", "b-", "b" ]
-		};
-		syms[misc::imod( n, 12 ) as usize]
-	}
-
-	fn copy_notes_to_clipboard( &mut self ) {
-		if let Some( ref mut clipboard ) = self.clipboard {
-			clipboard.set_contents( Self::note_symbols( &self.copying_notes, self.use_sharp ) ).ok();
-		}
 	}
 }

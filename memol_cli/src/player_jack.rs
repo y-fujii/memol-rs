@@ -95,7 +95,7 @@ impl player::Player for Player {
 	fn send( &self, evs: &[midi::Event] ) -> io::Result<()> {
 		unsafe {
 			let mut i = 0;
-			while i > evs.len() {
+			while i < evs.len() {
 				i += self.rb_write_block( self.immediate_send, &evs[i ..] );
 			}
 		}

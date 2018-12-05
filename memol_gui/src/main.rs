@@ -19,7 +19,7 @@ mod main_widget;
 use std::*;
 use memol::*;
 use memol_cli::{ ipc, player, player_jack };
-use memol_cli::player::Player;
+use memol_cli::player::{ Player, PlayerExt };
 
 
 const JACK_FRAME_WAIT: i32 = 12;
@@ -28,7 +28,7 @@ enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
 	Text( String ),
 	Player( Box<player::Player> ),
-	Refresh,
+	Midi,
 }
 
 fn init_imgui( scale: f32 ) {
@@ -139,7 +139,9 @@ fn main() {
 				UiMessage::Player( player ) => {
 					model.borrow_mut().player = player;
 				},
-				UiMessage::Refresh => (),
+				UiMessage::Midi => {
+					model.borrow_mut().handle_midi_inputs();
+				},
 			}
 			JACK_FRAME_WAIT
 		} );
@@ -192,9 +194,9 @@ fn main() {
 						return;
 					},
 				};
-				player.on_received_boxed( Box::new( move ||
-					window_tx_1.send( UiMessage::Refresh )
-				) );
+				player.on_received( move ||
+					window_tx_1.send( UiMessage::Midi )
+				);
 				for port in ports {
 					if let Err( v ) = player.connect_to( &port ) {
 						window_tx_0.send( UiMessage::Text( format!( "Error: {}", v ) ) );

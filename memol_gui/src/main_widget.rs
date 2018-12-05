@@ -25,9 +25,6 @@ impl MainWidget {
 	}
 
 	pub fn draw( &mut self, model: &mut model::Model ) -> bool {
-		let mut events = Vec::new();
-		model.player.recv( &mut events ).ok();
-		self.piano_roll.handle_midi_inputs( events.iter() );
 
 		unsafe {
 			use imgui::*;

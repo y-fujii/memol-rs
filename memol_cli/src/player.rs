@@ -21,6 +21,14 @@ pub trait Player: Send {
 	fn is_playing( &self ) -> bool;
 }
 
+pub trait PlayerExt: Player {
+	fn on_received<T: 'static + Fn() + Send>( &mut self, f: T ) {
+		self.on_received_boxed( Box::new( f ) );
+	}
+}
+
+impl<T: Player> PlayerExt for T {}
+
 pub struct DummyPlayer {
 	location: cell::Cell<f64>,
 }

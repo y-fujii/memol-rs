@@ -42,8 +42,8 @@ impl PianoRoll {
 		let content_w = unit * self.time_scale * (time_len + 1.0);
 
 		SetNextWindowContentSize( &ImVec2::new( content_w, content_h ) );
-		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_HorizontalScrollbar as i32 );
-			if self.dragging | IsMouseDragging( 1, -1.0 ) {
+		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_AlwaysHorizontalScrollbar as i32 );
+			if self.dragging || IsMouseDragging( 1, -1.0 ) {
 				self.dragging = !IsMouseReleased( 1 );
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );

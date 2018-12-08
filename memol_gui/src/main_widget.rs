@@ -1,10 +1,11 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
+use std::*;
+use imgui::*;
 use imutil;
 use renderer;
 use compile_thread;
 use model;
 use piano_roll;
-use std::*;
 
 
 pub struct MainWidget {
@@ -24,37 +25,30 @@ impl MainWidget {
 		}
 	}
 
-	pub fn draw( &mut self, model: &mut model::Model ) -> bool {
-
-		unsafe {
-			use imgui::*;
-
-			if let Some( ref text ) = model.text {
-				imutil::message_dialog( "Message", text );
-			}
-
-			let changed = self.draw_transport( model );
-
-			imutil::root_begin( 0 );
-				let size = GetWindowSize();
-				self.piano_roll.draw( model, size );
-				if let Some( ref wallpaper ) = self.wallpaper {
-					let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
-					let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
-					let v0 = GetWindowPos() + self.piano_roll.scroll_ratio * (size - wsize);
-					(*GetWindowDrawList()).AddImage(
-						wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
-					);
-				}
-			imutil::root_end();
-
-			changed || model.player.is_playing()
+	pub unsafe fn draw( &mut self, model: &mut model::Model ) -> bool {
+		if let Some( ref text ) = model.text {
+			imutil::message_dialog( "Message", text );
 		}
+
+		let changed = self.draw_transport( model );
+
+		imutil::root_begin( 0 );
+			let size = GetWindowSize();
+			self.piano_roll.draw( model, size );
+			if let Some( ref wallpaper ) = self.wallpaper {
+				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
+				let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
+				let v0 = GetWindowPos() + self.piano_roll.scroll_ratio * (size - wsize);
+				(*GetWindowDrawList()).AddImage(
+					wallpaper.id as _, &v0, &(v0 + wsize), &ImVec2::zero(), &ImVec2::new( 1.0, 1.0 ), 0xffff_ffff,
+				);
+			}
+		imutil::root_end();
+
+		changed || model.player.is_playing()
 	}
 
 	pub unsafe fn draw_transport( &mut self, model: &mut model::Model ) -> bool {
-		use imgui::*;
-
 		let mut changed = false;
 
 		let padding = get_style().WindowPadding;

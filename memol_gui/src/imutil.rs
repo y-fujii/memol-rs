@@ -13,19 +13,19 @@ macro_rules! c_str {
 	)
 }
 
-pub struct DrawContext<'a> {
-	pub draw_list: &'a mut ImDrawList,
+pub struct DrawContext {
+	pub draw_list: *mut ImDrawList,
 	pub a: ImVec2,
 	pub b: ImVec2,
 	pub clip_min: ImVec2,
 	pub clip_max: ImVec2,
 }
 
-impl<'a> DrawContext<'a> {
-	pub fn new( a: f32, b: ImVec2 ) -> DrawContext<'static> {
+impl DrawContext {
+	pub fn new( a: f32, b: ImVec2 ) -> DrawContext {
 		unsafe {
 			DrawContext{
-				draw_list: &mut *GetWindowDrawList(),
+				draw_list: GetWindowDrawList(),
 				a: ImVec2::new( a, -a ),
 				b: ImVec2::new(
 					GetWindowContentRegionMin().x + b.x,
@@ -41,7 +41,7 @@ impl<'a> DrawContext<'a> {
 		let (lt, rb) = self.transform_rect( v0, v1 );
 		if self.intersect_aabb( lt, rb ) {
 			unsafe {
-				self.draw_list.AddLine( &lt, &rb, col, self.a.x * thickness );
+				(*self.draw_list).AddLine( &lt, &rb, col, self.a.x * thickness );
 			}
 		}
 	}
@@ -50,7 +50,7 @@ impl<'a> DrawContext<'a> {
 		let (lt, rb) = self.transform_rect( v0, v1 );
 		if self.intersect_aabb( lt, rb ) {
 			unsafe {
-				self.draw_list.AddRectFilled( &lt, &rb, col, self.a.x * rounding, flags );
+				(*self.draw_list).AddRectFilled( &lt, &rb, col, self.a.x * rounding, flags );
 			}
 		}
 	}

@@ -1,9 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #![allow( dead_code )]
-use std::*;
 
 include!( concat!( env!( "OUT_DIR" ), "/imgui_gen.rs" ) );
 
+use std::*;
 pub use self::root::*;
 pub use self::root::ImGui::*;
 
@@ -109,14 +109,12 @@ impl ops::Mul<ImVec4> for f32 {
 	}
 }
 
+// XXX: RefCell-like test.
 pub fn get_io() -> &'static mut ImGuiIO {
 	unsafe { &mut *GetIO() }
 }
 
+// XXX: RefCell-like test.
 pub fn get_style() -> &'static mut ImGuiStyle {
 	unsafe { &mut *GetStyle() }
-}
-
-pub fn get_draw_data() -> &'static mut ImDrawData {
-	unsafe { &mut *GetDrawData() }
 }

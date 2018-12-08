@@ -192,9 +192,10 @@ impl Renderer {
 	}
 
 	pub fn render( &mut self ) {
-		let io = imgui::get_io();
-		let draw_data = imgui::get_draw_data();
 		unsafe {
+			let io = imgui::get_io();
+			let draw_data = &*imgui::GetDrawData();
+
 			gl::Enable( gl::BLEND );
 			// XXX: premultiplied alpha is better for interpolation.
 			gl::BlendEquation( gl::FUNC_ADD );

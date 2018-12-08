@@ -125,7 +125,7 @@ fn main() {
 		}
 
 		window.on_draw( || {
-			let changed = widget.draw( &mut model.borrow_mut() );
+			let changed = unsafe { widget.draw( &mut model.borrow_mut() ) };
 			if changed { JACK_FRAME_WAIT } else { 0 }
 		} );
 		window.on_message( |msg| {

@@ -19,11 +19,10 @@ matrix:
               - strip --strip-all memol_cli memol_gui memol_vst.so
               - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
-          env: >-
-              TARGET=aarch64-unknown-linux-gnu
-              CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
-              CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
+          env: TARGET=aarch64-unknown-linux-gnu
           script:
+              - export   CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
+              - export CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               - sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
               - rustup target add ${TARGET}
               - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --lib

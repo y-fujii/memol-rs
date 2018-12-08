@@ -156,7 +156,7 @@ pub fn show_text( text: &str ) {
 	}
 }
 
-pub fn message_dialog( title: &str, text: &str ) {
+pub fn message_dialog( title: &str, text: &str ) -> bool {
 	unsafe {
 		let pos = 0.5 * get_io().DisplaySize;
 		SetNextWindowPos( &pos, ImGuiCond_Always as i32, &ImVec2::new( 0.5, 0.5 ) );
@@ -165,7 +165,9 @@ pub fn message_dialog( title: &str, text: &str ) {
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar) as i32,
 		);
 			show_text( text );
+			let ok = IsWindowHovered( 0 ) && IsMouseClicked( 0, false );
 		End();
+		ok
 	}
 }
 

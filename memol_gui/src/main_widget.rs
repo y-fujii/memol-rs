@@ -27,7 +27,9 @@ impl MainWidget {
 
 	pub unsafe fn draw( &mut self, model: &mut model::Model ) -> bool {
 		if let Some( ref text ) = model.text {
-			imutil::message_dialog( "Message", text );
+			if imutil::message_dialog( "Message", text ) {
+				model.text = None;
+			}
 		}
 
 		let changed = self.draw_transport( model );
@@ -86,7 +88,7 @@ impl MainWidget {
 			Checkbox( c_str!( "Autoplay" ), &mut model.autoplay );
 
 			SameLine( 0.0, -1.0 );
-			ImGui::PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
+			PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
 			if BeginCombo( c_str!( "##channel" ), c_str!( "Channel {:2}", model.channel ), 0 ) {
 				for &(i, _) in model.assembly.channels.iter() {
 					if Selectable( c_str!( "Channel {:2}", i ), i == model.channel, 0, &ImVec2::zero() ) {

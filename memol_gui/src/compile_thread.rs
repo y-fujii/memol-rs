@@ -13,8 +13,8 @@ pub enum Message {
 pub struct CompileThread {
 	tx: sync::mpsc::Sender<Message>,
 	rx: sync::mpsc::Receiver<Message>,
-	on_success: Box<FnMut( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>,
-	on_failure: Box<FnMut( String ) + marker::Send>,
+	on_success: Box<dyn FnMut( path::PathBuf, Assembly, Vec<midi::Event> ) + marker::Send>,
+	on_failure: Box<dyn FnMut( String ) + marker::Send>,
 }
 
 impl CompileThread {

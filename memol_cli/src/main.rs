@@ -1,8 +1,4 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-extern crate getopts;
-extern crate memol;
-extern crate memol_cli;
-extern crate ws;
 use std::*;
 use memol_cli::*;
 
@@ -26,7 +22,7 @@ fn compile( path: &path::Path, verbose: bool ) -> Option<Vec<memol::midi::Event>
 }
 
 fn main() {
-	let f = || -> Result<(), Box<error::Error>> {
+	let f = || -> Result<(), Box<dyn error::Error>> {
 		// parse command line.
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
@@ -61,7 +57,7 @@ fn main() {
 		} );
 
 		// initialize JACK.
-		let player: Box<player::Player> = match player_jack::Player::new( "memol" ) {
+		let player: Box<dyn player::Player> = match player_jack::Player::new( "memol" ) {
 			Ok ( v ) => v,
 			Err( _ ) => player::DummyPlayer::new(),
 		};

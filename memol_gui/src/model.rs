@@ -1,10 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use clipboard;
-use clipboard::ClipboardProvider;
-use crate::compile_thread;
 use std::*;
+use clipboard::ClipboardProvider;
 use memol::*;
 use memol_cli::{ ipc, player };
+use crate::compile_thread;
 
 
 pub struct Model {
@@ -17,7 +16,7 @@ pub struct Model {
 	pub autoplay: bool,
 	pub text: Option<String>,
 	pub bus_tx: ipc::Sender<ipc::Message>,
-	pub player: Box<player::Player>,
+	pub player: Box<dyn player::Player>,
 	pub compile_tx: sync::mpsc::Sender<compile_thread::Message>,
 	pub use_sharp: bool,
 	pub pedal: bool,

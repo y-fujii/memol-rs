@@ -1,12 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #![windows_subsystem = "windows"]
-extern crate getopts;
-extern crate gl;
-extern crate glutin;
-extern crate image;
-extern crate clipboard;
-extern crate memol;
-extern crate memol_cli;
 #[macro_use]
 mod imutil;
 mod imgui;
@@ -27,7 +20,7 @@ const JACK_FRAME_WAIT: i32 = 12;
 enum UiMessage {
 	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
 	Text( String ),
-	Player( Box<player::Player> ),
+	Player( Box<dyn player::Player> ),
 	Midi,
 }
 
@@ -83,7 +76,7 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 }
 
 fn main() {
-	|| -> Result<(), Box<error::Error>> {
+	|| -> Result<(), Box<dyn error::Error>> {
 		// parse command line.
 		let mut opts = getopts::Options::new();
 		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );

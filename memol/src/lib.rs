@@ -1,6 +1,4 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-extern crate regex;
-extern crate lalrpop_util;
 pub mod misc;
 pub mod random;
 pub mod ratio;
@@ -18,11 +16,11 @@ pub mod parser {
 	include!( concat!( env!( "OUT_DIR" ), "/parser.rs" ) );
 
 	// XXX
-	fn remove_comments( src: &str ) -> borrow::Cow<str> {
+	fn remove_comments( src: &str ) -> borrow::Cow<'_, str> {
 		use regex::*;
 		thread_local!( static RE: Regex = Regex::new( r"(?s:/\*.*?\*/)" ).unwrap() );
 		RE.with( |re|
-			re.replace_all( src, |caps: &Captures|
+			re.replace_all( src, |caps: &Captures<'_>|
 				caps.get( 0 ).unwrap().as_str().chars().map( |c|
 					if c == '\r' || c == '\n' { c } else { ' ' }
 				).collect::<String>()

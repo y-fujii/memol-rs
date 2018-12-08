@@ -1,7 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use gl;
-use glutin;
 use glutin::GlContext;
 use crate::imgui;
 use crate::renderer;
@@ -28,9 +26,9 @@ pub struct Window<'a, T> {
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
 	background: Option<(f32, f32, f32, f32)>,
-	on_message: Box<'a + FnMut( T ) -> i32>,
-	on_draw: Box<'a + FnMut() -> i32>,
-	on_file_dropped: Box<'a + FnMut( &path::PathBuf ) -> i32>,
+	on_message: Box<dyn 'a + FnMut( T ) -> i32>,
+	on_draw: Box<dyn 'a + FnMut() -> i32>,
+	on_file_dropped: Box<dyn 'a + FnMut( &path::PathBuf ) -> i32>,
 }
 
 impl<'a, T> Drop for Window<'a, T> {
@@ -40,7 +38,7 @@ impl<'a, T> Drop for Window<'a, T> {
 }
 
 impl<'a, T> Window<'a, T> {
-	pub fn new() -> Result<Self, Box<error::Error>> {
+	pub fn new() -> Result<Self, Box<dyn error::Error>> {
 		let context = unsafe { imgui::CreateContext( ptr::null_mut() ) };
 
 		let io = imgui::get_io();
@@ -131,7 +129,7 @@ impl<'a, T> Window<'a, T> {
 		}
 	}
 
-	pub fn event_loop( &mut self ) -> result::Result<(), Box<error::Error>> {
+	pub fn event_loop( &mut self ) -> result::Result<(), Box<dyn error::Error>> {
 		let io = imgui::get_io();
 
 		let mut n: i32 = 1;
@@ -189,7 +187,7 @@ impl<'a, T> Window<'a, T> {
 		}
 	}
 
-	fn draw( &mut self ) -> result::Result<i32, Box<error::Error>> {
+	fn draw( &mut self ) -> result::Result<i32, Box<dyn error::Error>> {
 		let timer = mem::replace( &mut self.timer, time::SystemTime::now() );
 		let delta = self.timer.duration_since( timer )?;
 		let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;

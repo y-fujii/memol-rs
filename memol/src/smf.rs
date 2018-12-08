@@ -14,7 +14,7 @@ fn delta_time( buf: &mut Vec<u8>, t: u32 ) {
 	buf.push( (t & 0x7f) as u8 );
 }
 
-pub fn write_smf( buf: &mut io::Write, events: &[midi::Event], unit: u16 ) -> io::Result<()> {
+pub fn write_smf( buf: &mut dyn io::Write, events: &[midi::Event], unit: u16 ) -> io::Result<()> {
 	let mut content = Vec::new();
 	let mut t = 0.0;
 	for ev in events.iter() {

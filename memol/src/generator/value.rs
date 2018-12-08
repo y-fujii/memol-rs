@@ -43,7 +43,7 @@ impl<'a> Generator<'a> {
 		Ok( Some( ir ) )
 	}
 
-	pub fn generate_value_inner( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span ) -> Result<(ValueIr, Ratio), misc::Error> {
+	pub fn generate_value_inner( &self, track: &'a ast::Ast<ast::Score<'a>>, span: &Span<'_> ) -> Result<(ValueIr, Ratio), misc::Error> {
 		let dst = match track.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut irs = Vec::new();
@@ -139,7 +139,7 @@ impl<'a> Generator<'a> {
 		Ok( dst )
 	}
 
-	pub fn generate_value_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ValueState<'a>, dst: &mut Vec<(ValueIr, Ratio)> ) -> Result<(), misc::Error> {
+	pub fn generate_value_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span<'_>, state: &mut ValueState<'a>, dst: &mut Vec<(ValueIr, Ratio)> ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Value( v0, v1 ) => {
 				if let Some( v0 ) = v0 {

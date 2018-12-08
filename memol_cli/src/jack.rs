@@ -1,7 +1,5 @@
 #![allow( improper_ctypes )]
-
 use std::*;
-use libloading;
 
 
 pub const PORT_IS_INPUT: usize = 1;
@@ -51,8 +49,8 @@ pub struct Position {
 	pub unique_2:         u64,
 }
 
-pub type ProcessCallback = extern "C" fn( u32, *const any::Any ) -> i32;
-pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *const any::Any ) -> i32;
+pub type ProcessCallback = extern "C" fn( u32, *const dyn any::Any ) -> i32;
+pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *const dyn any::Any ) -> i32;
 
 pub struct Library {
 	_lib: libloading::Library,
@@ -61,7 +59,7 @@ pub struct Library {
 	pub client_open:                 unsafe extern "C" fn( *const u8, u32, *mut u32, ... ) -> *mut Client,
 	pub connect:                     unsafe extern "C" fn( *mut Client, *const u8, *const u8 ) -> i32,
 	pub disconnect:                  unsafe extern "C" fn( *mut Client, *const u8, *const u8 ) -> i32,
-	pub free:                        unsafe extern "C" fn( *const any::Any ) -> (),
+	pub free:                        unsafe extern "C" fn( *const dyn any::Any ) -> (),
 	pub get_current_transport_frame: unsafe extern "C" fn( *const Client ) -> u32,
 	pub get_ports:                   unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize ) -> *const *const u8,
 	pub midi_clear_buffer:           unsafe extern "C" fn( *mut PortBuffer ) -> (),
@@ -77,8 +75,8 @@ pub struct Library {
 	pub ringbuffer_read_space:       unsafe extern "C" fn( *mut RingBuffer ) -> usize,
 	pub ringbuffer_write:            unsafe extern "C" fn( *mut RingBuffer, *const u8, usize ) -> usize,
 	pub ringbuffer_write_space:      unsafe extern "C" fn( *mut RingBuffer ) -> usize,
-	pub set_process_callback:        unsafe extern "C" fn( *mut Client, ProcessCallback, *const any::Any ) -> i32,
-	pub set_sync_callback:           unsafe extern "C" fn( *mut Client, SyncCallback, *const any::Any ) -> i32,
+	pub set_process_callback:        unsafe extern "C" fn( *mut Client, ProcessCallback, *const dyn any::Any ) -> i32,
+	pub set_sync_callback:           unsafe extern "C" fn( *mut Client, SyncCallback, *const dyn any::Any ) -> i32,
 	pub transport_locate:            unsafe extern "C" fn( *mut Client, u32 ) -> i32,
 	pub transport_query:             unsafe extern "C" fn( *const Client, *mut Position ) -> TransportState,
 	pub transport_start:             unsafe extern "C" fn( *mut Client ) -> (),

@@ -66,7 +66,7 @@ pub struct Error {
 }
 
 impl fmt::Display for Error {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
 		let path = self.path.to_string_lossy();
 		let mut buf = String::new();
 		match fs::File::open( &*self.path ).and_then( |mut f| f.read_to_string( &mut buf ) ) {

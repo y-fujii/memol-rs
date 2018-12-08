@@ -34,7 +34,7 @@ impl<'a> Generator<'a> {
 		Ok( Some( dst ) )
 	}
 
-	pub fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span, dst: &mut ScoreIr ) -> Result<Ratio, misc::Error> {
+	pub fn generate_score_inner( &self, score: &'a ast::Ast<ast::Score<'a>>, span: &Span<'_>, dst: &mut ScoreIr ) -> Result<Ratio, misc::Error> {
 		let end = match score.ast {
 			ast::Score::Score( ref ns ) => {
 				let mut state = ScoreState{
@@ -142,7 +142,7 @@ impl<'a> Generator<'a> {
 		Ok( end )
 	}
 
-	pub fn generate_score_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, state: &mut ScoreState<'a>, dst: &mut ScoreIr ) -> Result<(), misc::Error> {
+	pub fn generate_score_note( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span<'_>, state: &mut ScoreState<'a>, dst: &mut ScoreIr ) -> Result<(), misc::Error> {
 		match note.ast {
 			ast::Note::Note( dir, sym, ord, sig ) => {
 				let nnum = match self.get_nnum( note, span, sym, ord )? {
@@ -264,7 +264,7 @@ impl<'a> Generator<'a> {
 		Ok( () )
 	}
 
-	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span, sym: char, ord: i64 ) -> Result<Option<i64>, misc::Error> {
+	fn get_nnum( &self, note: &'a ast::Ast<ast::Note<'a>>, span: &Span<'_>, sym: char, ord: i64 ) -> Result<Option<i64>, misc::Error> {
 		let fs = match span.syms.get( &sym ) {
 			Some( v ) => v,
 			None      => return misc::error( &span.path, note.bgn, "note does not exist." ),
@@ -277,7 +277,7 @@ impl<'a> Generator<'a> {
 		Ok( f.nnum )
 	}
 
-	fn resolve_ties( &self, t1: Ratio, state: &mut ScoreState, dst: &mut ScoreIr ) {
+	fn resolve_ties( &self, t1: Ratio, state: &mut ScoreState<'_>, dst: &mut ScoreIr ) {
 		for &(nnum, t0) in state.prev_ties.iter() {
 			dst.push( FlatNote{
 				t0: t0,

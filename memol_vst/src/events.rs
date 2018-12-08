@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use vst;
 
 
 const BUFFER_SIZE: usize = 4096;

@@ -1,7 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use memol::misc;
-use memol::midi;
+use memol::{ misc, midi };
 use crate::player;
 use crate::jack;
 
@@ -44,7 +43,7 @@ impl Drop for Player {
 }
 
 impl player::Player for Player {
-	fn on_received_boxed( &mut self, f: Box<'static + Fn() + Send> ) {
+	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
 		if let Some( cb_thread ) = mem::replace( &mut self.cb_thread, None ) {
 			cb_thread.join().unwrap();
 		}
@@ -284,7 +283,7 @@ impl Player {
 		len
 	}
 
-	extern "C" fn process_callback( size: u32, this: *const any::Any ) -> i32 {
+	extern "C" fn process_callback( size: u32, this: *const dyn any::Any ) -> i32 {
 		unsafe {
 			let this = &*(this as *const Player);
 
@@ -351,7 +350,7 @@ impl Player {
 		}
 	}
 
-	extern "C" fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const any::Any ) -> i32 {
+	extern "C" fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const dyn any::Any ) -> i32 {
 		unsafe {
 			let this = &*(this as *const Player);
 
@@ -365,7 +364,7 @@ impl Player {
 		}
 	}
 
-	fn cb_proc( on_received: Box<'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
+	fn cb_proc( on_received: Box<dyn 'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
 		let mut guard = shared.0.lock().unwrap();
 		loop {
 			guard = shared.1.wait( guard ).unwrap();

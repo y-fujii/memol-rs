@@ -1,7 +1,5 @@
 use std::*;
-use serde;
-use serde_json;
-use ws;
+use serde_derive::*;
 use memol::midi;
 
 
@@ -60,7 +58,7 @@ impl<T> Clone for Sender<T> {
 }
 
 impl<T: serde::Serialize> Sender<T> {
-	pub fn send( &self, msg: &T ) -> Result<(), Box<error::Error>> {
+	pub fn send( &self, msg: &T ) -> Result<(), Box<dyn error::Error>> {
 		let buf = serde_json::to_string( msg )?;
 		let senders = self.senders.lock().unwrap();
 		for s in senders.iter() {

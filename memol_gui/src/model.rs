@@ -1,16 +1,25 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
+use std::io::Read;
 use clipboard::ClipboardProvider;
 use memol::*;
 use memol_cli::{ ipc, player };
 use crate::compile_thread;
 
 
+#[derive( Clone, Copy, PartialEq, Eq )]
+pub enum DisplayMode {
+	PianoRoll,
+	Code,
+}
+
 pub struct Model {
 	pub assembly: Assembly,
 	pub events: Vec<midi::Event>,
 	pub tempo: f64, // XXX
 	pub path: path::PathBuf,
+	pub code: String,
+	pub mode: DisplayMode,
 	pub channel: usize,
 	pub follow: bool,
 	pub autoplay: bool,
@@ -32,6 +41,8 @@ impl Model {
 			events: Vec::new(),
 			tempo: 1.0,
 			path: path::PathBuf::new(),
+			code: String::new(),
+			mode: DisplayMode::PianoRoll,
 			channel: 0,
 			follow: true,
 			autoplay: true,
@@ -56,6 +67,10 @@ impl Model {
 		let rng = random::Generator::new();
 		let evaluator = generator::Evaluator::new( &rng );
 		self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
+
+		if let Ok( mut f ) = fs::File::open( &self.path ) {
+			f.read_to_string( &mut self.code ).ok();
+		}
 
 		let bgn = match self.events.get( 0 ) {
 			Some( ev ) => ev.time.max( 0.0 ),

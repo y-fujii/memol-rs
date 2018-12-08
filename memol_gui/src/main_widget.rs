@@ -36,7 +36,11 @@ impl MainWidget {
 
 		imutil::root_begin( 0 );
 			let size = GetWindowSize();
-			self.piano_roll.draw( model, size );
+			match model.mode {
+				model::DisplayMode::PianoRoll => self.piano_roll.draw( model, size ),
+				model::DisplayMode::Code      => self.draw_code( model, size ),
+			}
+
 			if let Some( ref wallpaper ) = self.wallpaper {
 				let scale = f32::max( size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32 );
 				let wsize = scale * ImVec2::new( wallpaper.size.0 as f32, wallpaper.size.1 as f32 );
@@ -50,7 +54,18 @@ impl MainWidget {
 		changed || model.player.is_playing()
 	}
 
-	pub unsafe fn draw_transport( &mut self, model: &mut model::Model ) -> bool {
+	unsafe fn draw_code( &mut self, model: &mut model::Model, size: ImVec2 ) {
+		BeginChild(
+			c_str!( "code" ), &size, false,
+			(ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_HorizontalScrollbar) as i32,
+		);
+			PushStyleColor( ImGuiCol_Text as i32, 0xff00_0000 );
+				imutil::show_text( &model.code );
+			PopStyleColor( 1 );
+		EndChild();
+	}
+
+	unsafe fn draw_transport( &mut self, model: &mut model::Model ) -> bool {
 		let mut changed = false;
 
 		let padding = get_style().WindowPadding;
@@ -86,6 +101,22 @@ impl MainWidget {
 			Checkbox( c_str!( "Follow" ), &mut model.follow );
 			SameLine( 0.0, -1.0 );
 			Checkbox( c_str!( "Autoplay" ), &mut model.autoplay );
+
+			let mode_str = |mode| match mode {
+				model::DisplayMode::PianoRoll => "Piano roll",
+				model::DisplayMode::Code      => "Code",
+			};
+			SameLine( 0.0, -1.0 );
+			PushItemWidth( imutil::text_size( "_Piano roll____" ).x );
+			if BeginCombo( c_str!( "##mode" ), c_str!( "{}", mode_str( model.mode ) ), 0 ) {
+				for &mode in [ model::DisplayMode::PianoRoll, model::DisplayMode::Code ].iter() {
+					if Selectable( c_str!( "{}", mode_str( mode ) ), model.mode == mode, 0, &ImVec2::zero() ) {
+						model.mode = mode;
+					}
+				}
+				EndCombo();
+			}
+			PopItemWidth();
 
 			SameLine( 0.0, -1.0 );
 			PushItemWidth( imutil::text_size( "_Channel 00____" ).x );

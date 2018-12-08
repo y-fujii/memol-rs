@@ -22,6 +22,7 @@ fn main() {
 		.whitelist_function( "Im.*" )
 		.whitelist_type( "Im.*" )
 		.whitelist_var( "Im.*" )
+		.blacklist_item( "std.*" )
 		.prepend_enum_name( false )
 		.generate()
 		.unwrap()

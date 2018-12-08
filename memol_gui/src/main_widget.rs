@@ -1,11 +1,11 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use imgui::*;
-use imutil;
-use renderer;
-use compile_thread;
-use model;
-use piano_roll;
+use crate::imgui::*;
+use crate::imutil;
+use crate::renderer;
+use crate::compile_thread;
+use crate::model;
+use crate::piano_roll;
 
 
 pub struct MainWidget {

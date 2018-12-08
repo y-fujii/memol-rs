@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use ratio;
+use crate::ratio;
 
 
 #[derive( Debug )]

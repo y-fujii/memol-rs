@@ -4,19 +4,19 @@ use memol::midi;
 
 
 pub trait Player: Send {
-	fn on_received_boxed( &mut self, Box<'static + Fn() + Send> );
-	fn set_data( &self, Vec<midi::Event> );
+	fn on_received_boxed( &mut self, _: Box<'static + Fn() + Send> );
+	fn set_data( &self, _: Vec<midi::Event> );
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>>;
-	fn connect_from( &self, &str ) -> io::Result<()>;
-	fn disconnect_from( &self, &str ) -> io::Result<()>;
+	fn connect_from( &self, _: &str ) -> io::Result<()>;
+	fn disconnect_from( &self, _: &str ) -> io::Result<()>;
 	fn ports_to( &self ) -> io::Result<Vec<(String, bool)>>;
-	fn connect_to( &self, &str ) -> io::Result<()>;
-	fn disconnect_to( &self, &str ) -> io::Result<()>;
-	fn send( &self, &[midi::Event] ) -> io::Result<()>;
-	fn recv( &self, &mut Vec<midi::Event> ) -> io::Result<()>;
+	fn connect_to( &self, _: &str ) -> io::Result<()>;
+	fn disconnect_to( &self, _: &str ) -> io::Result<()>;
+	fn send( &self, _: &[midi::Event] ) -> io::Result<()>;
+	fn recv( &self, _: &mut Vec<midi::Event> ) -> io::Result<()>;
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
-	fn seek( &self, f64 ) -> io::Result<()>;
+	fn seek( &self, _: f64 ) -> io::Result<()>;
 	fn location( &self ) -> f64;
 	fn is_playing( &self ) -> bool;
 }

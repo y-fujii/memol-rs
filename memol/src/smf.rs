@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use misc;
-use midi;
+use crate::misc;
+use crate::midi;
 
 
 fn delta_time( buf: &mut Vec<u8>, t: u32 ) {

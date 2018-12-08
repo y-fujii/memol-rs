@@ -9,7 +9,7 @@ pub mod generator;
 pub mod midi;
 pub mod smf;
 use std::*;
-use ratio::Ratio;
+use crate::ratio::Ratio;
 
 
 pub mod parser {
@@ -19,7 +19,7 @@ pub mod parser {
 
 	// XXX
 	fn remove_comments( src: &str ) -> borrow::Cow<str> {
-		use ::regex::*;
+		use regex::*;
 		thread_local!( static RE: Regex = Regex::new( r"(?s:/\*.*?\*/)" ).unwrap() );
 		RE.with( |re|
 			re.replace_all( src, |caps: &Captures|
@@ -30,7 +30,7 @@ pub mod parser {
 		)
 	}
 
-	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, ::misc::Error> {
+	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, misc::Error> {
 		let mut buf = String::new();
 		fs::File::open( path )
 			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?
@@ -46,9 +46,9 @@ pub mod parser {
 						ParseError::InvalidToken{ location: i } |
 						ParseError::UnrecognizedToken{ token: Some( (i, _, _) ), .. } |
 						ParseError::ExtraToken{ token: (i, _, _) } =>
-							::misc::error( path, i, "unexpected token." ),
+							misc::error( path, i, "unexpected token." ),
 						ParseError::UnrecognizedToken{ token: None, .. } =>
-							::misc::error( path, buf.len(), "unexpected EOF." ),
+							misc::error( path, buf.len(), "unexpected EOF." ),
 						ParseError::User{ error: err } =>
 							Err( err ),
 					}

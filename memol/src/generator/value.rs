@@ -1,8 +1,8 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use misc;
-use ratio::Ratio;
-use ast;
+use crate::misc;
+use crate::ratio::Ratio;
+use crate::ast;
 use super::*;
 
 

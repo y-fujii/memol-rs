@@ -2,8 +2,8 @@
 use std::*;
 use memol::misc;
 use memol::midi;
-use player;
-use jack;
+use crate::player;
+use crate::jack;
 
 
 const BUFFER_LEN: usize = 65536 / 16; // mem::size_of<MidiEvent>() == 16.

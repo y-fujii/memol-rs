@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 use gl;
-use imgui;
+use crate::imgui;
 
 
 pub struct Texture {

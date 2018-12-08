@@ -1,5 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use imgui::*;
+use crate::imgui::*;
 use std::*;
 
 

@@ -3,8 +3,8 @@ use std::*;
 use gl;
 use glutin;
 use glutin::GlContext;
-use imgui;
-use renderer;
+use crate::imgui;
+use crate::renderer;
 
 
 pub struct MessageSender<T> {

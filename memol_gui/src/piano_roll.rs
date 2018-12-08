@@ -1,9 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use imgui::*;
-use imutil;
+use crate::imgui::*;
+use crate::imutil;
 use memol::misc;
-use model;
+use crate::model;
 
 
 pub struct PianoRoll {

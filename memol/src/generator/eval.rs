@@ -1,9 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use misc;
-use random;
-use ratio;
-use ast;
+use crate::misc;
+use crate::random;
+use crate::ratio;
+use crate::ast;
 use super::*;
 
 

@@ -1,7 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use clipboard;
 use clipboard::ClipboardProvider;
-use compile_thread;
+use crate::compile_thread;
 use std::*;
 use memol::*;
 use memol_cli::{ ipc, player };

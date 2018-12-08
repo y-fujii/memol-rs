@@ -2,9 +2,9 @@
 use std::*;
 use std::str::FromStr;
 use lalrpop_util::ParseError;
-use misc;
-use ratio;
-use ast::*;
+use crate::misc;
+use crate::ratio;
+use crate::ast::*;
 
 #[LALR]
 grammar<'a>( path: &path::Path );

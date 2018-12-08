@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use misc;
+use crate::misc;
 
 
 // irreducible && x >= 0, x = 0 is interpreted as +0.

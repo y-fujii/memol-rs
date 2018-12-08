@@ -1,5 +1,3 @@
-extern crate cc;
-extern crate bindgen;
 use std::*;
 
 

@@ -11,8 +11,6 @@ use crate::ratio::Ratio;
 
 
 pub mod parser {
-	use std::io::prelude::*;
-
 	include!( concat!( env!( "OUT_DIR" ), "/parser.rs" ) );
 
 	// XXX
@@ -29,6 +27,8 @@ pub mod parser {
 	}
 
 	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, misc::Error> {
+		use std::io::Read;
+
 		let mut buf = String::new();
 		fs::File::open( path )
 			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?

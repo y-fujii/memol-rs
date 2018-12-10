@@ -1,6 +1,10 @@
 [workspace]
 members = ["memol", "memol_cli", "memol_gui", "memol_vst"]
 
+[profile.dev]
+debug = false
+incremental = false
+
 [profile.release]
 panic = "abort"
 lto = true

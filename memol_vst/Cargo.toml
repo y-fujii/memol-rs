@@ -2,6 +2,7 @@
 name = "memol_vst"
 version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
+edition = "2018"
 
 [dependencies]
 vst = { git = "https://github.com/y-fujii/rust-vst", branch = "sebbert_work" }

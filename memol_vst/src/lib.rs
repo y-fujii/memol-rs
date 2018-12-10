@@ -1,12 +1,9 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-#[macro_use]
-extern crate vst;
-extern crate memol;
-extern crate memol_cli;
-mod events;
 use std::*;
+use vst::plugin_main;
 use vst::host::Host;
 use memol::{ misc, midi };
+mod events;
 
 
 const REMOTE_ADDR: &'static str = "ws://127.0.0.1:27182";
@@ -109,7 +106,7 @@ impl vst::plugin::Plugin for Plugin {
 		}
 	}
 
-	fn process( &mut self, buffer: &mut vst::buffer::AudioBuffer<f32> ) {
+	fn process( &mut self, buffer: &mut vst::buffer::AudioBuffer<'_, f32> ) {
 		self.buffer.clear();
 
 		let size = buffer.samples() as isize;

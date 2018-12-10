@@ -76,6 +76,8 @@ impl MainWidget {
 			(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
 			 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar) as i32
 		);
+		PushStyleVar1( ImGuiStyleVar_WindowPadding as i32, &padding );
+
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
 				model.player.seek( 0.0 ).ok();
@@ -131,13 +133,14 @@ impl MainWidget {
 			}
 			PopItemWidth();
 
-			// ports from.
 			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Input from..." ), &ImVec2::zero() ) {
-				OpenPopup( c_str!( "ports from" ) );
+			if Button( c_str!( "I/O ports..." ), &ImVec2::zero() ) {
+				OpenPopup( c_str!( "ports" ) );
 				self.ports_from = model.player.ports_from().unwrap_or_default();
+				self.ports_to   = model.player.ports_to  ().unwrap_or_default();
 			}
-			if BeginPopup( c_str!( "ports from" ), 0 ) {
+			if BeginPopup( c_str!( "ports" ), 0 ) {
+				Text( c_str!( "Input from..." ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
@@ -148,16 +151,10 @@ impl MainWidget {
 						}
 					}
 				}
-				EndPopup();
-			}
 
-			// ports to.
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "Output to..." ), &ImVec2::zero() ) {
-				OpenPopup( c_str!( "ports to" ) );
-				self.ports_to = model.player.ports_to().unwrap_or_default();
-			}
-			if BeginPopup( c_str!( "ports to" ), 0 ) {
+				Separator();
+
+				Text( c_str!( "Output to..." ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
@@ -168,6 +165,7 @@ impl MainWidget {
 						}
 					}
 				}
+
 				EndPopup();
 			}
 
@@ -181,6 +179,8 @@ impl MainWidget {
 			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
 				model.compile_tx.send( compile_thread::Message::Refresh ).unwrap();
 			}
+
+		PopStyleVar( 1 );
 		End();
 		PopStyleVar( 1 );
 

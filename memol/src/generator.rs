@@ -41,7 +41,7 @@ impl<'a> Generator<'a> {
 			FlatNote{ t0: -Ratio::inf(), t1: Ratio::inf(), nnum: Some( 64 ) },
 			FlatNote{ t0: -Ratio::inf(), t1: Ratio::inf(), nnum: Some( 65 ) },
 			FlatNote{ t0: -Ratio::inf(), t1: Ratio::inf(), nnum: Some( 67 ) },
-		] ) ];
+		]) ];
 
 		Generator{
 			rng: rng,

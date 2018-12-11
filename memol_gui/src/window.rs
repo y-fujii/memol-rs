@@ -141,6 +141,13 @@ impl<'a, T> Window<'a, T> {
 			),
 		} );
 		loop {
+			if let Some( (r, g, b, a) ) = self.background {
+				unsafe {
+					gl::ClearColor( r, g, b, a );
+					gl::Clear( gl::COLOR_BUFFER_BIT );
+				}
+			}
+
 			if n > 0 {
 				self.looper.poll_events( |ev|
 					if let glutin::Event::DeviceEvent{ .. } = ev {} else {
@@ -171,17 +178,11 @@ impl<'a, T> Window<'a, T> {
 				n = cmp::max( n - 1, k );
 				n = cmp::max( n, self.draw()? );
 			}
-
 			if (0 .. 3).any( |i| io.MouseDown[i] ) {
 				n = cmp::max( n, 1 );
 			}
 
-			if let Some( (r, g, b, a) ) = self.background {
-				unsafe {
-					gl::ClearColor( r, g, b, a );
-					gl::Clear( gl::COLOR_BUFFER_BIT );
-				}
-			}
+			unsafe { imgui::Render() };
 			self.renderer.render();
 			self.window.swap_buffers()?;
 		}
@@ -196,7 +197,7 @@ impl<'a, T> Window<'a, T> {
 
 		unsafe { imgui::NewFrame() };
 		let n = (self.on_draw)();
-		unsafe { imgui::Render() };
+		unsafe { imgui::EndFrame() };
 		Ok( n )
 	}
 

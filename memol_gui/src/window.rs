@@ -25,7 +25,7 @@ pub struct Window<'a, T> {
 	timer: time::SystemTime,
 	tx: sync::mpsc::Sender<T>,
 	rx: sync::mpsc::Receiver<T>,
-	background: Option<(f32, f32, f32, f32)>,
+	background: Option<imgui::ImVec4>,
 	on_message: Box<dyn 'a + FnMut( T ) -> i32>,
 	on_draw: Box<dyn 'a + FnMut() -> i32>,
 	on_file_dropped: Box<dyn 'a + FnMut( &path::PathBuf ) -> i32>,
@@ -33,6 +33,8 @@ pub struct Window<'a, T> {
 
 impl<'a, T> Drop for Window<'a, T> {
 	fn drop( &mut self ) {
+		let io = imgui::get_io();
+		renderer::destroy_font_texture( unsafe { &mut *io.Fonts } );
 		unsafe { imgui::DestroyContext( self.context ) };
 	}
 }
@@ -98,8 +100,8 @@ impl<'a, T> Window<'a, T> {
 		} )
 	}
 
-	pub fn set_background( &mut self, r: f32, g: f32, b: f32, a: f32 ) {
-		self.background = Some( (r, g, b, a) );
+	pub fn set_background( &mut self, col: imgui::ImVec4 ) {
+		self.background = Some( col );
 	}
 
 	pub fn on_message<U: 'a + FnMut( T ) -> i32>( &mut self, f: U ) {
@@ -119,7 +121,8 @@ impl<'a, T> Window<'a, T> {
 	}
 
 	pub fn update_font( &mut self ) {
-		self.renderer.update_font()
+		let io = imgui::get_io();
+		renderer::update_font_texture( unsafe { &mut *io.Fonts } )
 	}
 
 	pub fn create_sender( &self ) -> MessageSender<T> {
@@ -141,11 +144,8 @@ impl<'a, T> Window<'a, T> {
 			),
 		} );
 		loop {
-			if let Some( (r, g, b, a) ) = self.background {
-				unsafe {
-					gl::ClearColor( r, g, b, a );
-					gl::Clear( gl::COLOR_BUFFER_BIT );
-				}
+			if let Some( col ) = self.background {
+				self.renderer.clear( col );
 			}
 
 			if n > 0 {
@@ -183,7 +183,7 @@ impl<'a, T> Window<'a, T> {
 			}
 
 			unsafe { imgui::Render() };
-			self.renderer.render();
+			self.renderer.render( unsafe { &*imgui::GetDrawData() }, io.DisplaySize );
 			self.window.swap_buffers()?;
 		}
 	}

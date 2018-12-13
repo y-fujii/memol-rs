@@ -114,7 +114,7 @@ fn main() {
 			widget.wallpaper = Some( wallpaper );
 		}
 		else {
-			window.set_background( 1.0, 1.0, 1.0, 1.0 );
+			window.set_background( imgui::ImVec4::constant( 1.0 ) );
 		}
 
 		window.on_draw( || {

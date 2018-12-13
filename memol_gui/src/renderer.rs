@@ -65,7 +65,6 @@ pub struct Renderer {
 	vao: u32,
 	vbo: u32,
 	ebo: u32,
-	tex_font: Texture,
 }
 
 impl Drop for Renderer {
@@ -173,28 +172,19 @@ impl Renderer {
 				vao: vao,
 				vbo: vbo,
 				ebo: ebo,
-				tex_font: Texture::new(),
 			}
 		}
 	}
 
-	pub fn update_font( &mut self ) {
-		let io = imgui::get_io();
+	pub fn clear( &self, col: imgui::ImVec4 ) {
 		unsafe {
-			let mut data = ptr::null_mut();
-			let mut w = 0;
-			let mut h = 0;
-			(*io.Fonts).GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() );
-			self.tex_font.upload_a8( data, w, h );
-			(*io.Fonts).TexID = self.tex_font.id as *mut _;
+			gl::ClearColor( col.x, col.y, col.z, col.w );
+			gl::Clear( gl::COLOR_BUFFER_BIT );
 		}
 	}
 
-	pub fn render( &mut self ) {
+	pub fn render( &mut self, draw_data: &imgui::ImDrawData, display_size: imgui::ImVec2 ) {
 		unsafe {
-			let io = imgui::get_io();
-			let draw_data = &*imgui::GetDrawData();
-
 			gl::Enable( gl::BLEND );
 			// XXX: premultiplied alpha is better for interpolation.
 			gl::BlendEquation( gl::FUNC_ADD );
@@ -204,9 +194,9 @@ impl Renderer {
 			gl::Enable( gl::SCISSOR_TEST );
 			gl::ActiveTexture( gl::TEXTURE0 );
 
-			gl::Viewport( 0, 0, io.DisplaySize.x as i32, io.DisplaySize.y as i32 );
+			gl::Viewport( 0, 0, display_size.x as i32, display_size.y as i32 );
 			gl::UseProgram( self.program );
-			gl::Uniform2f( self.loc_scale, 2.0 / io.DisplaySize.x, -2.0 / io.DisplaySize.y );
+			gl::Uniform2f( self.loc_scale, 2.0 / display_size.x, -2.0 / display_size.y );
 			gl::BindBuffer( gl::ARRAY_BUFFER, self.vbo );
 			gl::BindBuffer( gl::ELEMENT_ARRAY_BUFFER, self.ebo );
 			gl::BindVertexArray( self.vao );
@@ -237,9 +227,9 @@ impl Renderer {
 						gl::BindTexture( gl::TEXTURE_2D, cmd.TextureId as u32 );
 						gl::Scissor(
 							cmd.ClipRect.x as i32,
-							(io.DisplaySize.y - cmd.ClipRect.w) as i32,
-							(cmd.ClipRect.z   - cmd.ClipRect.x) as i32,
-							(cmd.ClipRect.w   - cmd.ClipRect.y) as i32,
+							(display_size.y - cmd.ClipRect.w) as i32,
+							(cmd.ClipRect.z - cmd.ClipRect.x) as i32,
+							(cmd.ClipRect.w - cmd.ClipRect.y) as i32,
 						);
 						debug_assert!( mem::size_of::<imgui::ImDrawIdx>() == 2 );
 						gl::DrawElements( gl::TRIANGLES, cmd.ElemCount as i32, gl::UNSIGNED_SHORT, offset as *const _ );
@@ -255,5 +245,25 @@ impl Renderer {
 			gl::UseProgram( 0 );
 			gl::Disable( gl::SCISSOR_TEST );
 		}
+	}
+}
+
+pub fn update_font_texture( font: &mut imgui::ImFontAtlas ) {
+	destroy_font_texture( font );
+
+	let mut tex = Texture::new();
+	let mut data = ptr::null_mut();
+	let mut w = 0;
+	let mut h = 0;
+	unsafe { font.GetTexDataAsAlpha8( &mut data, &mut w, &mut h, ptr::null_mut() ) };
+	tex.upload_a8( data, w, h );
+	font.TexID = tex.id as *mut _;
+	mem::forget( tex );
+}
+
+pub fn destroy_font_texture( font: &mut imgui::ImFontAtlas ) {
+	let id = mem::replace( &mut font.TexID, ptr::null_mut() );
+	if !id.is_null() {
+		unsafe { gl::DeleteTextures( 1, &(id as u32) ) };
 	}
 }

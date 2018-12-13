@@ -7,6 +7,7 @@ use memol_cli::notify;
 pub enum Message {
 	File( path::PathBuf ),
 	Refresh,
+	#[allow( dead_code )]
 	Exit,
 }
 

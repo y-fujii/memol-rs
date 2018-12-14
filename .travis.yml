@@ -1,18 +1,12 @@
 language: rust
 dist: xenial
-addons:
-    apt:
-        packages:
-            - gcc-mingw-w64-x86-64
-            - gcc-aarch64-linux-gnu
-            - libc-dev-arm64-cross
-            - p7zip-full
 
 matrix:
     include:
         - os: linux
           env: TARGET=x86_64-unknown-linux-gnu
           script:
+              - sudo apt-get install p7zip-full
               - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
@@ -23,17 +17,23 @@ matrix:
           script:
               - export   CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               - export CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial           main" >> /etc/apt/sources.list'
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial-updates   main" >> /etc/apt/sources.list'
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial-backports main" >> /etc/apt/sources.list'
+              - sudo dpkg --add-architecture arm64
+              - sudo apt-get update || true
+              - sudo apt-get install gcc-aarch64-linux-gnu libc-dev-arm64-cross p7zip-full libxcb1-dev:arm64
               - sed -i 's|bindgen::Builder::default()|bindgen::Builder::default().clang_arg( "--sysroot=/usr/aarch64-linux-gnu" ).clang_arg( "-isystem" ).clang_arg( "/usr/aarch64-linux-gnu/include" )|' memol_gui/build.rs
               - rustup target add ${TARGET}
-              - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --lib
-              - CC=clang CXX=clang++ cargo build --release --target=${TARGET} --bin memol_cli
+              - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
-              - aarch64-linux-gnu-strip --strip-all memol_cli memol_vst.so
-              - 7z a memol-${TARGET}.zip memol_cli memol_vst.so
+              - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui memol_vst.so
+              - 7z a memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
           env: TARGET=x86_64-pc-windows-gnu
           script:
+              - sudo apt-get install gcc-mingw-w64-x86-64 p7zip-full
               - rustup target add ${TARGET}
               - CC=clang CXX=clang++ cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release

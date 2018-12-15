@@ -144,10 +144,6 @@ impl<'a, T> Window<'a, T> {
 			),
 		} );
 		loop {
-			if let Some( col ) = self.background {
-				self.renderer.clear( col );
-			}
-
 			if n > 0 {
 				self.looper.poll_events( |ev|
 					if let glutin::Event::DeviceEvent{ .. } = ev {} else {
@@ -182,6 +178,9 @@ impl<'a, T> Window<'a, T> {
 				n = cmp::max( n, 1 );
 			}
 
+			if let Some( col ) = self.background {
+				self.renderer.clear( col );
+			}
 			unsafe { imgui::Render() };
 			self.renderer.render( unsafe { &*imgui::GetDrawData() }, io.DisplaySize );
 			self.window.swap_buffers()?;

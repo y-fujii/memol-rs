@@ -25,7 +25,7 @@ enum UiMessage {
 }
 
 fn init_imgui( scale: f32 ) {
-	let scale = f32::sqrt( scale );
+	let scale = f32::cbrt( scale * scale );
 	let io = imgui::get_io();
 	imutil::set_theme(
 		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),

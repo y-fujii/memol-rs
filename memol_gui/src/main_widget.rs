@@ -134,13 +134,13 @@ impl MainWidget {
 			PopItemWidth();
 
 			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "I/O ports..." ), &ImVec2::zero() ) {
+			if Button( c_str!( "I/O ports\u{2026}" ), &ImVec2::zero() ) {
 				OpenPopup( c_str!( "ports" ) );
 				self.ports_from = model.player.ports_from().unwrap_or_default();
 				self.ports_to   = model.player.ports_to  ().unwrap_or_default();
 			}
 			if BeginPopup( c_str!( "ports" ), 0 ) {
-				Text( c_str!( "Input from..." ) );
+				Text( c_str!( "Input from\u{2026}" ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {
@@ -154,7 +154,7 @@ impl MainWidget {
 
 				Separator();
 
-				Text( c_str!( "Output to..." ) );
+				Text( c_str!( "Output to\u{2026}" ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
 						*is_conn = if *is_conn {

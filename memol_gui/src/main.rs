@@ -44,7 +44,7 @@ fn init_imgui( scale: f32 ) {
 		let font = include_bytes!( "../fonts/inconsolata_regular.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, (14.0 * scale).round(), &cfg, ptr::null(),
+			font.len() as i32, (14.0 * scale).round(), &cfg, [ 0x20, 0xff, 0x2026, 0x2027, 0 ].as_ptr(),
 		);
 		cfg.MergeMode     = true;
 		cfg.GlyphOffset.y = (0.5 * scale).round();

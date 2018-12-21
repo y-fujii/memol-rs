@@ -60,6 +60,7 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 	for px in img.pixels_mut() {
 		let rgb = imgui::ImVec4::new( px[0] as f32, px[1] as f32, px[2] as f32, 0.0 );
 		let rgb = imutil::srgb_gamma_to_linear( (1.0 / 255.0) * rgb );
+		/*
 		let ys = rgb.dot( &imgui::ImVec4::new( 0.2126, 0.7152, 0.0722, 0.0 ) );
 		let yd = (1.0 - ratio) + ratio * ys;
 		let rgb_min = f32::min( f32::min( rgb.x, rgb.y ), rgb.z );
@@ -68,6 +69,8 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 		let a = f32::min( a, (yd - 0.0 + f32::MIN_POSITIVE) / f32::max(  f32::MIN_POSITIVE, ys - rgb_min ) );
 		let a = f32::min( a, (yd - 1.0 - f32::MIN_POSITIVE) / f32::min( -f32::MIN_POSITIVE, ys - rgb_max ) );
 		let rgb = a * rgb + imgui::ImVec4::constant( yd - a * ys );
+		*/
+		let rgb = imgui::ImVec4::constant( 1.0 - ratio ) + ratio * rgb;
 		let rgb = 255.0 * imutil::srgb_linear_to_gamma( rgb ) + imgui::ImVec4::constant( 0.5 );
 		px[0] = rgb.x as u8;
 		px[1] = rgb.y as u8;
@@ -106,8 +109,8 @@ fn main() {
 		// initialize window.
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
-		if let Some( path ) = wallpaper {
-			let mut img = image::open( path )?.to_rgba();
+		if let Some( Ok( img ) ) = wallpaper.map( image::open ) {
+			let mut img = img.to_rgba();
 			lighten_image( &mut img, 0.5 );
 			let mut wallpaper = renderer::Texture::new();
 			wallpaper.upload_u32( img.as_ptr(), img.width() as i32, img.height() as i32 );

@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use std::io::Read;
 use clipboard::ClipboardProvider;
 use memol::*;
 use memol_cli::{ ipc, player };
@@ -58,8 +57,9 @@ impl Model {
 		}
 	}
 
-	pub fn set_data( &mut self, path: path::PathBuf, asm: Assembly, evs: Vec<midi::Event> ) {
+	pub fn set_data( &mut self, path: path::PathBuf, code: String, asm: Assembly, evs: Vec<midi::Event> ) {
 		self.path     = path;
+		self.code     = code;
 		self.assembly = asm;
 		self.events   = evs;
 		self.text     = None;
@@ -67,10 +67,6 @@ impl Model {
 		let rng = random::Generator::new();
 		let evaluator = generator::Evaluator::new( &rng );
 		self.tempo = evaluator.eval( &self.assembly.tempo, ratio::Ratio::zero() );
-
-		if let Ok( mut f ) = fs::File::open( &self.path ) {
-			f.read_to_string( &mut self.code ).ok();
-		}
 
 		let bgn = match self.events.get( 0 ) {
 			Some( ev ) => ev.time.max( 0.0 ),

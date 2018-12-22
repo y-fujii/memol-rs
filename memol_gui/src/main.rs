@@ -10,6 +10,7 @@ mod model;
 mod piano_roll;
 mod main_widget;
 use std::*;
+use std::io::Read;
 use memol::*;
 use memol_cli::{ ipc, player, player_jack };
 use memol_cli::player::{ Player, PlayerExt };
@@ -18,7 +19,7 @@ use memol_cli::player::{ Player, PlayerExt };
 const JACK_FRAME_WAIT: i32 = 12;
 
 enum UiMessage {
-	Data( path::PathBuf, Assembly, Vec<midi::Event> ),
+	Data( path::PathBuf, String, Assembly, Vec<midi::Event> ),
 	Text( String ),
 	Player( Box<dyn player::Player> ),
 	Midi,
@@ -126,8 +127,8 @@ fn main() {
 		} );
 		window.on_message( |msg| {
 			match msg {
-				UiMessage::Data( path, asm, evs ) => {
-					model.borrow_mut().set_data( path, asm, evs );
+				UiMessage::Data( path, code, asm, evs ) => {
+					model.borrow_mut().set_data( path, code, asm, evs );
 				},
 				UiMessage::Text( text ) => {
 					model.borrow_mut().text = Some( text );
@@ -151,10 +152,15 @@ fn main() {
 			let bus_tx = bus.create_sender();
 			let window_tx = window.create_sender();
 			move |path, asm, evs| {
+				let mut code = String::new();
+				if let Ok( mut f ) = fs::File::open( &path ) {
+					f.read_to_string( &mut code ).ok();
+				}
+
 				bus_tx.send( &ipc::Message::Success{
 					events: evs.iter().map( |e| e.clone().into() ).collect()
 				} ).unwrap();
-				window_tx.send( UiMessage::Data( path.clone(), asm, evs ) );
+				window_tx.send( UiMessage::Data( path, code, asm, evs ) );
 			}
 		} );
 		compiler.on_failure( {

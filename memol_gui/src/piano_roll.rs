@@ -8,7 +8,7 @@ use crate::model;
 
 pub struct PianoRoll {
 	pub scroll_ratio: f32,
-	dragging: bool,
+	dragged: bool,
 	time_scale: f32,
 	line_width: f32,
 	color_line_0: u32,
@@ -22,7 +22,7 @@ impl PianoRoll {
 	pub fn new() -> Self {
 		Self {
 			scroll_ratio: 0.0,
-			dragging: false,
+			dragged: false,
 			time_scale: 24.0,
 			line_width: 0.25,
 			color_line_0:  imutil::pack_color( imutil::srgb_linear_to_gamma( ImVec4::new( 0.10, 0.10, 0.10, 0.50 ) ) ),
@@ -43,12 +43,19 @@ impl PianoRoll {
 
 		SetNextWindowContentSize( &ImVec2::new( content_w, content_h ) );
 		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_AlwaysHorizontalScrollbar as i32 );
-			if self.dragging || IsMouseDragging( 1, -1.0 ) {
-				self.dragging = !IsMouseReleased( 1 );
+			// scroll.
+			if IsMouseDragging( 1, -1.0 ) {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if IsMouseReleased( 1 ) {
+			else if model.follow && model.player.is_playing() {
+				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
+				let a = f32::exp( -2.0 * get_io().DeltaTime );
+				SetScrollX( a * GetScrollX() + (1.0 - a) * next );
+			}
+
+			// seek or copy.
+			if IsWindowHovered( 0 ) && IsMouseReleased( 1 ) && !self.dragged {
 				if model.copying_notes.is_empty() {
 					let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 					let x = f32::min( f32::max( x, 0.0 ), time_len );
@@ -59,18 +66,15 @@ impl PianoRoll {
 					model.note_off_all();
 				}
 			}
-			else if model.follow && model.player.is_playing() {
-				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
-				let a = f32::exp( -2.0 * get_io().DeltaTime );
-				SetScrollX( a * GetScrollX() + (1.0 - a) * next );
-			}
 
+			// render.
 			let mut ctx = imutil::DrawContext::new( unit, ImVec2::new( unit * self.time_scale * 0.5, 0.0 ) );
 			self.draw_indicator( &mut ctx, model, time_len );
 			self.draw_background( &mut ctx, time_len );
 			self.draw_notes( &mut ctx, model, model.channel, time_cur, self.color_note_0, self.color_note_1 );
 			self.draw_time_bar( &mut ctx, time_cur );
 
+			self.dragged = IsMouseDragging( 1, -1.0 );
 			self.scroll_ratio = if GetScrollMaxX() > 0.0 { GetScrollX() / GetScrollMaxX() } else { 0.5 };
 		EndChild();
 	}

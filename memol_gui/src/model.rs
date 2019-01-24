@@ -161,9 +161,7 @@ impl Model {
 	}
 
 	pub fn generate_smf( &self ) -> io::Result<()> {
-		let smf = self.path.with_extension( "mid" );
-		let mut buf = io::BufWriter::new( fs::File::create( smf )? );
-		memol::smf::write_smf( &mut buf, &self.events, 480 )?;
-		Ok( () )
+		let smf = memol::smf::generate_smf( &self.events, 480 );
+		fs::write( self.path.with_extension( "mid" ), smf )
 	}
 }

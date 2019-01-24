@@ -39,9 +39,8 @@ fn main() {
 		// generate MIDI file.
 		if args.opt_present( "b" ) {
 			if let Some( events ) = compile( &path, args.opt_present( "v" ) ) {
-				let smf = path.with_extension( "mid" );
-				let mut buf = io::BufWriter::new( fs::File::create( smf )? );
-				memol::smf::write_smf( &mut buf, &events, 480 )?;
+				let smf = memol::smf::generate_smf( &events, 480 );
+				fs::write( path.with_extension( "mid" ), smf )?;
 			}
 			return Ok( () );
 		}

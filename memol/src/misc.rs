@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use std::io::Read;
 
 
 pub fn idiv( x: i64, y: i64 ) -> i64 {
@@ -50,14 +49,6 @@ pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usiz
 	lo
 }
 
-pub fn u16_to_bytes_be( i: u16 ) -> [u8; 2] {
-	[ (i >> 8) as u8, i as u8 ]
-}
-
-pub fn u32_to_bytes_be( i: u32 ) -> [u8; 4] {
-	[ (i >> 24) as u8, (i >> 16) as u8, (i >> 8) as u8, i as u8 ]
-}
-
 #[derive( Debug )]
 pub struct Error {
 	pub path: path::PathBuf,
@@ -67,10 +58,9 @@ pub struct Error {
 
 impl fmt::Display for Error {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
-		let path = self.path.to_string_lossy();
-		let mut buf = String::new();
-		match fs::File::open( &*self.path ).and_then( |mut f| f.read_to_string( &mut buf ) ) {
-			Ok( _ ) => {
+		let path_str = self.path.to_string_lossy();
+		match fs::read_to_string( &self.path ) {
+			Ok( buf ) => {
 				let mut row = 0;
 				let mut col = 0;
 				for c in buf.chars().take( self.index ) {
@@ -85,10 +75,10 @@ impl fmt::Display for Error {
 						},
 					}
 				}
-				write!( f, "{}:{}:{}: {}", path, row, col, self.message )
+				write!( f, "{}:{}:{}: {}", path_str, row, col, self.message )
 			},
 			Err( _ ) => {
-				write!( f, "{}: {}", path, self.message )
+				write!( f, "{}: {}", path_str, self.message )
 			},
 		}
 	}

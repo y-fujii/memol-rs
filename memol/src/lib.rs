@@ -27,12 +27,7 @@ pub mod parser {
 	}
 
 	pub fn parse<'a>( path: &path::Path ) -> Result<Definition<'a>, misc::Error> {
-		use std::io::Read;
-
-		let mut buf = String::new();
-		fs::File::open( path )
-			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?
-			.read_to_string( &mut buf )
+		let buf = fs::read_to_string( path )
 			.map_err( |e| misc::Error::new( path, 0, format!( "{}", e ) ) )?;
 
 		thread_local!( static PARSER: definitionParser = definitionParser::new() );

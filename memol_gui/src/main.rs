@@ -10,7 +10,6 @@ mod model;
 mod piano_roll;
 mod main_widget;
 use std::*;
-use std::io::Read;
 use memol::*;
 use memol_cli::{ ipc, player, player_jack };
 use memol_cli::player::{ Player, PlayerExt };
@@ -152,10 +151,8 @@ fn main() {
 			let bus_tx = bus.create_sender();
 			let window_tx = window.create_sender();
 			move |path, asm, evs| {
-				let mut code = String::new();
-				if let Ok( mut f ) = fs::File::open( &path ) {
-					f.read_to_string( &mut code ).ok();
-				}
+				let code = fs::read_to_string( &path )
+					.unwrap_or_else( |_| String::new() );
 
 				bus_tx.send( &ipc::Message::Success{
 					events: evs.iter().map( |e| e.clone().into() ).collect()

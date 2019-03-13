@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use glutin::GlContext;
+use glutin::ContextTrait;
 use crate::imgui;
 use crate::renderer;
 
@@ -20,7 +20,7 @@ impl<T> MessageSender<T> {
 pub struct Window<'a, T> {
 	context: *mut imgui::ImGuiContext,
 	looper: glutin::EventsLoop,
-	window: glutin::GlWindow,
+	window: glutin::WindowedContext,
 	renderer: renderer::Renderer,
 	timer: time::SystemTime,
 	tx: sync::mpsc::Sender<T>,
@@ -67,17 +67,15 @@ impl<'a, T> Window<'a, T> {
 		io.KeyMap[imgui::ImGuiKey_Z          as usize] = glutin::VirtualKeyCode::Z        as i32;
 
 		let looper = glutin::EventsLoop::new();
-		let window = {
-			let builder = glutin::WindowBuilder::new();
-			let context = glutin::ContextBuilder::new()
-				.with_gl( glutin::GlRequest::GlThenGles{
-					opengl_version:   (3, 3),
-					opengles_version: (3, 0),
-				} )
-				.with_gl_profile( glutin::GlProfile::Core )
-				.with_vsync( true );
-			glutin::GlWindow::new( builder, context, &looper )?
-		};
+		let window = glutin::ContextBuilder::new()
+			.with_gl( glutin::GlRequest::GlThenGles{
+				opengl_version:   (3, 3),
+				opengles_version: (3, 0),
+			} )
+			.with_gl_profile( glutin::GlProfile::Core )
+			.with_vsync( true )
+			.build_windowed( glutin::WindowBuilder::new(), &looper )?;
+
 		unsafe {
 			window.make_current()?;
 			gl::load_with( |s| window.get_proc_address( s ) as *const os::raw::c_void );
@@ -152,7 +150,7 @@ impl<'a, T> Window<'a, T> {
 				);
 			}
 			else {
-				self.looper.run_forever( |ev| {
+				self.looper.run_forever( |ev|
 					if let glutin::Event::DeviceEvent{ .. } = ev {
 						glutin::ControlFlow::Continue
 					}
@@ -160,7 +158,7 @@ impl<'a, T> Window<'a, T> {
 						events.push( ev );
 						glutin::ControlFlow::Break
 					}
-				} );
+				);
 			}
 
 			if events.is_empty() {

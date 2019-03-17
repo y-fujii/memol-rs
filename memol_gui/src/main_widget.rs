@@ -3,7 +3,6 @@ use std::*;
 use crate::imgui::*;
 use crate::imutil;
 use crate::renderer;
-use crate::compile_thread;
 use crate::model;
 use crate::piano_roll;
 
@@ -140,6 +139,10 @@ impl MainWidget {
 				self.ports_to   = model.player.ports_to  ().unwrap_or_default();
 			}
 			if BeginPopup( c_str!( "ports" ), 0 ) {
+				Text( c_str!( "\u{f7c0} {}", model.player.status() ) );
+
+				Spacing();
+				Separator();
 				Text( c_str!( "Input from\u{2026}" ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
@@ -152,8 +155,8 @@ impl MainWidget {
 					}
 				}
 
+				Spacing();
 				Separator();
-
 				Text( c_str!( "Output to\u{2026}" ) );
 				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
 					if Checkbox( c_str!( "{}", port ), is_conn ) {
@@ -174,10 +177,6 @@ impl MainWidget {
 				if let Err( e ) = model.generate_smf() {
 					model.text = Some( format!( "{}", e ) );
 				}
-			}
-			SameLine( 0.0, -1.0 );
-			if Button( c_str!( "\u{f021}" ), &ImVec2::zero() ) {
-				model.compile_tx.send( compile_thread::Message::Refresh ).unwrap();
 			}
 
 		PopStyleVar( 1 );

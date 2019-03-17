@@ -11,8 +11,8 @@ mod piano_roll;
 mod main_widget;
 use std::*;
 use memol::*;
-use memol_cli::{ ipc, player, player_jack };
-use memol_cli::player::{ Player, PlayerExt };
+use memol_cli::{ player, player_net, player_jack };
+use memol_cli::player::PlayerExt;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
@@ -20,7 +20,6 @@ const JACK_FRAME_WAIT: i32 = 12;
 enum UiMessage {
 	Data( path::PathBuf, String, Assembly, Vec<midi::Event> ),
 	Text( String ),
-	Player( Box<dyn player::Player> ),
 	Midi,
 }
 
@@ -51,7 +50,7 @@ fn init_imgui( scale: f32 ) {
 		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,
-			font.len() as i32, (14.0 * scale).round(), &cfg, [ 0xf000, 0xf3ff, 0 ].as_ptr(),
+			font.len() as i32, (14.0 * scale).round(), &cfg, [ 0xf000, 0xf7ff, 0 ].as_ptr(),
 		);
 	}
 }
@@ -80,9 +79,11 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 
 fn main() {
 	|| -> Result<(), Box<dyn error::Error>> {
-		// parse command line.
+		// parse the command line.
 		let mut opts = getopts::Options::new();
 		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );
+		opts.optflag ( "j", "jack",      "Use JACK (Default on Linux)." );
+		opts.optflag ( "p", "vst",       "Use VST plugin (Default on non-Linux OS)." );
 		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"      );
 		opts.optopt  ( "a", "address",   "WebSocket address.",    "ADDR:PORT" );
 		let args = match opts.parse( env::args().skip( 1 ) ) {
@@ -95,21 +96,17 @@ fn main() {
 		if args.free.len() > 1 {
 			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
 		}
-		let addr = args.opt_str( "a" ).unwrap_or( "127.0.0.1:27182".into() );
-		let ports = args.opt_strs( "c" );
-		let wallpaper = args.opt_str( "w" );
 
 		// create instances.
 		let mut compiler = compile_thread::CompileThread::new();
-		let bus = ipc::Bus::new();
-		let model = cell::RefCell::new( model::Model::new( compiler.create_sender(), bus.create_sender() ) );
+		let model = cell::RefCell::new( model::Model::new( compiler.create_sender() ) );
 		let mut widget = main_widget::MainWidget::new();
 		let mut window = window::Window::new()?;
 
-		// initialize window.
+		// initialize a window.
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
-		if let Some( Ok( img ) ) = wallpaper.map( image::open ) {
+		if let Some( Ok( img ) ) = args.opt_str( "w" ).map( image::open ) {
 			let mut img = img.to_rgba();
 			lighten_image( &mut img, 0.5 );
 			let mut wallpaper = renderer::Texture::new();
@@ -132,9 +129,6 @@ fn main() {
 				UiMessage::Text( text ) => {
 					model.borrow_mut().text = Some( text );
 				},
-				UiMessage::Player( player ) => {
-					model.borrow_mut().player = player;
-				},
 				UiMessage::Midi => {
 					model.borrow_mut().handle_midi_inputs();
 				},
@@ -146,17 +140,33 @@ fn main() {
 			0
 		} );
 
-		// initialize compiler.
+		// initialize a player.
+		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "p" )) {
+			(true, false) => player_jack::Player::new( "memol" )?,
+			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
+			_ => {
+				#[cfg( all( target_family = "unix", not( target_os = "macos" ) ) )]
+				let player = player_jack::Player::new( "memol" );
+				#[cfg( not( all( target_family = "unix", not( target_os = "macos" ) ) ) )]
+				let player = player_net::Player::new( "127.0.0.1:27182" );
+				player?
+			},
+		};
+		player.on_received( {
+			let window_tx = window.create_sender();
+			move || window_tx.send( UiMessage::Midi )
+		} );
+		for port in args.opt_strs( "c" ) {
+			player.connect_to( &port )?;
+		}
+		model.borrow_mut().player = player;
+
+		// initialize a compiler.
 		compiler.on_success( {
-			let bus_tx = bus.create_sender();
 			let window_tx = window.create_sender();
 			move |path, asm, evs| {
 				let code = fs::read_to_string( &path )
 					.unwrap_or_else( |_| String::new() );
-
-				bus_tx.send( &ipc::Message::Success{
-					events: evs.iter().map( |e| e.clone().into() ).collect()
-				} ).unwrap();
 				window_tx.send( UiMessage::Data( path, code, asm, evs ) );
 			}
 		} );
@@ -174,37 +184,9 @@ fn main() {
 				"Drag and drop to open a file.".into()
 			) );
 		}
-
-		// spawn threads.
 		compiler.spawn();
-		thread::spawn( move || {
-			if let Err( err ) = bus.listen( addr, |_| () ) {
-				eprintln!( "IPC: {}", err );
-			}
-		} );
-		thread::spawn( {
-			let window_tx_0 = window.create_sender();
-			let window_tx_1 = window.create_sender();
-			move || {
-				let mut player = match player_jack::Player::new( "memol" ) {
-					Ok ( v ) => v,
-					Err( v ) => {
-						window_tx_0.send( UiMessage::Text( format!( "Error: {}", v ) ) );
-						return;
-					},
-				};
-				player.on_received( move ||
-					window_tx_1.send( UiMessage::Midi )
-				);
-				for port in ports {
-					if let Err( v ) = player.connect_to( &port ) {
-						window_tx_0.send( UiMessage::Text( format!( "Error: {}", v ) ) );
-					}
-				}
-				window_tx_0.send( UiMessage::Player( player ) );
-			}
-		} );
 
+		// start an event loop.
 		window.event_loop()
 	}().unwrap_or_else( |e| {
 		eprintln!( "Error: {}", e );

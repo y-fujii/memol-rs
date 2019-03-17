@@ -5,7 +5,7 @@ use memol::midi;
 
 pub trait Player: Send {
 	fn on_received_boxed( &mut self, _: Box<dyn 'static + Fn() + Send> );
-	fn set_data( &self, _: Vec<midi::Event> );
+	fn set_data( &mut self, _: Vec<midi::Event> );
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>>;
 	fn connect_from( &self, _: &str ) -> io::Result<()>;
 	fn disconnect_from( &self, _: &str ) -> io::Result<()>;
@@ -19,15 +19,30 @@ pub trait Player: Send {
 	fn seek( &self, _: f64 ) -> io::Result<()>;
 	fn location( &self ) -> f64;
 	fn is_playing( &self ) -> bool;
+	fn status( &self ) -> String;
 }
 
-pub trait PlayerExt: Player {
+pub trait PlayerExt {
+	fn on_received<T: 'static + Fn() + Send>( &mut self, _: T );
+}
+
+impl<T: Player> PlayerExt for T {
+	fn on_received<U: 'static + Fn() + Send>( &mut self, f: U ) {
+		self.on_received_boxed( Box::new( f ) );
+	}
+}
+
+impl PlayerExt for &mut dyn Player {
 	fn on_received<T: 'static + Fn() + Send>( &mut self, f: T ) {
 		self.on_received_boxed( Box::new( f ) );
 	}
 }
 
-impl<T: Player> PlayerExt for T {}
+impl PlayerExt for Box<dyn Player> {
+	fn on_received<T: 'static + Fn() + Send>( &mut self, f: T ) {
+		self.on_received_boxed( Box::new( f ) );
+	}
+}
 
 pub struct DummyPlayer {
 	location: cell::Cell<f64>,
@@ -39,7 +54,7 @@ impl Player for DummyPlayer {
 	fn on_received_boxed( &mut self, _: Box<dyn 'static + Fn() + Send> ) {
 	}
 
-	fn set_data( &self, _: Vec<midi::Event> ) {
+	fn set_data( &mut self, _: Vec<midi::Event> ) {
 	}
 
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>> {
@@ -93,6 +108,10 @@ impl Player for DummyPlayer {
 
 	fn is_playing( &self ) -> bool {
 		false
+	}
+
+	fn status( &self ) -> String {
+		String::new()
 	}
 }
 

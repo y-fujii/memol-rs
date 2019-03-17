@@ -2,7 +2,7 @@
 use std::*;
 use clipboard::ClipboardProvider;
 use memol::*;
-use memol_cli::{ ipc, player };
+use memol_cli::player;
 use crate::compile_thread;
 
 
@@ -23,7 +23,6 @@ pub struct Model {
 	pub follow: bool,
 	pub autoplay: bool,
 	pub text: Option<String>,
-	pub bus_tx: ipc::Sender<ipc::Message>,
 	pub player: Box<dyn player::Player>,
 	pub compile_tx: sync::mpsc::Sender<compile_thread::Message>,
 	pub use_sharp: bool,
@@ -34,7 +33,7 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new( compile_tx: sync::mpsc::Sender<compile_thread::Message>, bus_tx: ipc::Sender<ipc::Message> ) -> Self {
+	pub fn new( compile_tx: sync::mpsc::Sender<compile_thread::Message> ) -> Self {
 		Model{
 			assembly: Assembly::default(),
 			events: Vec::new(),
@@ -46,7 +45,6 @@ impl Model {
 			follow: true,
 			autoplay: true,
 			text: None,
-			bus_tx: bus_tx,
 			player: player::DummyPlayer::new(),
 			compile_tx: compile_tx,
 			use_sharp: false,
@@ -110,18 +108,12 @@ impl Model {
 	pub fn note_on( &self, nn: u8 ) {
 		let evs = [ midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, nn, 0x40 ] ) ];
 		self.player.send( &evs ).ok();
-		self.bus_tx.send( &ipc::Message::Immediate{
-			events: evs.iter().map( |e| e.clone().into() ).collect()
-		} ).unwrap();
 	}
 
 	pub fn note_off_all( &self ) {
 		// all sound off.
 		let evs = [ midi::Event::new( 0.0, 0, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
 		self.player.send( &evs ).ok();
-		self.bus_tx.send( &ipc::Message::Immediate{
-			events: evs.iter().map( |e| e.clone().into() ).collect()
-		} ).unwrap();
 	}
 
 	pub fn note_symbol( &self, n: i64 ) -> &'static str {

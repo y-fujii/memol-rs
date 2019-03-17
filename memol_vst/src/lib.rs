@@ -1,12 +1,14 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
+use std::io::Read;
+use byteorder::{ LittleEndian, ReadBytesExt };
 use vst::plugin_main;
 use vst::host::Host;
 use memol::{ misc, midi };
 mod events;
 
 
-const REMOTE_ADDR: &'static str = "ws://127.0.0.1:27182";
+const REMOTE_ADDR: &'static str = "127.0.0.1:27182";
 
 struct SharedData {
 	events: Vec<midi::Event>,
@@ -51,25 +53,42 @@ impl vst::plugin::Plugin for Plugin {
 			// XXX: finalization.
 			thread::spawn( move || {
 				loop {
-					memol_cli::ipc::Bus::new().connect( REMOTE_ADDR, |msg| {
-						match msg {
-							memol_cli::ipc::Message::Success{ events: evs } => {
-								let mut shared = shared.lock().unwrap();
-								shared.events = evs.into_iter().map( |e| e.into() ).collect();
-								shared.changed = true;
-							},
-							memol_cli::ipc::Message::Failure{ .. } => {
-								let mut shared = shared.lock().unwrap();
-								shared.events.clear();
-								shared.changed = true;
-							},
-							memol_cli::ipc::Message::Immediate{ events: evs } => {
-								let mut shared = shared.lock().unwrap();
-								shared.immediate.extend( evs.into_iter().map( |e| e.into() ) );
-							},
-							_ => (),
+					|| -> io::Result<()> {
+						let mut stream = io::BufReader::new( net::TcpStream::connect( REMOTE_ADDR )? );
+						let mut buf = Vec::new();
+						loop {
+							let typ = stream.read_u64::<LittleEndian>()?;
+							let len = stream.read_u64::<LittleEndian>()?;
+							match typ {
+								0 => {
+									if len % 16 != 0 {
+										return Ok( () );
+									}
+									let mut events = Vec::new();
+									for _ in 0 .. len / 16 {
+										let time = stream.read_f64::<LittleEndian>()?;
+										let prio = stream.read_i16::<LittleEndian>()?;
+										let len  = stream.read_u16::<LittleEndian>()?;
+										let mut msg = [ 0; 4 ];
+										stream.read_exact( &mut msg )?;
+										events.push( midi::Event{
+											time: time,
+											prio: prio,
+											len: len,
+											msg: msg,
+										} );
+									}
+									let mut shared = shared.lock().unwrap();
+									shared.events = events;
+									shared.changed = true;
+								},
+								_ => {
+									buf.resize( len as usize, 0 );
+									stream.read_exact( &mut buf )?;
+								},
+							}
 						}
-					} ).ok();
+					}().ok();
 					thread::sleep( time::Duration::new( 3, 0 ) );
 				}
 			} );

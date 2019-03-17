@@ -6,10 +6,7 @@ edition = "2018"
 workspace = ".."
 
 [dependencies]
+byteorder = "*"
 getopts = "*"
 libloading = "*"
-ws = "*"
-serde = "*"
-serde_derive = "*"
-serde_json = "*"
 memol = { path = "../memol" }

@@ -5,6 +5,7 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2018"
 
 [dependencies]
+byteorder = "*"
 vst = { git = "https://github.com/y-fujii/rust-vst", branch = "sebbert_work" }
 #vst = { path = "../../rust-vst" }
 memol = { path = "../memol" }

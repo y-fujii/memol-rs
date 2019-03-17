@@ -53,7 +53,7 @@ impl player::Player for Player {
 		} ) );
 	}
 
-	fn set_data( &self, events: Vec<midi::Event> ) {
+	fn set_data( &mut self, events: Vec<midi::Event> ) {
 		let mut shared = self.shared.lock().unwrap();
 		shared.events = events;
 		shared.changed = true;
@@ -156,6 +156,10 @@ impl player::Player for Player {
 				_                             => true,
 			}
 		}
+	}
+
+	fn status( &self ) -> String {
+		"JACK is running.".into()
 	}
 }
 

@@ -27,8 +27,9 @@ fn main() {
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
-		opts.optmulti( "c", "connect", "Connect to a JACK port.", "PORT" );
-		opts.optopt  ( "a", "address", "WebSocket address.", "ADDR:PORT" );
+		opts.optflag ( "j", "jack",    "Use JACK." );
+		opts.optflag ( "p", "vst",     "Use VST plugin." );
+		opts.optmulti( "c", "connect", "The port to connect to.", "PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
 			print!( "{}", opts.usage( "Usage: memol_cli [options] FILE" ) );
@@ -45,20 +46,11 @@ fn main() {
 			return Ok( () );
 		}
 
-		// initialize IPC.
-		let addr = args.opt_str( "a" ).unwrap_or( "127.0.0.1:27182".into() );
-		let bus = ipc::Bus::new();
-		let sender: ipc::Sender<ipc::Message> = bus.create_sender();
-		thread::spawn( move || {
-			if let Err( err ) = bus.listen( addr, |_| () ) {
-				eprintln!( "IPC: {}", err );
-			}
-		} );
-
-		// initialize JACK.
-		let player: Box<dyn player::Player> = match player_jack::Player::new( "memol" ) {
-			Ok ( v ) => v,
-			Err( _ ) => player::DummyPlayer::new(),
+		// initialize players.
+		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "p" )) {
+			(true, false) => player_jack::Player::new( "memol" )?,
+			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
+			_ => return Err( io::Error::new( io::ErrorKind::Other, "-j xor -p must be specified." ).into() ),
 		};
 		for port in args.opt_strs( "c" ) {
 			player.connect_to( &port )?;
@@ -74,9 +66,6 @@ fn main() {
 				player.set_data( events.clone() );
 				player.seek( bgn )?;
 				player.play()?;
-				sender.send( &ipc::Message::Success{
-					events: events.into_iter().map( |e| e.into() ).collect()
-				} )?;
 			}
 
 			notify::wait_file( &args.free[0] )?;

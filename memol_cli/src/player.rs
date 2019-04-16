@@ -17,9 +17,8 @@ pub trait Player: Send {
 	fn play( &self ) -> io::Result<()>;
 	fn stop( &self ) -> io::Result<()>;
 	fn seek( &self, _: f64 ) -> io::Result<()>;
-	fn location( &self ) -> f64;
-	fn is_playing( &self ) -> bool;
-	fn status( &self ) -> String;
+	fn status( &self ) -> (bool, f64);
+	fn info( &self ) -> String;
 }
 
 pub trait PlayerExt {
@@ -102,15 +101,11 @@ impl Player for DummyPlayer {
 		Ok( () )
 	}
 
-	fn location( &self ) -> f64 {
-		self.location.get()
+	fn status( &self ) -> (bool, f64) {
+		(false, self.location.get())
 	}
 
-	fn is_playing( &self ) -> bool {
-		false
-	}
-
-	fn status( &self ) -> String {
+	fn info( &self ) -> String {
 		String::new()
 	}
 }

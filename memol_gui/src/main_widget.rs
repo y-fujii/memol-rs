@@ -50,7 +50,7 @@ impl MainWidget {
 			}
 		imutil::root_end();
 
-		changed || model.player.is_playing()
+		changed || model.player.status().0
 	}
 
 	unsafe fn draw_code( &mut self, model: &mut model::Model, size: ImVec2 ) {
@@ -139,7 +139,7 @@ impl MainWidget {
 				self.ports_to   = model.player.ports_to  ().unwrap_or_default();
 			}
 			if BeginPopup( c_str!( "ports" ), 0 ) {
-				Text( c_str!( "\u{f7c0} {}", model.player.status() ) );
+				Text( c_str!( "\u{f7c0} {}", model.player.info() ) );
 
 				Spacing();
 				Separator();

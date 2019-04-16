@@ -34,8 +34,9 @@ impl PianoRoll {
 	}
 
 	pub unsafe fn draw( &mut self, model: &mut model::Model, size: ImVec2 ) {
+		let (playing, loc) = model.player.status();
 		let time_len = model.assembly.len.to_float() as f32;
-		let time_cur = (model.player.location() * model.tempo) as f32;
+		let time_cur = (loc * model.tempo) as f32;
 
 		let content_h = size.y - get_style().ScrollbarSize;
 		let unit = content_h / 128.0;
@@ -48,7 +49,7 @@ impl PianoRoll {
 				let a = 15.0 * get_io().DeltaTime;
 				SetScrollX( GetScrollX() + a * GetMouseDragDelta( 1, -1.0 ).x );
 			}
-			else if model.follow && model.player.is_playing() {
+			else if model.follow && playing {
 				let next = (time_cur + 0.5) * self.time_scale * unit - (1.0 / 6.0) * size.x;
 				let a = f32::exp( -2.0 * get_io().DeltaTime );
 				SetScrollX( a * GetScrollX() + (1.0 - a) * next );

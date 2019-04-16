@@ -6,7 +6,7 @@ use crate::ratio::Ratio;
 use crate::generator;
 
 
-#[derive( Clone, Debug )]
+#[derive( Clone, Debug, serde::Serialize, serde::Deserialize )]
 pub struct Event {
 	pub time: f64,
 	pub prio: i16,

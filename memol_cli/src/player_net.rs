@@ -1,18 +1,34 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 use std::io::Write;
-use byteorder::{ LittleEndian, WriteBytesExt };
 use memol::midi;
 use crate::player;
 
 
-struct Shared {
+pub enum CtsMessage {
+	Status( bool, f64 ),
+	Immediate( Vec<midi::Event> ),
+}
+
+pub enum StcMessage {
+	Data( Vec<midi::Event> ),
+	Immediate( Vec<midi::Event> ),
+}
+
+struct CtsShared {
+	playing: bool,
+	location: f64,
+	arrival: time::SystemTime,
+}
+
+struct StcShared {
 	events: Vec<midi::Event>,
 	senders: Vec<sync::mpsc::Sender<Vec<u8>>>,
 }
 
 pub struct Player {
-	shared: sync::Arc<sync::Mutex<Shared>>,
+	cts_shared: sync::Arc<sync::Mutex<CtsShared>>,
+	stc_shared: sync::Arc<sync::Mutex<StcShared>>,
 }
 
 impl player::Player for Player {
@@ -20,12 +36,10 @@ impl player::Player for Player {
 	}
 
 	fn set_data( &mut self, events: Vec<midi::Event> ) {
-		let msg = Self::encode( &events );
-		let mut shared = self.shared.lock().unwrap();
+		let msg = bincode::serialize( &events ).unwrap();
+		let mut shared = self.stc_shared.lock().unwrap();
 		shared.events = events;
-		for sender in shared.senders.iter() {
-			sender.send( msg.clone() ).ok();
-		}
+		shared.senders.retain( |s| s.send( msg.clone() ).is_ok() );
 	}
 
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>> {
@@ -72,76 +86,97 @@ impl player::Player for Player {
 		Ok( () )
 	}
 
-	fn location( &self ) -> f64 {
-		0.0
+	fn status( &self ) -> (bool, f64) {
+		let shared = self.cts_shared.lock().unwrap();
+		let playing = shared.playing;
+		let delta = shared.arrival.elapsed().unwrap_or( time::Duration::new( 0, 0 ) );
+		let loc = if playing {
+			1e-9 * delta.subsec_nanos() as f64 + delta.as_secs() as f64 + shared.location
+		}
+		else {
+			shared.location
+		};
+		(playing, loc)
 	}
 
-	fn is_playing( &self ) -> bool {
-		false
-	}
-
-	fn status( &self ) -> String {
-		let cnt = self.shared.lock().unwrap().senders.len();
+	fn info( &self ) -> String {
+		let cnt = self.stc_shared.lock().unwrap().senders.len();
 		format!( "{} VST plugin(s) are connected.", cnt )
 	}
 }
 
 impl Player {
+	// XXX: finalization.
 	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Box<Self>> {
-		let shared = sync::Arc::new( sync::Mutex::new( Shared{
+		let cts_shared = sync::Arc::new( sync::Mutex::new( CtsShared{
+			playing: false,
+			location: 0.0,
+			arrival: time::SystemTime::UNIX_EPOCH,
+		} ) );
+		let stc_shared = sync::Arc::new( sync::Mutex::new( StcShared{
 			events: Vec::new(),
 			senders: Vec::new(),
 		} ) );
 
 		let listener = net::TcpListener::bind( addr )?;
 		thread::spawn( {
-			let shared = shared.clone();
+			let cts_shared = cts_shared.clone();
+			let stc_shared = stc_shared.clone();
 			move || {
 				for stream in listener.incoming() {
-					let mut stream = match stream {
+					let stream = match stream {
 						Ok ( s ) => s,
 						Err( _ ) => continue,
 					};
+					stream.set_nodelay( true ).ok();
+
+					// reader thread.
 					thread::spawn( {
-						let shared = shared.clone();
-						move || {
-							stream.set_nodelay( true ).ok();
+						let shared = cts_shared.clone();
+						let mut stream = match stream.try_clone() {
+							Ok ( s ) => s,
+							Err( _ ) => continue,
+						};
+						move || move || -> Result<(), Box<dyn error::Error>> {
+							loop {
+								let msg: (bool, f64) = bincode::deserialize_from( &mut stream )?;
+								let now = time::SystemTime::now();
+								let mut shared = shared.lock().unwrap();
+								shared.playing  = msg.0;
+								shared.location = msg.1;
+								shared.arrival  = now;
+							}
+						}().ok()
+					} );
+
+					// writer thread.
+					thread::spawn( {
+						let shared = stc_shared.clone();
+						let mut stream = match stream.try_clone() {
+							Ok ( s ) => s,
+							Err( _ ) => continue,
+						};
+						move || move || -> Result<(), Box<dyn error::Error>> {
 							let (sender, receiver) = sync::mpsc::channel();
 							let msg = {
 								let mut shared = shared.lock().unwrap();
 								shared.senders.push( sender );
-								Self::encode( &shared.events )
+								bincode::serialize( &shared.events ).unwrap()
 							};
-							if let Err( _ ) = stream.write_all( &msg ) {
-								return;
-							}
+							stream.write_all( &msg )?;
 							loop {
-								let msg = receiver.recv().unwrap();
-								if let Err( _ ) = stream.write_all( &msg ) {
-									return;
-								}
+								let msg = receiver.recv()?;
+								stream.write_all( &msg )?;
 							}
-						}
+						}().ok()
 					} );
 				}
 			}
 		} );
 
 		Ok( Box::new( Player{
-			shared: shared,
+			cts_shared: cts_shared,
+			stc_shared: stc_shared,
 		} ) )
-	}
-
-	fn encode( events: &Vec<midi::Event> ) -> Vec<u8> {
-		let mut buf = Vec::new();
-		buf.write_u64::<LittleEndian>( 0 ).unwrap(); // type.
-		buf.write_u64::<LittleEndian>( 16 * events.len() as u64 ).unwrap();
-		for ev in events.iter() {
-			buf.write_f64::<LittleEndian>( ev.time ).unwrap();
-			buf.write_i16::<LittleEndian>( ev.prio ).unwrap();
-			buf.write_u16::<LittleEndian>( ev.len ).unwrap();
-			buf.write_all( &ev.msg ).unwrap();
-		}
-		buf
 	}
 }

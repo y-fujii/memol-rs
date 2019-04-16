@@ -136,29 +136,23 @@ impl player::Player for Player {
 		Ok( () )
 	}
 
-	fn location( &self ) -> f64 {
+	fn status( &self ) -> (bool, f64) {
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
-			(self.lib.transport_query)( self.jack, &mut pos );
+			let playing = match (self.lib.transport_query)( self.jack, &mut pos ) {
+				jack::TransportState::Stopped => false,
+				_                             => true,
+			};
 			// the resolution of jack_position_t::frame is per process cycles.
 			// jack_get_current_transport_frame() estimates the current
 			// position more accurately.
 			let frame = (self.lib.get_current_transport_frame)( self.jack );
-			frame as f64 / pos.frame_rate as f64
+			let loc = frame as f64 / pos.frame_rate as f64;
+			(playing, loc)
 		}
 	}
 
-	fn is_playing( &self ) -> bool {
-		unsafe {
-			let mut pos: jack::Position = mem::uninitialized();
-			match (self.lib.transport_query)( self.jack, &mut pos ) {
-				jack::TransportState::Stopped => false,
-				_                             => true,
-			}
-		}
-	}
-
-	fn status( &self ) -> String {
+	fn info( &self ) -> String {
 		"JACK is running.".into()
 	}
 }

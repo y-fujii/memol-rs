@@ -71,7 +71,7 @@ impl Model {
 			None       => 0.0,
 		};
 		self.player.set_data( self.events.clone() );
-		if self.autoplay && !self.player.is_playing() {
+		if self.autoplay && !self.player.status().0 {
 			self.player.seek( bgn ).ok();
 			self.player.play().ok();
 		}

@@ -9,6 +9,7 @@ workspace = ".."
 [dependencies]
 lalrpop-util = "*"
 regex = "*"
+serde = { version = "*", features = ["derive"] }
 
 [build-dependencies]
 lalrpop = "*"

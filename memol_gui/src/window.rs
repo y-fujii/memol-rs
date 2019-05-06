@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use glutin::ContextTrait;
 use crate::imgui;
 use crate::renderer;
 
@@ -20,7 +19,7 @@ impl<T> MessageSender<T> {
 pub struct Window<'a, T> {
 	context: *mut imgui::ImGuiContext,
 	looper: glutin::EventsLoop,
-	window: glutin::WindowedContext,
+	window: glutin::WindowedContext<glutin::PossiblyCurrent>,
 	renderer: renderer::Renderer,
 	timer: time::SystemTime,
 	tx: sync::mpsc::Sender<T>,
@@ -75,11 +74,8 @@ impl<'a, T> Window<'a, T> {
 			.with_gl_profile( glutin::GlProfile::Core )
 			.with_vsync( true )
 			.build_windowed( glutin::WindowBuilder::new(), &looper )?;
-
-		unsafe {
-			window.make_current()?;
-			gl::load_with( |s| window.get_proc_address( s ) as *const os::raw::c_void );
-		}
+		let window = unsafe { window.make_current() }.map_err( |(_, e)| e )?;
+		gl::load_with( |s| window.get_proc_address( s ) as *const _ );
 		let renderer = renderer::Renderer::new( window.get_api() != glutin::Api::OpenGl );
 
 		let (tx, rx) = sync::mpsc::channel();
@@ -115,7 +111,7 @@ impl<'a, T> Window<'a, T> {
 	}
 
 	pub fn hidpi_factor( &self ) -> f64 {
-		self.window.get_hidpi_factor()
+		self.window.window().get_hidpi_factor()
 	}
 
 	pub fn update_font( &mut self ) {
@@ -135,12 +131,12 @@ impl<'a, T> Window<'a, T> {
 
 		let mut n: i32 = 1;
 		let mut events = Vec::new();
-		events.push( glutin::Event::WindowEvent{
-			window_id: self.window.id(),
-			event: glutin::WindowEvent::Resized(
-				self.window.get_inner_size().unwrap_or( glutin::dpi::LogicalSize::new( 640.0, 480.0 ) )
-			),
-		} );
+		if let Some( size ) = self.window.window().get_inner_size() {
+			events.push( glutin::Event::WindowEvent{
+				window_id: self.window.window().id(),
+				event: glutin::WindowEvent::Resized( size ),
+			} );
+		}
 		loop {
 			if n > 0 {
 				self.looper.poll_events( |ev|
@@ -235,26 +231,26 @@ impl<'a, T> Window<'a, T> {
 				},
 				WindowEvent::MouseWheel{ delta: MouseScrollDelta::PixelDelta( delta ), phase: TouchPhase::Moved, .. } => {
 					// XXX
-					let delta = delta.to_physical( self.window.get_hidpi_factor() );
+					let delta = delta.to_physical( self.window.window().get_hidpi_factor() );
 					let scale = 1.0 / (5.0 * unsafe { imgui::GetFontSize() });
 					io.MouseWheelH = scale * delta.x as f32;
 					io.MouseWheel  = scale * delta.y as f32;
 				},
 				WindowEvent::CursorMoved{ position: pos, .. } => {
 					// XXX
-					let pos = pos.to_physical( self.window.get_hidpi_factor() );
+					let pos = pos.to_physical( self.window.window().get_hidpi_factor() );
 					io.MousePos.x = pos.x as f32;
 					io.MousePos.y = pos.y as f32;
 				},
 				WindowEvent::Resized( logical ) => {
-					let physical = logical.to_physical( self.window.get_hidpi_factor() );
+					let physical = logical.to_physical( self.window.window().get_hidpi_factor() );
 					io.DisplaySize.x = physical.width  as f32;
 					io.DisplaySize.y = physical.height as f32;
 					// Wayland needs to resize context manually.
 					self.window.resize( physical );
 				},
 				WindowEvent::HiDpiFactorChanged( factor ) => {
-					if let Some( logical ) = self.window.get_inner_size() {
+					if let Some( logical ) = self.window.window().get_inner_size() {
 						let physical = logical.to_physical( *factor );
 						io.DisplaySize.x = physical.width  as f32;
 						io.DisplaySize.y = physical.height as f32;

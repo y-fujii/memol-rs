@@ -25,7 +25,6 @@ enum UiMessage {
 }
 
 fn init_imgui( scale: f32 ) {
-	let scale = f32::cbrt( scale * scale );
 	let io = imgui::get_io();
 	imutil::set_theme(
 		imgui::ImVec4::new( 0.10, 0.10, 0.10, 1.0 ),
@@ -47,7 +46,7 @@ fn init_imgui( scale: f32 ) {
 			font.len() as i32, (14.0 * scale).round(), &cfg, [ 0x20, 0xff, 0x2026, 0x2027, 0 ].as_ptr(),
 		);
 		cfg.MergeMode     = true;
-		cfg.GlyphOffset.y = (0.5 * scale).round();
+		cfg.GlyphOffset.y = scale.round();
 		let font = include_bytes!( "../fonts/awesome_solid.ttf" );
 		(*io.Fonts).AddFontFromMemoryTTF(
 			font.as_ptr() as *mut os::raw::c_void,

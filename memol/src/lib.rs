@@ -37,10 +37,10 @@ pub mod parser {
 				Err( e ) => {
 					match e {
 						ParseError::InvalidToken{ location: i } |
-						ParseError::UnrecognizedToken{ token: Some( (i, _, _) ), .. } |
+						ParseError::UnrecognizedToken{ token: (i, _, _), .. } |
 						ParseError::ExtraToken{ token: (i, _, _) } =>
 							misc::error( path, i, "unexpected token." ),
-						ParseError::UnrecognizedToken{ token: None, .. } =>
+						ParseError::UnrecognizedEOF{ .. } =>
 							misc::error( path, buf.len(), "unexpected EOF." ),
 						ParseError::User{ error: err } =>
 							Err( err ),

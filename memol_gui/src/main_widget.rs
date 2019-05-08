@@ -109,7 +109,7 @@ impl MainWidget {
 				model::DisplayMode::Code      => "Code",
 			};
 			SameLine( 0.0, -1.0 );
-			PushItemWidth( imutil::text_size( "_Piano roll____" ).x );
+			SetNextItemWidth( imutil::text_size( "_Piano roll____" ).x );
 			if BeginCombo( c_str!( "##mode" ), c_str!( "{}", mode_str( model.mode ) ), 0 ) {
 				for &mode in [ model::DisplayMode::PianoRoll, model::DisplayMode::Code ].iter() {
 					if Selectable( c_str!( "{}", mode_str( mode ) ), model.mode == mode, 0, &ImVec2::zero() ) {
@@ -118,10 +118,9 @@ impl MainWidget {
 				}
 				EndCombo();
 			}
-			PopItemWidth();
 
 			SameLine( 0.0, -1.0 );
-			PushItemWidth( imutil::text_size( "_Channel 00____" ).x );
+			SetNextItemWidth( imutil::text_size( "_Channel 00____" ).x );
 			if BeginCombo( c_str!( "##channel" ), c_str!( "Channel {:2}", model.channel ), 0 ) {
 				for &(i, _) in model.assembly.channels.iter() {
 					if Selectable( c_str!( "Channel {:2}", i ), i == model.channel, 0, &ImVec2::zero() ) {
@@ -131,7 +130,6 @@ impl MainWidget {
 				}
 				EndCombo();
 			}
-			PopItemWidth();
 
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "I/O ports\u{2026}" ), &ImVec2::zero() ) {

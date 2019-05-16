@@ -13,15 +13,19 @@ struct LockedData {
 	changed: bool,
 }
 
+struct Exiter {
+	exiting: bool,
+	stream: Option<net::TcpStream>,
+}
+
 struct SharedData {
 	locked: sync::Mutex<LockedData>,
 	immediate_send: crossbeam_queue::ArrayQueue<midi::Event>,
 	immediate_recv: crossbeam_queue::ArrayQueue<midi::Event>,
 	playing: atomic::AtomicBool,
-	location: atomic::AtomicIsize,
+	location: atomic::AtomicUsize,
 	condvar: sync::Condvar,
-	exiting: atomic::AtomicBool,
-	stream: sync::Mutex<Option<net::TcpStream>>,
+	exiter: sync::Mutex<Exiter>,
 }
 
 struct Plugin {
@@ -35,11 +39,14 @@ struct Plugin {
 
 impl Drop for Plugin {
 	fn drop( &mut self ) {
-		self.shared.exiting.store( true, atomic::Ordering::SeqCst );
-		self.shared.condvar.notify_all();
-		if let Some( stream ) = self.shared.stream.lock().unwrap().take() {
-			stream.shutdown( net::Shutdown::Both ).ok();
+		{
+			let mut exiter = self.shared.exiter.lock().unwrap();
+			exiter.exiting = true;
+			if let Some( stream ) = exiter.stream.take() {
+				stream.shutdown( net::Shutdown::Both ).ok();
+			}
 		}
+		self.shared.condvar.notify_all();
 		if let Some( handle ) = self.handle.take() {
 			handle.join().ok();
 		}
@@ -60,10 +67,12 @@ impl default::Default for Plugin {
 				immediate_send: crossbeam_queue::ArrayQueue::new( 4096 ),
 				immediate_recv: crossbeam_queue::ArrayQueue::new( 4096 ),
 				playing: atomic::AtomicBool::new( false ),
-				location: atomic::AtomicIsize::new( 0 ),
+				location: atomic::AtomicUsize::new( 0.0f64.to_bits() as usize ),
 				condvar: sync::Condvar::new(),
-				exiting: atomic::AtomicBool::new( false ),
-				stream: sync::Mutex::new( None ),
+				exiter: sync::Mutex::new( Exiter{
+					exiting: false,
+					stream: None,
+				} ),
 			} ),
 			playing: false,
 			location: 0,
@@ -73,19 +82,29 @@ impl default::Default for Plugin {
 
 impl vst::plugin::Plugin for Plugin {
 	fn new( host: vst::plugin::HostCallback ) -> Self {
+		let address = net::SocketAddr::new( net::IpAddr::V4( net::Ipv4Addr::new( 127, 0, 0, 1 ) ), 27182 );
+
 		let mut this = Plugin::default();
 		this.host = host;
 
 		// XXX: finalization is not complete.
 		let shared = this.shared.clone();
 		this.handle = Some( thread::spawn( move || {
-			while !shared.exiting.load( atomic::Ordering::SeqCst ) {
-				thread::sleep( time::Duration::from_secs( 1 ) );
-
-				let addr = net::SocketAddr::new( net::IpAddr::V4( net::Ipv4Addr::new( 127, 0, 0, 1 ) ), 27182 );
-				let stream = match net::TcpStream::connect_timeout( &addr, time::Duration::from_secs( 3 ) ) {
-					Ok ( s ) => s,
-					Err( _ ) => continue,
+			loop {
+				let stream = {
+					let mut exiter = shared.exiter.lock().unwrap();
+					if exiter.exiting {
+						break;
+					}
+					let stream = match net::TcpStream::connect_timeout( &address, time::Duration::from_secs( 3 ) ) {
+						Ok ( s ) => s,
+						Err( _ ) => continue,
+					};
+					exiter.stream = Some( match stream.try_clone() {
+						Ok ( s ) => s,
+						Err( _ ) => continue,
+					} );
+					stream
 				};
 				stream.set_nodelay( true ).ok();
 
@@ -97,7 +116,7 @@ impl vst::plugin::Plugin for Plugin {
 					};
 					move || {
 						let mut stream = io::BufReader::new( stream );
-						while !shared.exiting.load( atomic::Ordering::SeqCst ) {
+						while !shared.exiter.lock().unwrap().exiting {
 							let events = match bincode::deserialize_from( &mut stream ) {
 								Ok ( e ) => e,
 								Err( _ ) => break,
@@ -117,9 +136,7 @@ impl vst::plugin::Plugin for Plugin {
 						Err( _ ) => continue,
 					};
 					move || {
-						let mutex = sync::Mutex::new( () );
-						let mut lock = mutex.lock().unwrap();
-						while !shared.exiting.load( atomic::Ordering::SeqCst ) {
+						loop {
 							let msg = (
 								shared.playing .load( atomic::Ordering::SeqCst ),
 								shared.location.load( atomic::Ordering::SeqCst ),
@@ -128,20 +145,23 @@ impl vst::plugin::Plugin for Plugin {
 								Ok ( _ ) => (),
 								Err( _ ) => break,
 							}
-							if shared.exiting.load( atomic::Ordering::SeqCst ) {
+
+							let exiter = shared.exiter.lock().unwrap();
+							if exiter.exiting {
 								break;
 							}
-							lock = shared.condvar.wait( lock ).unwrap();
+							drop( shared.condvar.wait( exiter ).unwrap() );
 						}
 						stream.shutdown( net::Shutdown::Both ).ok();
 					}
 				};
 
-				*shared.stream.lock().unwrap() = Some( stream );
 				let handle = thread::spawn( reader );
 				writer();
 				handle.join().ok();
-				*shared.stream.lock().unwrap() = None;
+				shared.exiter.lock().unwrap().stream = None;
+
+				thread::sleep( time::Duration::from_secs( 1 ) );
 			}
 		} ) );
 
@@ -183,8 +203,9 @@ impl vst::plugin::Plugin for Plugin {
 		let location = info.sample_pos.round() as isize;
 		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
 
-		self.shared.location.store( location, atomic::Ordering::SeqCst );
-		self.shared.playing .store( playing , atomic::Ordering::SeqCst );
+		let loc_sfu = (location as f64 / info.sample_rate).to_bits() as usize;
+		self.shared.location.store( loc_sfu, atomic::Ordering::SeqCst );
+		self.shared.playing .store( playing, atomic::Ordering::SeqCst );
 		self.shared.condvar.notify_one();
 
 		let mut locked = match self.shared.locked.try_lock() {
@@ -202,6 +223,7 @@ impl vst::plugin::Plugin for Plugin {
 			locked.changed = false;
 		}
 
+		// XXX: add delay.
 		while let Ok( ev ) = self.shared.immediate_send.pop() {
 			self.buffer.push( &ev.msg, 0 );
 		}

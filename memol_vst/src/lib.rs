@@ -34,7 +34,6 @@ struct Plugin {
 	buffer: events::EventBuffer,
 	handle: Option<thread::JoinHandle<()>>,
 	shared: sync::Arc<SharedData>,
-	playing: bool,
 	location: isize,
 }
 
@@ -75,7 +74,6 @@ impl default::Default for Plugin {
 					stream: None,
 				} ),
 			} ),
-			playing: false,
 			location: 0,
 		}
 	}
@@ -160,7 +158,7 @@ impl vst::plugin::Plugin for Plugin {
 							}
 
 							let msg = player_net::CtsMessage::Status(
-								shared.playing .load( atomic::Ordering::SeqCst ),
+								shared.playing.load( atomic::Ordering::SeqCst ),
 								f64::from_bits( shared.location.load( atomic::Ordering::SeqCst ) ),
 							);
 							match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
@@ -226,16 +224,18 @@ impl vst::plugin::Plugin for Plugin {
 		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
 
 		let loc_sfu = (location as f64 / info.sample_rate).to_bits();
-		self.shared.location.store( loc_sfu, atomic::Ordering::SeqCst );
-		self.shared.playing .store( playing, atomic::Ordering::SeqCst );
-		self.shared.condvar.notify_one();
+		let loc_sfu_prev = self.shared.location.swap( loc_sfu, atomic::Ordering::SeqCst );
+		let playing_prev = self.shared.playing .swap( playing, atomic::Ordering::SeqCst );
+		if loc_sfu != loc_sfu_prev || playing != playing_prev {
+			self.shared.condvar.notify_one();
+		}
 
 		let mut locked = match self.shared.locked.try_lock() {
 			Ok ( v ) => v,
 			Err( _ ) => return,
 		};
 
-		if locked.changed || playing != self.playing || (playing && location != self.location) {
+		if locked.changed || playing != playing_prev || (playing && location != self.location) {
 			for ch in 0 .. 16 {
 				// all sound off.
 				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );
@@ -261,7 +261,6 @@ impl vst::plugin::Plugin for Plugin {
 
 		self.host.process_events( self.buffer.events() );
 		self.location = location + size;
-		self.playing  = playing;
 	}
 
 	fn process_events( &mut self, events: &vst::api::Events ) {

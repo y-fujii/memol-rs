@@ -222,7 +222,7 @@ impl<'a, T> Window<'a, T> {
 					}
 				},
 				WindowEvent::ReceivedCharacter( c ) => {
-					unsafe { io.AddInputCharacter( *c as u16 ) };
+					unsafe { io.AddInputCharacter( *c as u32 ) };
 				},
 				WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta( x, y ), phase: TouchPhase::Moved, .. } => {
 					let scale = 1.0 / 5.0;

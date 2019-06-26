@@ -5,17 +5,21 @@ use memol::midi;
 use crate::player;
 
 
+#[derive( serde::Serialize, serde::Deserialize )]
 pub enum CtsMessage {
 	Status( bool, f64 ),
 	Immediate( Vec<midi::Event> ),
 }
 
+#[derive( serde::Serialize, serde::Deserialize )]
 pub enum StcMessage {
 	Data( Vec<midi::Event> ),
 	Immediate( Vec<midi::Event> ),
 }
 
 struct CtsShared {
+	on_received: Box<dyn 'static + Fn() + Send>,
+	immediate: Vec<midi::Event>, // XXX: will be removed.
 	playing: bool,
 	location: f64,
 	arrival: time::SystemTime,
@@ -32,11 +36,13 @@ pub struct Player {
 }
 
 impl player::Player for Player {
-	fn on_received_boxed( &mut self, _: Box<dyn 'static + Fn() + Send> ) {
+	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
+		let mut shared = self.cts_shared.lock().unwrap();
+		shared.on_received = f;
 	}
 
 	fn set_data( &mut self, events: Vec<midi::Event> ) {
-		let msg = bincode::serialize( &events ).unwrap();
+		let msg = bincode::serialize( &StcMessage::Data( events.clone() ) ).unwrap();
 		let mut shared = self.stc_shared.lock().unwrap();
 		shared.events = events;
 		shared.senders.retain( |s| s.send( msg.clone() ).is_ok() );
@@ -66,11 +72,16 @@ impl player::Player for Player {
 		Ok( () )
 	}
 
-	fn send( &self, _: &[midi::Event] ) -> io::Result<()> {
+	fn send( &self, events: &[midi::Event] ) -> io::Result<()> {
+		let msg = bincode::serialize( &StcMessage::Immediate( events.into() ) ).unwrap();
+		let mut shared = self.stc_shared.lock().unwrap();
+		shared.senders.retain( |s| s.send( msg.clone() ).is_ok() );
 		Ok( () )
 	}
 
-	fn recv( &self, _: &mut Vec<midi::Event> ) -> io::Result<()> {
+	fn recv( &self, events: &mut Vec<midi::Event> ) -> io::Result<()> {
+		let mut shared = self.cts_shared.lock().unwrap();
+		events.extend( shared.immediate.drain( .. ) );
 		Ok( () )
 	}
 
@@ -109,6 +120,8 @@ impl Player {
 	// XXX: finalization.
 	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Box<Self>> {
 		let cts_shared = sync::Arc::new( sync::Mutex::new( CtsShared{
+			on_received: Box::new( || () ),
+			immediate: Vec::new(),
 			playing: false,
 			location: 0.0,
 			arrival: time::SystemTime::UNIX_EPOCH,
@@ -139,12 +152,20 @@ impl Player {
 						};
 						move || move || -> Result<(), Box<dyn error::Error>> {
 							loop {
-								let msg: (bool, f64) = bincode::deserialize_from( &mut stream )?;
-								let now = time::SystemTime::now();
-								let mut shared = shared.lock().unwrap();
-								shared.playing  = msg.0;
-								shared.location = msg.1;
-								shared.arrival  = now;
+								match bincode::deserialize_from( &mut stream )? {
+									CtsMessage::Status( playing, location ) => {
+										let now = time::SystemTime::now();
+										let mut shared = shared.lock().unwrap();
+										shared.playing  = playing;
+										shared.location = location;
+										shared.arrival  = now;
+									},
+									CtsMessage::Immediate( events ) => {
+										let mut shared = shared.lock().unwrap();
+										shared.immediate.extend( events );
+										(shared.on_received)();
+									},
+								}
 							}
 						}().ok()
 					} );
@@ -158,12 +179,12 @@ impl Player {
 						};
 						move || move || -> Result<(), Box<dyn error::Error>> {
 							let (sender, receiver) = sync::mpsc::channel();
-							let msg = {
+							let events = {
 								let mut shared = shared.lock().unwrap();
 								shared.senders.push( sender );
-								bincode::serialize( &shared.events ).unwrap()
+								shared.events.clone()
 							};
-							stream.write_all( &msg )?;
+							stream.write_all( &bincode::serialize( &StcMessage::Data( events ) ).unwrap() )?;
 							loop {
 								let msg = receiver.recv()?;
 								stream.write_all( &msg )?;

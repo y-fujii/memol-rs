@@ -5,6 +5,7 @@ use std::sync::atomic;
 use vst::plugin_main;
 use vst::host::Host;
 use memol::{ misc, midi };
+use memol_cli::player_net;
 mod events;
 
 
@@ -23,7 +24,7 @@ struct SharedData {
 	immediate_send: crossbeam_queue::ArrayQueue<midi::Event>,
 	immediate_recv: crossbeam_queue::ArrayQueue<midi::Event>,
 	playing: atomic::AtomicBool,
-	location: atomic::AtomicUsize,
+	location: atomic::AtomicU64,
 	condvar: sync::Condvar,
 	exiter: sync::Mutex<Exiter>,
 }
@@ -67,7 +68,7 @@ impl default::Default for Plugin {
 				immediate_send: crossbeam_queue::ArrayQueue::new( 4096 ),
 				immediate_recv: crossbeam_queue::ArrayQueue::new( 4096 ),
 				playing: atomic::AtomicBool::new( false ),
-				location: atomic::AtomicUsize::new( 0.0f64.to_bits() as usize ),
+				location: atomic::AtomicU64::new( 0.0f64.to_bits() ),
 				condvar: sync::Condvar::new(),
 				exiter: sync::Mutex::new( Exiter{
 					exiting: false,
@@ -121,9 +122,18 @@ impl vst::plugin::Plugin for Plugin {
 								Ok ( e ) => e,
 								Err( _ ) => break,
 							};
-							let mut locked = shared.locked.lock().unwrap();
-							locked.events = events;
-							locked.changed = true;
+							match events {
+								player_net::StcMessage::Data( events ) => {
+									let mut locked = shared.locked.lock().unwrap();
+									locked.events = events;
+									locked.changed = true;
+								},
+								player_net::StcMessage::Immediate( events ) => {
+									for ev in events.into_iter() {
+										shared.immediate_send.push( ev ).ok();
+									}
+								},
+							}
 						}
 						stream.get_ref().shutdown( net::Shutdown::Both ).ok();
 					}
@@ -137,9 +147,21 @@ impl vst::plugin::Plugin for Plugin {
 					};
 					move || {
 						loop {
-							let msg = (
+							let mut events = Vec::new();
+							while let Ok( ev ) = shared.immediate_recv.pop() {
+								events.push( ev );
+							}
+							if events.len() > 0 {
+								let msg = player_net::CtsMessage::Immediate( events );
+								match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
+									Ok ( _ ) => (),
+									Err( _ ) => break,
+								}
+							}
+
+							let msg = player_net::CtsMessage::Status(
 								shared.playing .load( atomic::Ordering::SeqCst ),
-								shared.location.load( atomic::Ordering::SeqCst ),
+								f64::from_bits( shared.location.load( atomic::Ordering::SeqCst ) ),
 							);
 							match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 								Ok ( _ ) => (),
@@ -203,7 +225,7 @@ impl vst::plugin::Plugin for Plugin {
 		let location = info.sample_pos.round() as isize;
 		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
 
-		let loc_sfu = (location as f64 / info.sample_rate).to_bits() as usize;
+		let loc_sfu = (location as f64 / info.sample_rate).to_bits();
 		self.shared.location.store( loc_sfu, atomic::Ordering::SeqCst );
 		self.shared.playing .store( playing, atomic::Ordering::SeqCst );
 		self.shared.condvar.notify_one();
@@ -251,6 +273,7 @@ impl vst::plugin::Plugin for Plugin {
 			let prio = match ev.data[0] & 0xf0 {
 				0x80 => -1,
 				0x90 =>  1,
+				0xb0 =>  0,
 				_    => continue,
 			};
 			self.shared.immediate_recv.push( midi::Event{

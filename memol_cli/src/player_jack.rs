@@ -365,9 +365,12 @@ impl Player {
 	}
 
 	fn cb_proc( on_received: Box<dyn 'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
-		let mut locked = shared.0.lock().unwrap();
-		while !*locked {
-			locked = shared.1.wait( locked ).unwrap();
+		let mut exiting = shared.0.lock().unwrap();
+		while !*exiting {
+			exiting = shared.1.wait( exiting ).unwrap();
+			if *exiting {
+				break;
+			}
 			// XXX: see the comment in process_callback().
 			//if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
 				on_received();

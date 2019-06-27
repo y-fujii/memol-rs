@@ -90,6 +90,7 @@ impl vst::plugin::Plugin for Plugin {
 		let shared = this.shared.clone();
 		this.handle = Some( thread::spawn( move || {
 			loop {
+				thread::sleep( time::Duration::from_secs( 1 ) );
 				let stream = {
 					let mut exiter = shared.exiter.lock().unwrap();
 					if exiter.exiting {
@@ -157,10 +158,9 @@ impl vst::plugin::Plugin for Plugin {
 								}
 							}
 
-							let msg = player_net::CtsMessage::Status(
-								shared.playing.load( atomic::Ordering::SeqCst ),
-								f64::from_bits( shared.location.load( atomic::Ordering::SeqCst ) ),
-							);
+							let loc_sfu = f64::from_bits( shared.location.load( atomic::Ordering::SeqCst ) );
+							let playing = shared.playing.load( atomic::Ordering::SeqCst );
+							let msg = player_net::CtsMessage::Status( playing, loc_sfu );
 							match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 								Ok ( _ ) => (),
 								Err( _ ) => break,
@@ -180,8 +180,6 @@ impl vst::plugin::Plugin for Plugin {
 				writer();
 				handle.join().ok();
 				shared.exiter.lock().unwrap().stream = None;
-
-				thread::sleep( time::Duration::from_secs( 1 ) );
 			}
 		} ) );
 
@@ -221,12 +219,12 @@ impl vst::plugin::Plugin for Plugin {
 			None      => return,
 		};
 		let location = info.sample_pos.round() as isize;
-		let playing  = info.flags & vst::api::flags::TRANSPORT_PLAYING.bits() != 0;
+		let playing  = info.flags & vst::api::TimeInfoFlags::TRANSPORT_PLAYING.bits() != 0;
 
 		let loc_sfu = (location as f64 / info.sample_rate).to_bits();
-		let loc_sfu_prev = self.shared.location.swap( loc_sfu, atomic::Ordering::SeqCst );
 		let playing_prev = self.shared.playing .swap( playing, atomic::Ordering::SeqCst );
-		if loc_sfu != loc_sfu_prev || playing != playing_prev {
+		let loc_sfu_prev = self.shared.location.swap( loc_sfu, atomic::Ordering::SeqCst );
+		if playing != playing_prev || loc_sfu != loc_sfu_prev {
 			self.shared.condvar.notify_one();
 		}
 

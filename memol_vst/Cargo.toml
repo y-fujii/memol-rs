@@ -7,8 +7,7 @@ edition = "2018"
 [dependencies]
 bincode = "*"
 crossbeam-queue = "*"
-vst = { git = "https://github.com/y-fujii/rust-vst", branch = "sebbert_work" }
-#vst = { path = "../../rust-vst" }
+vst = "*"
 memol = { path = "../memol" }
 memol_cli = { path = "../memol_cli" }
 

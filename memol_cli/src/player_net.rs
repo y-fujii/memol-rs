@@ -146,28 +146,32 @@ impl Player {
 					// reader thread.
 					thread::spawn( {
 						let shared = cts_shared.clone();
-						let mut stream = match stream.try_clone() {
+						let stream = match stream.try_clone() {
 							Ok ( s ) => s,
 							Err( _ ) => continue,
 						};
-						move || move || -> Result<(), Box<dyn error::Error>> {
-							loop {
-								match bincode::deserialize_from( &mut stream )? {
-									CtsMessage::Status( playing, location ) => {
-										let now = time::SystemTime::now();
-										let mut shared = shared.lock().unwrap();
-										shared.playing  = playing;
-										shared.location = location;
-										shared.arrival  = now;
-									},
-									CtsMessage::Immediate( events ) => {
-										let mut shared = shared.lock().unwrap();
-										shared.immediate.extend( events );
-										(shared.on_received)();
-									},
+						move || {
+							|| -> Result<(), Box<dyn error::Error>> {
+								let mut stream = io::BufReader::new( &stream );
+								loop {
+									match bincode::deserialize_from( &mut stream )? {
+										CtsMessage::Status( playing, location ) => {
+											let now = time::SystemTime::now();
+											let mut shared = shared.lock().unwrap();
+											shared.playing  = playing;
+											shared.location = location;
+											shared.arrival  = now;
+										},
+										CtsMessage::Immediate( events ) => {
+											let mut shared = shared.lock().unwrap();
+											shared.immediate.extend( events );
+											(shared.on_received)();
+										},
+									}
 								}
-							}
-						}().ok()
+							}().ok();
+							stream.shutdown( net::Shutdown::Both ).ok();
+						}
 					} );
 
 					// writer thread.
@@ -177,19 +181,22 @@ impl Player {
 							Ok ( s ) => s,
 							Err( _ ) => continue,
 						};
-						move || move || -> Result<(), Box<dyn error::Error>> {
-							let (sender, receiver) = sync::mpsc::channel();
-							let events = {
-								let mut shared = shared.lock().unwrap();
-								shared.senders.push( sender );
-								shared.events.clone()
-							};
-							stream.write_all( &bincode::serialize( &StcMessage::Data( events ) ).unwrap() )?;
-							loop {
-								let msg = receiver.recv()?;
-								stream.write_all( &msg )?;
-							}
-						}().ok()
+						move || {
+							|| -> Result<(), Box<dyn error::Error>> {
+								let (sender, receiver) = sync::mpsc::channel();
+								let events = {
+									let mut shared = shared.lock().unwrap();
+									shared.senders.push( sender );
+									shared.events.clone()
+								};
+								stream.write_all( &bincode::serialize( &StcMessage::Data( events ) ).unwrap() )?;
+								loop {
+									let msg = receiver.recv()?;
+									stream.write_all( &msg )?;
+								}
+							}().ok();
+							stream.shutdown( net::Shutdown::Both ).ok();
+						}
 					} );
 				}
 			}

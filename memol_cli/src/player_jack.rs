@@ -29,11 +29,7 @@ unsafe impl Send for Player {}
 
 impl Drop for Player {
 	fn drop( &mut self ) {
-		if let Some( cb_thread ) = mem::replace( &mut self.cb_thread, None ) {
-			*self.cb_shared.0.lock().unwrap() = true;
-			self.cb_shared.1.notify_all();
-			cb_thread.join().unwrap();
-		}
+		self.exit_cb_thread();
 		unsafe {
 			(self.lib.client_close)( self.jack );
 			(self.lib.ringbuffer_free)( self.immediate_recv );
@@ -44,9 +40,7 @@ impl Drop for Player {
 
 impl player::Player for Player {
 	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
-		if let Some( cb_thread ) = mem::replace( &mut self.cb_thread, None ) {
-			cb_thread.join().unwrap();
-		}
+		self.exit_cb_thread();
 		self.cb_thread = Some( thread::spawn( {
 			let cb_shared = self.cb_shared.clone();
 			move || Self::cb_proc( f, cb_shared )
@@ -362,13 +356,18 @@ impl Player {
 		}
 	}
 
+	fn exit_cb_thread( &mut self ) {
+		if let Some( cb_thread ) = self.cb_thread.take() {
+			*self.cb_shared.0.lock().unwrap() = true;
+			self.cb_shared.1.notify_all();
+			cb_thread.join().unwrap();
+		}
+	}
+
 	fn cb_proc( on_received: Box<dyn 'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
-		let mut guard = shared.0.lock().unwrap();
-		loop {
-			guard = shared.1.wait( guard ).unwrap();
-			if *guard {
-				break;
-			}
+		let mut locked = shared.0.lock().unwrap();
+		while !*locked {
+			locked = shared.1.wait( locked ).unwrap();
 			// XXX: see the comment in process_callback().
 			//if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
 				on_received();

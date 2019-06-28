@@ -1,7 +1,8 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use std::io::Write;
 use std::sync::atomic;
+use std::io::Write;
+use std::net::ToSocketAddrs;
 use vst::plugin_main;
 use vst::host::Host;
 use memol::{ misc, midi };
@@ -81,7 +82,17 @@ impl default::Default for Plugin {
 
 impl vst::plugin::Plugin for Plugin {
 	fn new( host: vst::plugin::HostCallback ) -> Self {
-		let address = net::SocketAddr::new( net::IpAddr::V4( net::Ipv4Addr::new( 127, 0, 0, 1 ) ), 27182 );
+		let localhosts = vec![
+			net::SocketAddr::new( net::IpAddr::V6( net::Ipv6Addr::LOCALHOST ), 27182 ),
+			net::SocketAddr::new( net::IpAddr::V4( net::Ipv4Addr::LOCALHOST ), 27182 ),
+		];
+		let addrs = match env::var( "MEMOL_VST_ADDR" ) {
+			Ok( e ) => match e.to_socket_addrs() {
+				Ok ( e ) => e.collect(),
+				Err( _ ) => localhosts,
+			},
+			Err( _ ) => localhosts,
+		};
 
 		let mut this = Plugin::default();
 		this.host = host;
@@ -96,9 +107,19 @@ impl vst::plugin::Plugin for Plugin {
 					if exiter.exiting {
 						break;
 					}
-					let stream = match net::TcpStream::connect_timeout( &address, time::Duration::from_secs( 3 ) ) {
-						Ok ( s ) => s,
-						Err( _ ) => continue,
+					let mut stream = None;
+					for addr in addrs.iter() {
+						match net::TcpStream::connect_timeout( addr, time::Duration::from_secs( 3 ) ) {
+							Ok( s ) => {
+								stream = Some( s );
+								break;
+							},
+							Err( _ ) => continue,
+						};
+					}
+					let stream = match stream {
+						Some( s ) => s,
+						None      => continue,
 					};
 					exiter.stream = Some( match stream.try_clone() {
 						Ok ( s ) => s,

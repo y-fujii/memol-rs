@@ -240,7 +240,9 @@ impl vst::plugin::Plugin for Plugin {
 			None      => return,
 		};
 		let location = info.sample_pos.round() as isize;
-		let playing  = info.flags & vst::api::TimeInfoFlags::TRANSPORT_PLAYING.bits() != 0;
+		// workaround for Cubase.
+		let location_fixed = if (self.location - location).abs() < 4 { self.location } else { location };
+		let playing = info.flags & vst::api::TimeInfoFlags::TRANSPORT_PLAYING.bits() != 0;
 
 		let loc_sfu = (location as f64 / info.sample_rate).to_bits();
 		let playing_prev = self.shared.playing .swap( playing, atomic::Ordering::SeqCst );
@@ -254,7 +256,7 @@ impl vst::plugin::Plugin for Plugin {
 			Err( _ ) => return,
 		};
 
-		if locked.changed || playing != playing_prev || (playing && location != self.location) {
+		if locked.changed || playing != playing_prev || (playing && location_fixed != self.location) {
 			for ch in 0 .. 16 {
 				// all sound off.
 				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );
@@ -270,11 +272,12 @@ impl vst::plugin::Plugin for Plugin {
 		}
 
 		if playing {
-			let frame = |ev: &midi::Event| (ev.time * info.sample_rate).round() as isize - location;
-			let ibgn = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < 0    );
-			let iend = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < size );
+			let frame = |ev: &midi::Event| (ev.time * info.sample_rate).round() as isize;
+			let ibgn = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < location_fixed  );
+			let iend = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < location + size );
 			for ev in locked.events[ibgn .. iend].iter() {
-				self.buffer.push( &ev.msg, frame( ev ) as i32 );
+				let i = cmp::max( frame( ev ) - location, 0 );
+				self.buffer.push( &ev.msg, i as i32 );
 			}
 		}
 

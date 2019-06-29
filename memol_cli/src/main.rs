@@ -28,7 +28,7 @@ fn main() {
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
 		opts.optflag ( "j", "jack",    "Use JACK." );
-		opts.optflag ( "p", "vst",     "Use VST plugin." );
+		opts.optflag ( "n", "vst",     "Use VST plugin." );
 		opts.optmulti( "c", "connect", "The port to connect to.", "PORT" );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
@@ -47,7 +47,7 @@ fn main() {
 		}
 
 		// initialize players.
-		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "p" )) {
+		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
 			(true, false) => player_jack::Player::new( "memol" )?,
 			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
 			_ => return Err( io::Error::new( io::ErrorKind::Other, "-j xor -p must be specified." ).into() ),

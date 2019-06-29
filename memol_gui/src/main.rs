@@ -82,7 +82,7 @@ fn main() {
 		let mut opts = getopts::Options::new();
 		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );
 		opts.optflag ( "j", "jack",      "Use JACK (Default on Linux)." );
-		opts.optflag ( "p", "vst",       "Use VST plugin (Default on non-Linux OS)." );
+		opts.optflag ( "n", "vst",       "Use VST plugin (Default on non-Linux OS)." );
 		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"      );
 		opts.optopt  ( "a", "address",   "WebSocket address.",    "ADDR:PORT" );
 		let args = match opts.parse( env::args().skip( 1 ) ) {
@@ -140,7 +140,7 @@ fn main() {
 		} );
 
 		// initialize a player.
-		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "p" )) {
+		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
 			(true, false) => player_jack::Player::new( "memol" )?,
 			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
 			_ => {

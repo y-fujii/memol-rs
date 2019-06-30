@@ -27,9 +27,10 @@ fn main() {
 		let mut opts = getopts::Options::new();
 		opts.optflag ( "v", "verbose", "" );
 		opts.optflag ( "b", "batch",   "Generate a MIDI file." );
-		opts.optflag ( "j", "jack",    "Use JACK." );
-		opts.optflag ( "n", "vst",     "Use VST plugin." );
-		opts.optmulti( "c", "connect", "The port to connect to.", "PORT" );
+		opts.optflag ( "j", "jack",    "Use JACK (Default on Linux)." );
+		opts.optmulti( "c", "connect", "Connect to specified JACK ports.", "PORT" );
+		opts.optflag ( "n", "vst",     "Use VST plugins (Default on non-Linux OS)." );
+		opts.optflag ( "a", "any",     "Allow connection from remote VSTs." );
 		let args = opts.parse( env::args().skip( 1 ) )?;
 		if args.free.len() != 1 {
 			print!( "{}", opts.usage( "Usage: memol_cli [options] FILE" ) );
@@ -46,11 +47,18 @@ fn main() {
 			return Ok( () );
 		}
 
-		// initialize players.
+		// initialize a player.
+		let addr = (if args.opt_present( "a" ) { net::Ipv6Addr::UNSPECIFIED } else { net::Ipv6Addr::LOCALHOST }, 27182);
 		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
 			(true, false) => player_jack::Player::new( "memol" )?,
-			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
-			_ => return Err( io::Error::new( io::ErrorKind::Other, "-j xor -p must be specified." ).into() ),
+			(false, true) => player_net::Player::new( addr )?,
+			_ => {
+				#[cfg( all( target_family = "unix", not( target_os = "macos" ) ) )]
+				let player = player_jack::Player::new( "memol" );
+				#[cfg( not( all( target_family = "unix", not( target_os = "macos" ) ) ) )]
+				let player = player_net::Player::new( addr );
+				player?
+			},
 		};
 		for port in args.opt_strs( "c" ) {
 			player.connect_to( &port )?;

@@ -80,11 +80,11 @@ fn main() {
 	|| -> Result<(), Box<dyn error::Error>> {
 		// parse the command line.
 		let mut opts = getopts::Options::new();
-		opts.optopt  ( "w", "wallpaper", "Set background image.", "FILE"      );
+		opts.optopt  ( "w", "wallpaper", "Set an background image.", "FILE" );
 		opts.optflag ( "j", "jack",      "Use JACK (Default on Linux)." );
-		opts.optflag ( "n", "vst",       "Use VST plugin (Default on non-Linux OS)." );
-		opts.optmulti( "c", "connect",   "Connect to JACK port.", "PORT"      );
-		opts.optopt  ( "a", "address",   "WebSocket address.",    "ADDR:PORT" );
+		opts.optmulti( "c", "connect",   "Connect to specified JACK ports.", "PORT" );
+		opts.optflag ( "n", "vst",       "Use VST plugins (Default on non-Linux OS)." );
+		opts.optflag ( "a", "any",       "Allow connection from remote VSTs." );
 		let args = match opts.parse( env::args().skip( 1 ) ) {
 			Ok ( v ) => v,
 			Err( _ ) => {
@@ -140,14 +140,15 @@ fn main() {
 		} );
 
 		// initialize a player.
+		let addr = (if args.opt_present( "a" ) { net::Ipv6Addr::UNSPECIFIED } else { net::Ipv6Addr::LOCALHOST }, 27182);
 		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
 			(true, false) => player_jack::Player::new( "memol" )?,
-			(false, true) => player_net::Player::new( "127.0.0.1:27182" )?,
+			(false, true) => player_net::Player::new( addr )?,
 			_ => {
 				#[cfg( all( target_family = "unix", not( target_os = "macos" ) ) )]
 				let player = player_jack::Player::new( "memol" );
 				#[cfg( not( all( target_family = "unix", not( target_os = "macos" ) ) ) )]
-				let player = player_net::Player::new( "127.0.0.1:27182" );
+				let player = player_net::Player::new( addr );
 				player?
 			},
 		};

@@ -8,7 +8,7 @@ use crate::compile_thread;
 
 #[derive( Clone, Copy, PartialEq, Eq )]
 pub enum DisplayMode {
-	PianoRoll,
+	Sequencer,
 	Code,
 }
 
@@ -40,7 +40,7 @@ impl Model {
 			tempo: 1.0,
 			path: path::PathBuf::new(),
 			code: String::new(),
-			mode: DisplayMode::PianoRoll,
+			mode: DisplayMode::Sequencer,
 			channel: 0,
 			follow: true,
 			autoplay: true,

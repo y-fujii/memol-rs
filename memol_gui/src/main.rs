@@ -7,7 +7,7 @@ mod renderer;
 mod window;
 mod compile_thread;
 mod model;
-mod piano_roll;
+mod sequencer_widget;
 mod main_widget;
 use std::*;
 use memol::*;

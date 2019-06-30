@@ -6,7 +6,7 @@ use crate::imutil;
 use crate::model;
 
 
-pub struct PianoRoll {
+pub struct Sequencer {
 	pub scroll_ratio: f32,
 	dragged: bool,
 	time_scale: f32,
@@ -18,7 +18,7 @@ pub struct PianoRoll {
 	color_hovered: u32,
 }
 
-impl PianoRoll {
+impl Sequencer {
 	pub fn new() -> Self {
 		Self {
 			scroll_ratio: 0.0,
@@ -43,7 +43,7 @@ impl PianoRoll {
 		let content_w = unit * self.time_scale * (time_len + 1.0);
 
 		SetNextWindowContentSize( &ImVec2::new( content_w, content_h ) );
-		BeginChild( c_str!( "piano_roll" ), &size, false, ImGuiWindowFlags_AlwaysHorizontalScrollbar as i32 );
+		BeginChild( c_str!( "sequencer" ), &size, false, ImGuiWindowFlags_AlwaysHorizontalScrollbar as i32 );
 			// scroll.
 			if IsMouseDragging( 1, -1.0 ) {
 				let a = 15.0 * get_io().DeltaTime;

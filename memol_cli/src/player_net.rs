@@ -11,10 +11,42 @@ pub enum CtsMessage {
 	Immediate( Vec<midi::Event> ),
 }
 
+impl CtsMessage {
+	pub fn deserialize_from<T: io::Read>( reader: T ) -> bincode::Result<Self> {
+		let msg: CtsMessage = bincode::config().limit( 1 << 24 ).deserialize_from( reader )?;
+		let is_valid = match &msg {
+			CtsMessage::Status( _, loc ) => loc.is_finite(),
+			CtsMessage::Immediate( evs ) => evs.iter().all( |e| e.validate() ),
+		};
+		if is_valid {
+			Ok( msg )
+		}
+		else {
+			Err( Box::new( bincode::ErrorKind::Custom( "invalid data.".into() ) ) )
+		}
+	}
+}
+
 #[derive( serde::Serialize, serde::Deserialize )]
 pub enum StcMessage {
 	Data( Vec<midi::Event> ),
 	Immediate( Vec<midi::Event> ),
+}
+
+impl StcMessage {
+	pub fn deserialize_from<T: io::Read>( reader: T ) -> bincode::Result<Self> {
+		let msg: StcMessage = bincode::config().limit( 1 << 24 ).deserialize_from( reader )?;
+		let is_valid = match &msg {
+			StcMessage::Data     ( evs ) => evs.iter().all( |e| e.validate() ),
+			StcMessage::Immediate( evs ) => evs.iter().all( |e| e.validate() ),
+		};
+		if is_valid {
+			Ok( msg )
+		}
+		else {
+			Err( Box::new( bincode::ErrorKind::Custom( "invalid data.".into() ) ) )
+		}
+	}
 }
 
 struct CtsShared {
@@ -151,26 +183,28 @@ impl Player {
 							Err( _ ) => continue,
 						};
 						move || {
-							|| -> Result<(), Box<dyn error::Error>> {
-								let mut stream = io::BufReader::new( &stream );
-								loop {
-									match bincode::deserialize_from( &mut stream )? {
-										CtsMessage::Status( playing, location ) => {
-											let now = time::SystemTime::now();
-											let mut shared = shared.lock().unwrap();
-											shared.playing  = playing;
-											shared.location = location;
-											shared.arrival  = now;
-										},
-										CtsMessage::Immediate( events ) => {
-											let mut shared = shared.lock().unwrap();
-											shared.immediate.extend( events );
-											(shared.on_received)();
-										},
-									}
+							let mut stream = io::BufReader::new( stream );
+							loop {
+								let msg = match CtsMessage::deserialize_from( &mut stream ) {
+									Ok ( e ) => e,
+									Err( _ ) => break,
+								};
+								match msg {
+									CtsMessage::Status( playing, location ) => {
+										let now = time::SystemTime::now();
+										let mut shared = shared.lock().unwrap();
+										shared.playing  = playing;
+										shared.location = location;
+										shared.arrival  = now;
+									},
+									CtsMessage::Immediate( events ) => {
+										let mut shared = shared.lock().unwrap();
+										shared.immediate.extend( events );
+										(shared.on_received)();
+									},
 								}
-							}().ok();
-							stream.shutdown( net::Shutdown::Both ).ok();
+							}
+							stream.get_ref().shutdown( net::Shutdown::Both ).ok();
 						}
 					} );
 

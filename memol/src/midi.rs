@@ -9,21 +9,30 @@ use crate::generator;
 #[derive( Clone, Debug, serde::Serialize, serde::Deserialize )]
 pub struct Event {
 	pub time: f64,
-	pub prio: i16,
-	pub len: u16,
-	pub msg: [u8; 4],
+	pub prio: i8,
+	pub msg: [u8; 3],
 }
 
 impl Event {
-	pub fn new( time: f64, prio: i16, msg: &[u8] ) -> Event {
+	pub fn new( time: f64, prio: i8, msg: &[u8] ) -> Event {
 		let mut this = Event{
 			time: time,
 			prio: prio,
-			len: msg.len() as u16,
-			msg: [0; 4]
+			msg: [0; 3]
 		};
 		this.msg[..msg.len()].copy_from_slice( msg );
 		this
+	}
+
+	pub fn len( &self ) -> usize {
+		// XXX
+		3
+	}
+
+	pub fn validate( &self ) -> bool {
+		self.time.is_finite() &&
+		[ 0x80, 0x90, 0xb0, 0xe0 ].contains( &(self.msg[0] & 0xf0) ) &&
+		self.msg[1] & 0x80 == 0 && self.msg[2] & 0x80 == 0
 	}
 }
 

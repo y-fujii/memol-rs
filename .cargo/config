@@ -8,4 +8,4 @@ ar     = "x86_64-w64-mingw32-ar"
 
 [alias]
 rj = "run --bin=memol_gui -- -j examples/gymnopedie.mol"
-rv = "run --bin=memol_gui -- -p examples/gymnopedie.mol"
+rn = "run --bin=memol_gui -- -n examples/gymnopedie.mol"

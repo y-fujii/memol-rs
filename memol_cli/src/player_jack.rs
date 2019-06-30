@@ -303,7 +303,7 @@ impl Player {
 			let mut evs: [midi::Event; BUFFER_LEN] = mem::uninitialized();
 			let len = this.rb_read_block( this.immediate_send, &mut evs );
 			for ev in evs[0 .. len].iter() {
-				(this.lib.midi_event_write)( buf_send, 0, ev.msg.as_ptr(), ev.len as usize );
+				(this.lib.midi_event_write)( buf_send, 0, ev.msg.as_ptr(), ev.len() );
 			}
 
 			let mut shared = match this.shared.try_lock() {
@@ -321,7 +321,7 @@ impl Player {
 				let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0 );
 				let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size as isize );
 				for ev in shared.events[ibgn .. iend].iter() {
-					(this.lib.midi_event_write)( buf_send, frame( ev ) as u32, ev.msg.as_ptr(), ev.len as usize );
+					(this.lib.midi_event_write)( buf_send, frame( ev ) as u32, ev.msg.as_ptr(), ev.len() );
 				}
 
 				if ibgn == shared.events.len() {

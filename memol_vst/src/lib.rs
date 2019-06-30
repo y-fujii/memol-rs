@@ -138,18 +138,18 @@ impl vst::plugin::Plugin for Plugin {
 					move || {
 						let mut stream = io::BufReader::new( stream );
 						while !shared.exiter.lock().unwrap().exiting {
-							let events = match bincode::deserialize_from( &mut stream ) {
+							let msg = match player_net::StcMessage::deserialize_from( &mut stream ) {
 								Ok ( e ) => e,
 								Err( _ ) => break,
 							};
-							match events {
-								player_net::StcMessage::Data( events ) => {
+							match msg {
+								player_net::StcMessage::Data( evs ) => {
 									let mut locked = shared.locked.lock().unwrap();
-									locked.events = events;
+									locked.events = evs;
 									locked.changed = true;
 								},
-								player_net::StcMessage::Immediate( events ) => {
-									for ev in events.into_iter() {
+								player_net::StcMessage::Immediate( evs ) => {
+									for ev in evs.into_iter() {
 										shared.immediate_send.push( ev ).ok();
 									}
 								},
@@ -297,12 +297,7 @@ impl vst::plugin::Plugin for Plugin {
 				0xb0 =>  0,
 				_    => continue,
 			};
-			self.shared.immediate_recv.push( midi::Event{
-				time: 0.0, // XXX
-				prio: prio,
-				len: 3,
-				msg: [ ev.data[0], ev.data[1], ev.data[2], 0 ],
-			} ).ok();
+			self.shared.immediate_recv.push( midi::Event::new( 0.0, prio, &ev.data ) ).ok();
 		}
 		if !self.shared.immediate_recv.is_empty() {
 			self.shared.condvar.notify_one();

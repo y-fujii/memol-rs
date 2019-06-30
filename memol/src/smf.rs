@@ -30,7 +30,7 @@ pub fn generate_smf( events: &[midi::Event], unit: u16 ) -> Vec<u8> {
 		// XXX: assumes 120 beat/min.
 		let dt = (2.0 * unit as f64) * (ev.time - t);
 		delta_time( &mut buf, dt.round() as u32 );
-		buf.extend( &ev.msg[.. ev.len as usize] );
+		buf.extend( &ev.msg[.. ev.len()] );
 		t = ev.time;
 	}
 	delta_time( &mut buf, 0 );

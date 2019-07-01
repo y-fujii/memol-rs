@@ -47,8 +47,6 @@ pub struct DummyPlayer {
 	location: cell::Cell<f64>,
 }
 
-unsafe impl Send for DummyPlayer {}
-
 impl Player for DummyPlayer {
 	fn on_received_boxed( &mut self, _: Box<dyn 'static + Fn() + Send> ) {
 	}

@@ -50,14 +50,14 @@ fn main() {
 		// initialize a player.
 		let addr = (if args.opt_present( "a" ) { net::Ipv6Addr::UNSPECIFIED } else { net::Ipv6Addr::LOCALHOST }, 27182);
 		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
-			(true, false) => player_jack::Player::new( "memol" )?,
-			(false, true) => player_net::Player::new( addr )?,
+			(true, false) => Box::new( player_jack::Player::new( "memol" )? ),
+			(false, true) => Box::new( player_net::Player::new( addr )? ),
 			_ => {
 				#[cfg( all( target_family = "unix", not( target_os = "macos" ) ) )]
 				let player = player_jack::Player::new( "memol" );
 				#[cfg( not( all( target_family = "unix", not( target_os = "macos" ) ) ) )]
 				let player = player_net::Player::new( addr );
-				player?
+				Box::new( player? )
 			},
 		};
 		for port in args.opt_strs( "c" ) {

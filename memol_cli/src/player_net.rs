@@ -150,7 +150,7 @@ impl player::Player for Player {
 
 impl Player {
 	// XXX: finalization.
-	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Box<Self>> {
+	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Self> {
 		let cts_shared = sync::Arc::new( sync::Mutex::new( CtsShared{
 			on_received: Box::new( || () ),
 			immediate: Vec::new(),
@@ -236,9 +236,9 @@ impl Player {
 			}
 		} );
 
-		Ok( Box::new( Player{
+		Ok( Player{
 			cts_shared: cts_shared,
 			stc_shared: stc_shared,
-		} ) )
+		} )
 	}
 }

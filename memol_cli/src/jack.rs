@@ -13,6 +13,7 @@ pub struct MidiEvent {
 	pub buffer: *mut u8,
 }
 
+#[derive( Clone, Copy, PartialEq, Eq )]
 #[repr( C )]
 pub enum TransportState {
 	Stopped,
@@ -69,14 +70,7 @@ pub struct Library {
 	pub port_get_buffer:             unsafe extern "C" fn( *mut Port, u32 ) -> *mut PortBuffer,
 	pub port_name:                   unsafe extern "C" fn( *const Port ) -> *const u8,
 	pub port_register:               unsafe extern "C" fn( *mut Client, *const u8, *const u8, usize, usize ) -> *mut Port,
-	pub ringbuffer_create:           unsafe extern "C" fn( usize ) -> *mut RingBuffer,
-	pub ringbuffer_free:             unsafe extern "C" fn( *mut RingBuffer ) -> (),
-	pub ringbuffer_read:             unsafe extern "C" fn( *mut RingBuffer, *mut u8, usize ) -> usize,
-	pub ringbuffer_read_space:       unsafe extern "C" fn( *mut RingBuffer ) -> usize,
-	pub ringbuffer_write:            unsafe extern "C" fn( *mut RingBuffer, *const u8, usize ) -> usize,
-	pub ringbuffer_write_space:      unsafe extern "C" fn( *mut RingBuffer ) -> usize,
 	pub set_process_callback:        unsafe extern "C" fn( *mut Client, ProcessCallback, *const dyn any::Any ) -> i32,
-	pub set_sync_callback:           unsafe extern "C" fn( *mut Client, SyncCallback, *const dyn any::Any ) -> i32,
 	pub transport_locate:            unsafe extern "C" fn( *mut Client, u32 ) -> i32,
 	pub transport_query:             unsafe extern "C" fn( *const Client, *mut Position ) -> TransportState,
 	pub transport_start:             unsafe extern "C" fn( *mut Client ) -> (),
@@ -111,14 +105,7 @@ impl Library {
 			port_get_buffer:             *lib.get( b"jack_port_get_buffer\0" )?,
 			port_name:                   *lib.get( b"jack_port_name\0" )?,
 			port_register:               *lib.get( b"jack_port_register\0" )?,
-			ringbuffer_create:           *lib.get( b"jack_ringbuffer_create\0" )?,
-			ringbuffer_free:             *lib.get( b"jack_ringbuffer_free\0" )?,
-			ringbuffer_read:             *lib.get( b"jack_ringbuffer_read\0" )?,
-			ringbuffer_read_space:       *lib.get( b"jack_ringbuffer_read_space\0" )?,
-			ringbuffer_write:            *lib.get( b"jack_ringbuffer_write\0" )?,
-			ringbuffer_write_space:      *lib.get( b"jack_ringbuffer_write_space\0" )?,
 			set_process_callback:        *lib.get( b"jack_set_process_callback\0" )?,
-			set_sync_callback:           *lib.get( b"jack_set_sync_callback\0" )?,
 			transport_locate:            *lib.get( b"jack_transport_locate\0" )?,
 			transport_query:             *lib.get( b"jack_transport_query\0" )?,
 			transport_start:             *lib.get( b"jack_transport_start\0" )?,

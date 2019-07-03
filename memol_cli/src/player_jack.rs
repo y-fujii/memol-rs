@@ -5,45 +5,60 @@ use crate::player;
 use crate::jack;
 
 
-const BUFFER_LEN: usize = 65536 / 16; // mem::size_of<MidiEvent>() == 16.
+const BUFFER_LEN: usize = 65536;
 
 struct SharedData {
+	//events: Option<Vec<midi::Event>>,
 	events: Vec<midi::Event>,
 	changed: bool,
+	immediate_send: Vec<midi::Event>,
+	immediate_recv: Vec<midi::Event>,
 }
 
-// XXX: unmovable mark or 2nd depth indirection.
-pub struct Player {
-	lib: jack::Library,
+struct LocalData {
+	lib: sync::Arc<jack::Library>,
 	jack: *mut jack::Client,
 	port_send: *mut jack::Port,
 	port_recv: *mut jack::Port,
-	immediate_send: *mut jack::RingBuffer,
-	immediate_recv: *mut jack::RingBuffer,
-	shared: sync::Mutex<SharedData>,
-	cb_thread: Option<thread::JoinHandle<()>>,
-	cb_shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)>,
+	events: Vec<midi::Event>,
+	immediate_send: Vec<midi::Event>,
+	immediate_recv: Vec<midi::Event>,
+	playing: bool,
+	frame: u32,
+	shared: sync::Arc<sync::Mutex<SharedData>>,
+	condvar: sync::Arc<sync::Condvar>,
+}
+
+pub struct Player {
+	lib: sync::Arc<jack::Library>,
+	jack: *mut jack::Client,
+	port_send: *mut jack::Port,
+	port_recv: *mut jack::Port,
+	_local: Box<LocalData>,
+	shared: sync::Arc<sync::Mutex<SharedData>>,
+	exiting: sync::Arc<sync::Mutex<bool>>,
+	condvar: sync::Arc<sync::Condvar>,
+	callback_thread: Option<thread::JoinHandle<()>>,
 }
 
 unsafe impl Send for Player {}
 
 impl Drop for Player {
 	fn drop( &mut self ) {
-		self.exit_cb_thread();
+		self.exit_callback_thread();
 		unsafe {
 			(self.lib.client_close)( self.jack );
-			(self.lib.ringbuffer_free)( self.immediate_recv );
-			(self.lib.ringbuffer_free)( self.immediate_send );
 		}
 	}
 }
 
 impl player::Player for Player {
 	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
-		self.exit_cb_thread();
-		self.cb_thread = Some( thread::spawn( {
-			let cb_shared = self.cb_shared.clone();
-			move || Self::cb_proc( f, cb_shared )
+		self.exit_callback_thread();
+		self.callback_thread = Some( thread::spawn( {
+			let exiting = self.exiting.clone();
+			let condvar = self.condvar.clone();
+			move || Self::callback_proc( f, exiting, condvar )
 		} ) );
 	}
 
@@ -86,21 +101,14 @@ impl player::Player for Player {
 	}
 
 	fn send( &self, evs: &[midi::Event] ) -> io::Result<()> {
-		unsafe {
-			let mut i = 0;
-			while i < evs.len() {
-				i += self.rb_write_block( self.immediate_send, &evs[i ..] );
-			}
-		}
+		let mut shared = self.shared.lock().unwrap();
+		shared.immediate_send.extend_from_slice( evs );
 		Ok( () )
 	}
 
 	fn recv( &self, evs: &mut Vec<midi::Event> ) -> io::Result<()> {
-		unsafe {
-			let mut buf: [midi::Event; BUFFER_LEN] = mem::uninitialized();
-			let len = self.rb_read_block( self.immediate_recv, &mut buf );
-			evs.extend_from_slice( &buf[0 .. len] );
-		}
+		let mut shared = self.shared.lock().unwrap();
+		evs.extend( shared.immediate_recv.drain( .. ) );
 		Ok( () )
 	}
 
@@ -115,8 +123,6 @@ impl player::Player for Player {
 		unsafe {
 			(self.lib.transport_stop)( self.jack );
 		}
-		let mut shared = self.shared.lock().unwrap();
-		shared.changed = true;
 		Ok( () )
 	}
 
@@ -152,9 +158,9 @@ impl player::Player for Player {
 }
 
 impl Player {
-	pub fn new( name: &str ) -> io::Result<Box<Player>> {
+	pub fn new( name: &str ) -> io::Result<Self> {
 		unsafe {
-			let lib = jack::Library::new()?;
+			let lib = sync::Arc::new( jack::Library::new()? );
 
 			let jack = (lib.client_open)( format!( "{}\0", name ).as_ptr(), 0, ptr::null_mut() );
 			if jack.is_null() {
@@ -171,45 +177,46 @@ impl Player {
 				return Self::error( "jack_port_register()." );
 			}
 
-			let immediate_send = (lib.ringbuffer_create)( mem::size_of::<midi::Event>() * BUFFER_LEN );
-			if immediate_send.is_null() {
-				(lib.client_close)( jack );
-				return Self::error( "jack_ringbuffer_create()." );
+			let condvar = sync::Arc::new( sync::Condvar::new() );
+			let shared = sync::Arc::new( sync::Mutex::new( SharedData{
+				events: Vec::new(),
+				changed: false,
+				immediate_send: Vec::new(),
+				immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+			} ) );
+
+			let local = Box::new( LocalData{
+				lib: lib.clone(),
+				jack: jack,
+				port_send: port_send,
+				port_recv: port_recv,
+				events: Vec::new(),
+				immediate_send: Vec::with_capacity( BUFFER_LEN ),
+				immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+				playing: false,
+				frame: 0,
+				shared: shared.clone(),
+				condvar: condvar.clone(),
+			} );
+
+			if (lib.set_process_callback)( jack, Player::process_callback, &*local ) != 0 {
+				return Self::error( "jack_set_process_callback()." );
 			}
-			let immediate_recv = (lib.ringbuffer_create)( mem::size_of::<midi::Event>() * BUFFER_LEN );
-			if immediate_recv.is_null() {
-				(lib.ringbuffer_free)( immediate_send );
-				(lib.client_close)( jack );
-				return Self::error( "jack_ringbuffer_create()." );
+			if (lib.activate)( jack ) != 0 {
+				return Self::error( "jack_activate()." );
 			}
 
-			let this = Box::new( Player{
+			Ok( Player{
 				lib: lib,
 				jack: jack,
 				port_send: port_send,
 				port_recv: port_recv,
-				immediate_send: immediate_send,
-				immediate_recv: immediate_recv,
-				shared: sync::Mutex::new( SharedData{
-					events: Vec::new(),
-					changed: false,
-				} ),
-				cb_shared: sync::Arc::new( (sync::Mutex::new( false ), sync::Condvar::new()) ),
-				cb_thread: None,
-			} );
-
-			if (this.lib.set_process_callback)( this.jack, Player::process_callback, &*this ) != 0 {
-				return Self::error( "jack_set_process_callback()." );
-			}
-			if (this.lib.set_sync_callback)( this.jack, Player::sync_callback, &*this ) != 0 {
-				return Self::error( "jack_set_sync_callback()." );
-			}
-
-			if (this.lib.activate)( this.jack ) != 0 {
-				return Self::error( "jack_activate()." );
-			}
-
-			Ok( this )
+				_local: local,
+				shared: shared,
+				exiting: sync::Arc::new( sync::Mutex::new( false ) ),
+				condvar: condvar,
+				callback_thread: None,
+			} )
 		}
 	}
 
@@ -263,118 +270,106 @@ impl Player {
 		Err( io::Error::new( io::ErrorKind::Other, text ) )
 	}
 
-	unsafe fn rb_write_block<T>( &self, rb: *mut jack::RingBuffer, buf: &[T] ) -> usize {
-		let len = cmp::min( (self.lib.ringbuffer_write_space)( rb ) / mem::size_of::<T>(), buf.len() );
-		(self.lib.ringbuffer_write)( rb, buf.as_ptr() as *const u8, len * mem::size_of::<T>() );
-		len
-	}
-
-	unsafe fn rb_read_block<T>( &self, rb: *mut jack::RingBuffer, buf: &mut [T] ) -> usize {
-		let len = cmp::min( (self.lib.ringbuffer_read_space)( rb ) / mem::size_of::<T>(), buf.len() );
-		(self.lib.ringbuffer_read)( rb, buf.as_mut_ptr() as *mut u8, len * mem::size_of::<T>() );
-		len
-	}
-
-	extern "C" fn process_callback( size: u32, this: *const dyn any::Any ) -> i32 {
+	// avoid freeing memory in this function.
+	extern "C" fn process_callback( size: u32, local: *const dyn any::Any ) -> i32 {
 		unsafe {
-			let this = &*(this as *const Player);
+			let local = &mut *(local as *mut LocalData);
 
-			let buf_send = (this.lib.port_get_buffer)( this.port_send, size );
-			let buf_recv = (this.lib.port_get_buffer)( this.port_recv, size );
-			(this.lib.midi_clear_buffer)( buf_send );
+			let buf_send = (local.lib.port_get_buffer)( local.port_send, size );
+			let buf_recv = (local.lib.port_get_buffer)( local.port_recv, size );
+			(local.lib.midi_clear_buffer)( buf_send );
 
 			let mut pos: jack::Position = mem::uninitialized();
-			let state = (this.lib.transport_query)( this.jack, &mut pos );
+			let state = (local.lib.transport_query)( local.jack, &mut pos );
+			let playing = state == jack::TransportState::Rolling;
 
+			// receive midi data.
 			for i in 0 .. {
 				let mut ev = mem::uninitialized();
-				if (this.lib.midi_event_get)( &mut ev, buf_recv, i ) != 0 {
+				if (local.lib.midi_event_get)( &mut ev, buf_recv, i ) != 0 {
 					break;
 				}
 				let msg = slice::from_raw_parts( ev.buffer, ev.size );
-				this.rb_write_block( this.immediate_recv, &[ midi::Event::new( ev.time as f64 / pos.frame_rate as f64, 0, msg ) ] );
-			}
-			// since we use the condition variable without a locked flag,
-			// notification possibly fails.  we check the buffer every time.
-			if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
-				this.cb_shared.1.notify_one();
-			}
-
-			let mut evs: [midi::Event; BUFFER_LEN] = mem::uninitialized();
-			let len = this.rb_read_block( this.immediate_send, &mut evs );
-			for ev in evs[0 .. len].iter() {
-				(this.lib.midi_event_write)( buf_send, 0, ev.msg.as_ptr(), ev.len() );
+				let prio = match msg[0] & 0xf0 {
+					0x80 => -1,
+					0x90 =>  1,
+					0xb0 =>  0,
+					_    => continue,
+				};
+				local.immediate_recv.push( midi::Event::new( ev.time as f64 / pos.frame_rate as f64, prio, msg ) );
 			}
 
-			let mut shared = match this.shared.try_lock() {
-				Err( _ ) => return 0,
-				Ok ( v ) => v,
-			};
+			// sync local <=> shared.
+			let mut changed = false;
+			if let Ok( mut shared ) = local.shared.try_lock() {
+				if mem::replace( &mut shared.changed, false ) {
+					mem::swap( &mut local.events, &mut shared.events );
+					changed = true;
+				}
 
-			if shared.changed {
-				this.write_all_sound_off( buf_send, 0 );
-				shared.changed = false;
+				shared.immediate_recv.extend( local.immediate_recv.drain( .. ) );
+				local.immediate_send.extend( shared.immediate_send.drain( .. ) );
+				if shared.immediate_recv.len() > 0 {
+					local.condvar.notify_one();
+				}
 			}
 
-			if let jack::TransportState::Rolling = state {
+			// send an all-sound-off event.
+			if changed || local.playing != playing || (playing && local.frame != pos.frame) {
+				for ch in 0 .. 16 {
+					let msg: [u8; 3] = [ 0xb0 + ch, 0x78, 0x00 ]; // all sound off.
+					(local.lib.midi_event_write)( buf_send, 0, msg.as_ptr(), msg.len() );
+					let msg: [u8; 3] = [ 0xb0 + ch, 0x79, 0x00 ]; // reset all controllers.
+					(local.lib.midi_event_write)( buf_send, 0, msg.as_ptr(), msg.len() );
+				}
+			}
+
+			// send immediate data.
+			for ev in local.immediate_send.drain( .. ) {
+				// XXX: add delay.
+				(local.lib.midi_event_write)( buf_send, 0, ev.msg.as_ptr(), ev.len() );
+			}
+
+			// send playing data.
+			if playing {
 				let frame = |ev: &midi::Event| (ev.time * pos.frame_rate as f64).round() as isize - pos.frame as isize;
-				let ibgn = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < 0 );
-				let iend = misc::bsearch_boundary( &shared.events, |ev| frame( ev ) < size as isize );
-				for ev in shared.events[ibgn .. iend].iter() {
-					(this.lib.midi_event_write)( buf_send, frame( ev ) as u32, ev.msg.as_ptr(), ev.len() );
+				let ibgn = misc::bsearch_boundary( &local.events, |ev| frame( ev ) < 0 );
+				let iend = misc::bsearch_boundary( &local.events, |ev| frame( ev ) < size as isize );
+				for ev in local.events[ibgn .. iend].iter() {
+					(local.lib.midi_event_write)( buf_send, frame( ev ) as u32, ev.msg.as_ptr(), ev.len() );
 				}
 
-				if ibgn == shared.events.len() {
-					(this.lib.transport_stop)( this.jack );
-					shared.changed = true;
+				if ibgn == local.events.len() {
+					(local.lib.transport_stop)( local.jack );
 				}
 			}
+
+			local.playing = playing;
+			local.frame = pos.frame + if playing { size } else { 0 };
 		}
 		0
 	}
 
-	unsafe fn write_all_sound_off( &self, buf: *mut jack::PortBuffer, frame: u32 ) {
-		for ch in 0 .. 16 {
-			let msg: [u8; 3] = [ 0xb0 + ch, 0x78, 0x00 ]; // all sound off.
-			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
-			let msg: [u8; 3] = [ 0xb0 + ch, 0x79, 0x00 ]; // reset all controllers.
-			(self.lib.midi_event_write)( buf, frame, msg.as_ptr(), msg.len() );
+	fn exit_callback_thread( &mut self ) {
+		if let Some( thread ) = self.callback_thread.take() {
+			*self.exiting.lock().unwrap() = true;
+			self.condvar.notify_all();
+			thread.join().unwrap();
 		}
 	}
 
-	extern "C" fn sync_callback( _: jack::TransportState, _: *mut jack::Position, this: *const dyn any::Any ) -> i32 {
-		unsafe {
-			let this = &*(this as *const Player);
-
-			let mut shared = match this.shared.try_lock() {
-				Err( _ ) => return 0,
-				Ok ( v ) => v,
-			};
-
-			shared.changed = true;
-			1 // ready to roll.
-		}
-	}
-
-	fn exit_cb_thread( &mut self ) {
-		if let Some( cb_thread ) = self.cb_thread.take() {
-			*self.cb_shared.0.lock().unwrap() = true;
-			self.cb_shared.1.notify_all();
-			cb_thread.join().unwrap();
-		}
-	}
-
-	fn cb_proc( on_received: Box<dyn 'static + Fn() + Send>, shared: sync::Arc<(sync::Mutex<bool>, sync::Condvar)> ) {
-		let mut exiting = shared.0.lock().unwrap();
-		while !*exiting {
-			exiting = shared.1.wait( exiting ).unwrap();
-			if *exiting {
-				break;
+	fn callback_proc( on_received: Box<dyn 'static + Fn() + Send>, exiting: sync::Arc<sync::Mutex<bool>>, condvar: sync::Arc<sync::Condvar> ) {
+		loop {
+			{
+				let exiting = exiting.lock().unwrap();
+				if *exiting {
+					break;
+				}
+				if *condvar.wait( exiting ).unwrap() {
+					break;
+				}
 			}
-			// XXX: see the comment in process_callback().
-			//if (this.lib.ringbuffer_read_space)( this.immediate_recv ) >= mem::size_of::<midi::Event>() {
-				on_received();
-			//}
+			on_received();
 		}
 	}
 }

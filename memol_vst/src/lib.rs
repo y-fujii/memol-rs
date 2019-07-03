@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
-use std::sync::atomic;
 use std::io::Write;
 use std::net::ToSocketAddrs;
 use vst::plugin_main;
@@ -10,9 +9,15 @@ use memol_cli::player_net;
 mod events;
 
 
+const BUFFER_LEN: usize = 65536;
+
 struct LockedData {
 	events: Vec<midi::Event>,
 	changed: bool,
+	immediate_send: Vec<midi::Event>,
+	immediate_recv: Vec<midi::Event>,
+	playing: bool,
+	seconds: f64,
 }
 
 struct Exiter {
@@ -22,10 +27,6 @@ struct Exiter {
 
 struct SharedData {
 	locked: sync::Mutex<LockedData>,
-	immediate_send: crossbeam_queue::ArrayQueue<midi::Event>,
-	immediate_recv: crossbeam_queue::ArrayQueue<midi::Event>,
-	playing: atomic::AtomicBool,
-	location: atomic::AtomicU64,
 	condvar: sync::Condvar,
 	exiter: sync::Mutex<Exiter>,
 }
@@ -34,8 +35,12 @@ struct Plugin {
 	host: vst::plugin::HostCallback,
 	buffer: events::EventBuffer,
 	handle: Option<thread::JoinHandle<()>>,
-	shared: sync::Arc<SharedData>,
+	events: Vec<midi::Event>,
+	immediate_send: Vec<midi::Event>,
+	immediate_recv: Vec<midi::Event>,
+	playing: bool,
 	location: isize,
+	shared: sync::Arc<SharedData>,
 }
 
 impl Drop for Plugin {
@@ -60,22 +65,26 @@ impl default::Default for Plugin {
 			host: vst::plugin::HostCallback::default(),
 			buffer: events::EventBuffer::new(),
 			handle: None,
+			events: Vec::new(),
+			immediate_send: Vec::with_capacity( BUFFER_LEN ),
+			immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+			playing: false,
+			location: 0,
 			shared: sync::Arc::new( SharedData{
 				locked: sync::Mutex::new( LockedData{
 					events: Vec::new(),
 					changed: false,
+					immediate_send: Vec::new(),
+					immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+					playing: false,
+					seconds: 0.0,
 				} ),
-				immediate_send: crossbeam_queue::ArrayQueue::new( 4096 ),
-				immediate_recv: crossbeam_queue::ArrayQueue::new( 4096 ),
-				playing: atomic::AtomicBool::new( false ),
-				location: atomic::AtomicU64::new( 0.0f64.to_bits() ),
 				condvar: sync::Condvar::new(),
 				exiter: sync::Mutex::new( Exiter{
 					exiting: false,
 					stream: None,
 				} ),
 			} ),
-			location: 0,
 		}
 	}
 }
@@ -149,9 +158,8 @@ impl vst::plugin::Plugin for Plugin {
 									locked.changed = true;
 								},
 								player_net::StcMessage::Immediate( evs ) => {
-									for ev in evs.into_iter() {
-										shared.immediate_send.push( ev ).ok();
-									}
+									let mut locked = shared.locked.lock().unwrap();
+									locked.immediate_send.extend( evs );
 								},
 							}
 						}
@@ -167,21 +175,24 @@ impl vst::plugin::Plugin for Plugin {
 					};
 					move || {
 						loop {
-							let mut events = Vec::new();
-							while let Ok( ev ) = shared.immediate_recv.pop() {
-								events.push( ev );
+							let mut evs = Vec::with_capacity( BUFFER_LEN );
+							let (playing, seconds);
+							{
+								let mut locked = shared.locked.lock().unwrap();
+								mem::swap( &mut evs, &mut locked.immediate_recv );
+								playing = locked.playing;
+								seconds = locked.seconds;
 							}
-							if events.len() > 0 {
-								let msg = player_net::CtsMessage::Immediate( events );
+
+							if evs.len() > 0 {
+								let msg = player_net::CtsMessage::Immediate( evs );
 								match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 									Ok ( _ ) => (),
 									Err( _ ) => break,
 								}
 							}
 
-							let loc_sfu = f64::from_bits( shared.location.load( atomic::Ordering::SeqCst ) );
-							let playing = shared.playing.load( atomic::Ordering::SeqCst );
-							let msg = player_net::CtsMessage::Status( playing, loc_sfu );
+							let msg = player_net::CtsMessage::Status( playing, seconds );
 							match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 								Ok ( _ ) => (),
 								Err( _ ) => break,
@@ -191,7 +202,9 @@ impl vst::plugin::Plugin for Plugin {
 							if exiter.exiting {
 								break;
 							}
-							drop( shared.condvar.wait( exiter ).unwrap() );
+							if shared.condvar.wait( exiter ).unwrap().exiting {
+								break;
+							}
 						}
 						stream.shutdown( net::Shutdown::Both ).ok();
 					}
@@ -244,45 +257,52 @@ impl vst::plugin::Plugin for Plugin {
 		let location_fixed = if (self.location - location).abs() < 4 { self.location } else { location };
 		let playing = info.flags & vst::api::TimeInfoFlags::TRANSPORT_PLAYING.bits() != 0;
 
-		let loc_sfu = (location as f64 / info.sample_rate).to_bits();
-		let playing_prev = self.shared.playing .swap( playing, atomic::Ordering::SeqCst );
-		let loc_sfu_prev = self.shared.location.swap( loc_sfu, atomic::Ordering::SeqCst );
-		if playing != playing_prev || loc_sfu != loc_sfu_prev {
-			self.shared.condvar.notify_one();
+		let mut changed = false;
+		if let Ok( mut locked ) = self.shared.locked.try_lock() {
+			if mem::replace( &mut locked.changed, false ) {
+				mem::swap( &mut self.events, &mut locked.events );
+				changed = true;
+			}
+
+			locked.immediate_recv.extend( self.immediate_recv.drain( .. ) );
+			self.immediate_send.extend( locked.immediate_send.drain( .. ) );
+
+			let seconds = location as f64 / info.sample_rate;
+			if playing != locked.playing || seconds != locked.seconds || locked.immediate_recv.len() > 0 {
+				// XXX: may fail to wake the network thread.
+				self.shared.condvar.notify_one();
+			}
+			locked.playing = playing;
+			locked.seconds = seconds;
 		}
 
-		let mut locked = match self.shared.locked.try_lock() {
-			Ok ( v ) => v,
-			Err( _ ) => return,
-		};
-
-		if locked.changed || playing != playing_prev || (playing && location_fixed != self.location) {
+		if changed || playing != self.playing || (playing && location_fixed != self.location) {
 			for ch in 0 .. 16 {
 				// all sound off.
 				self.buffer.push( &[ 0xb0 + ch, 0x78, 0x00 ], 0 );
 				// reset all controllers.
 				self.buffer.push( &[ 0xb0 + ch, 0x79, 0x00 ], 0 );
 			}
-			locked.changed = false;
 		}
 
 		// XXX: add delay.
-		while let Ok( ev ) = self.shared.immediate_send.pop() {
+		for ev in self.immediate_send.drain( .. ) {
 			self.buffer.push( &ev.msg, 0 );
 		}
 
 		if playing {
 			let frame = |ev: &midi::Event| (ev.time * info.sample_rate).round() as isize;
-			let ibgn = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < location_fixed  );
-			let iend = misc::bsearch_boundary( &locked.events, |ev| frame( ev ) < location + size );
-			for ev in locked.events[ibgn .. iend].iter() {
+			let ibgn = misc::bsearch_boundary( &self.events, |ev| frame( ev ) < location_fixed  );
+			let iend = misc::bsearch_boundary( &self.events, |ev| frame( ev ) < location + size );
+			for ev in self.events[ibgn .. iend].iter() {
 				let i = cmp::max( frame( ev ) - location, 0 );
 				self.buffer.push( &ev.msg, i as i32 );
 			}
 		}
 
 		self.host.process_events( self.buffer.events() );
-		self.location = location + size;
+		self.playing = playing;
+		self.location = location + if playing { size } else { 0 };
 	}
 
 	fn process_events( &mut self, events: &vst::api::Events ) {
@@ -297,10 +317,7 @@ impl vst::plugin::Plugin for Plugin {
 				0xb0 =>  0,
 				_    => continue,
 			};
-			self.shared.immediate_recv.push( midi::Event::new( 0.0, prio, &ev.data ) ).ok();
-		}
-		if !self.shared.immediate_recv.is_empty() {
-			self.shared.condvar.notify_one();
+			self.immediate_recv.push( midi::Event::new( 0.0, prio, &ev.data ) );
 		}
 	}
 }

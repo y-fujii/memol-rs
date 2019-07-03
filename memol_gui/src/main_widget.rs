@@ -79,22 +79,22 @@ impl MainWidget {
 
 			let size = ImVec2::new( GetFontSize() * 2.0, 0.0 );
 			if Button( c_str!( "\u{f048}" ), &size ) {
-				model.player.seek( 0.0 ).ok();
+				model.player.seek( 0.0 );
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04b}" ), &size ) {
-				model.player.play().ok();
+				model.player.play();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f04d}" ), &size ) {
-				model.player.stop().ok();
+				model.player.stop();
 				changed = true;
 			}
 			SameLine( 0.0, 1.0 );
 			if Button( c_str!( "\u{f051}" ), &size ) {
-				model.player.seek( model.assembly.len.to_float() / model.tempo ).ok();
+				model.player.seek( model.assembly.len.to_float() / model.tempo );
 				changed = true;
 			}
 

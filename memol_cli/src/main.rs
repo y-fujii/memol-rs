@@ -71,9 +71,9 @@ fn main() {
 					Some( ev ) => ev.time.max( 0.0 ),
 					None       => 0.0,
 				};
-				player.set_data( events.clone() );
-				player.seek( bgn )?;
-				player.play()?;
+				player.set_data( &events );
+				player.seek( bgn );
+				player.play();
 			}
 
 			notify::wait_file( &args.free[0] )?;

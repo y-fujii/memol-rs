@@ -13,6 +13,7 @@ struct SharedData {
 	changed: bool,
 	immediate_send: Vec<midi::Event>,
 	immediate_recv: Vec<midi::Event>,
+	exiting: bool,
 }
 
 struct LocalData {
@@ -36,7 +37,6 @@ pub struct Player {
 	port_recv: *mut jack::Port,
 	_local: Box<LocalData>,
 	shared: sync::Arc<sync::Mutex<SharedData>>,
-	exiting: sync::Arc<sync::Mutex<bool>>,
 	condvar: sync::Arc<sync::Condvar>,
 	callback_thread: Option<thread::JoinHandle<()>>,
 }
@@ -53,18 +53,18 @@ impl Drop for Player {
 }
 
 impl player::Player for Player {
-	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
+	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn( &[midi::Event] ) + Send> ) {
 		self.exit_callback_thread();
 		self.callback_thread = Some( thread::spawn( {
-			let exiting = self.exiting.clone();
+			let shared = self.shared.clone();
 			let condvar = self.condvar.clone();
-			move || Self::callback_proc( f, exiting, condvar )
+			move || Self::callback_proc( f, shared, condvar )
 		} ) );
 	}
 
-	fn set_data( &mut self, events: Vec<midi::Event> ) {
+	fn set_data( &mut self, events: &[midi::Event] ) {
 		let mut shared = self.shared.lock().unwrap();
-		shared.events = events;
+		shared.events = events.to_vec();
 		shared.changed = true;
 	}
 
@@ -100,40 +100,30 @@ impl player::Player for Player {
 		}
 	}
 
-	fn send( &self, evs: &[midi::Event] ) -> io::Result<()> {
+	fn send( &self, evs: &[midi::Event] ) {
 		let mut shared = self.shared.lock().unwrap();
 		shared.immediate_send.extend_from_slice( evs );
-		Ok( () )
 	}
 
-	fn recv( &self, evs: &mut Vec<midi::Event> ) -> io::Result<()> {
-		let mut shared = self.shared.lock().unwrap();
-		evs.extend( shared.immediate_recv.drain( .. ) );
-		Ok( () )
-	}
-
-	fn play( &self ) -> io::Result<()> {
+	fn play( &self ) {
 		unsafe {
 			(self.lib.transport_start)( self.jack );
 		}
-		Ok( () )
 	}
 
-	fn stop( &self ) -> io::Result<()> {
+	fn stop( &self ) {
 		unsafe {
 			(self.lib.transport_stop)( self.jack );
 		}
-		Ok( () )
 	}
 
-	fn seek( &self, time: f64 ) -> io::Result<()> {
+	fn seek( &self, time: f64 ) {
 		debug_assert!( time >= 0.0 );
 		unsafe {
 			let mut pos: jack::Position = mem::uninitialized();
 			(self.lib.transport_query)( self.jack, &mut pos );
 			(self.lib.transport_locate)( self.jack, (time * pos.frame_rate as f64).round() as u32 );
 		}
-		Ok( () )
 	}
 
 	fn status( &self ) -> (bool, f64) {
@@ -183,6 +173,7 @@ impl Player {
 				changed: false,
 				immediate_send: Vec::new(),
 				immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+				exiting: false,
 			} ) );
 
 			let local = Box::new( LocalData{
@@ -213,7 +204,6 @@ impl Player {
 				port_recv: port_recv,
 				_local: local,
 				shared: shared,
-				exiting: sync::Arc::new( sync::Mutex::new( false ) ),
 				condvar: condvar,
 				callback_thread: None,
 			} )
@@ -352,24 +342,27 @@ impl Player {
 
 	fn exit_callback_thread( &mut self ) {
 		if let Some( thread ) = self.callback_thread.take() {
-			*self.exiting.lock().unwrap() = true;
+			self.shared.lock().unwrap().exiting = true;
 			self.condvar.notify_all();
 			thread.join().unwrap();
 		}
 	}
 
-	fn callback_proc( on_received: Box<dyn 'static + Fn() + Send>, exiting: sync::Arc<sync::Mutex<bool>>, condvar: sync::Arc<sync::Condvar> ) {
+	fn callback_proc( on_received: Box<dyn 'static + Fn( &[midi::Event] ) + Send>, shared: sync::Arc<sync::Mutex<SharedData>>, condvar: sync::Arc<sync::Condvar> ) {
+		let mut evs = Vec::with_capacity( BUFFER_LEN );
 		loop {
 			{
-				let exiting = exiting.lock().unwrap();
-				if *exiting {
+				let mut shared = shared.lock().unwrap();
+				while !shared.exiting && shared.immediate_recv.len() == 0 {
+					shared = condvar.wait( shared ).unwrap();
+				}
+				if shared.exiting {
 					break;
 				}
-				if *condvar.wait( exiting ).unwrap() {
-					break;
-				}
-			}
-			on_received();
+				mem::swap( &mut evs, &mut shared.immediate_recv );
+			};
+			on_received( &evs );
+			evs.clear();
 		}
 	}
 }

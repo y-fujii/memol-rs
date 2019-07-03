@@ -50,8 +50,7 @@ impl StcMessage {
 }
 
 struct CtsShared {
-	on_received: Box<dyn 'static + Fn() + Send>,
-	immediate: Vec<midi::Event>, // XXX: will be removed.
+	on_received: Box<dyn 'static + Fn( &[midi::Event] ) + Send>,
 	playing: bool,
 	location: f64,
 	arrival: time::SystemTime,
@@ -68,15 +67,15 @@ pub struct Player {
 }
 
 impl player::Player for Player {
-	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn() + Send> ) {
+	fn on_received_boxed( &mut self, f: Box<dyn 'static + Fn( &[midi::Event] ) + Send> ) {
 		let mut shared = self.cts_shared.lock().unwrap();
 		shared.on_received = f;
 	}
 
-	fn set_data( &mut self, events: Vec<midi::Event> ) {
-		let msg = bincode::serialize( &StcMessage::Data( events.clone() ) ).unwrap();
+	fn set_data( &mut self, events: &[midi::Event] ) {
+		let msg = bincode::serialize( &StcMessage::Data( events.to_vec() ) ).unwrap();
 		let mut shared = self.stc_shared.lock().unwrap();
-		shared.events = events;
+		shared.events = events.to_vec();
 		shared.senders.retain( |s| s.send( msg.clone() ).is_ok() );
 	}
 
@@ -104,29 +103,19 @@ impl player::Player for Player {
 		Ok( () )
 	}
 
-	fn send( &self, events: &[midi::Event] ) -> io::Result<()> {
+	fn send( &self, events: &[midi::Event] ) {
 		let msg = bincode::serialize( &StcMessage::Immediate( events.into() ) ).unwrap();
 		let mut shared = self.stc_shared.lock().unwrap();
 		shared.senders.retain( |s| s.send( msg.clone() ).is_ok() );
-		Ok( () )
 	}
 
-	fn recv( &self, events: &mut Vec<midi::Event> ) -> io::Result<()> {
-		let mut shared = self.cts_shared.lock().unwrap();
-		events.extend( shared.immediate.drain( .. ) );
-		Ok( () )
+	fn play( &self ) {
 	}
 
-	fn play( &self ) -> io::Result<()> {
-		Ok( () )
+	fn stop( &self ) {
 	}
 
-	fn stop( &self ) -> io::Result<()> {
-		Ok( () )
-	}
-
-	fn seek( &self, _: f64 ) -> io::Result<()> {
-		Ok( () )
+	fn seek( &self, _: f64 ) {
 	}
 
 	fn status( &self ) -> (bool, f64) {
@@ -152,8 +141,7 @@ impl Player {
 	// XXX: finalization.
 	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Self> {
 		let cts_shared = sync::Arc::new( sync::Mutex::new( CtsShared{
-			on_received: Box::new( || () ),
-			immediate: Vec::new(),
+			on_received: Box::new( |_| () ),
 			playing: false,
 			location: 0.0,
 			arrival: time::SystemTime::UNIX_EPOCH,
@@ -197,10 +185,10 @@ impl Player {
 										shared.location = location;
 										shared.arrival  = now;
 									},
-									CtsMessage::Immediate( events ) => {
-										let mut shared = shared.lock().unwrap();
-										shared.immediate.extend( events );
-										(shared.on_received)();
+									CtsMessage::Immediate( evs ) => {
+										let shared = shared.lock().unwrap();
+										// XXX
+										(shared.on_received)( &evs );
 									},
 								}
 							}

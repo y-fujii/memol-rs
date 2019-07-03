@@ -20,7 +20,7 @@ const JACK_FRAME_WAIT: i32 = 12;
 enum UiMessage {
 	Data( path::PathBuf, String, Assembly, Vec<midi::Event> ),
 	Text( String ),
-	Midi,
+	Midi( Vec<midi::Event> ),
 }
 
 fn init_imgui( scale: f32 ) {
@@ -128,8 +128,8 @@ fn main() {
 				UiMessage::Text( text ) => {
 					model.borrow_mut().text = Some( text );
 				},
-				UiMessage::Midi => {
-					model.borrow_mut().handle_midi_inputs();
+				UiMessage::Midi( evs ) => {
+					model.borrow_mut().handle_midi_inputs( &evs );
 				},
 			}
 			JACK_FRAME_WAIT
@@ -154,7 +154,7 @@ fn main() {
 		};
 		player.on_received( {
 			let window_tx = window.create_sender();
-			move || window_tx.send( UiMessage::Midi )
+			move |evs| window_tx.send( UiMessage::Midi( evs.to_vec() ) )
 		} );
 		for port in args.opt_strs( "c" ) {
 			player.connect_to( &port )?;

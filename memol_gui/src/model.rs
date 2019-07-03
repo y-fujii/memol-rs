@@ -70,17 +70,14 @@ impl Model {
 			Some( ev ) => ev.time.max( 0.0 ),
 			None       => 0.0,
 		};
-		self.player.set_data( self.events.clone() );
+		self.player.set_data( &self.events );
 		if self.autoplay && !self.player.status().0 {
-			self.player.seek( bgn ).ok();
-			self.player.play().ok();
+			self.player.seek( bgn );
+			self.player.play();
 		}
 	}
 
-	pub fn handle_midi_inputs( &mut self ) {
-		let mut events = Vec::new();
-		self.player.recv( &mut events ).ok();
-
+	pub fn handle_midi_inputs( &mut self, events: &[midi::Event] ) {
 		for ev in events {
 			match ev.msg[0] & 0xf0 {
 				0x80 => {
@@ -107,13 +104,13 @@ impl Model {
 
 	pub fn note_on( &self, nn: u8 ) {
 		let evs = [ midi::Event::new( 0.0, 1, &[ 0x90 + self.channel as u8, nn, 0x40 ] ) ];
-		self.player.send( &evs ).ok();
+		self.player.send( &evs );
 	}
 
 	pub fn note_off_all( &self ) {
 		// all sound off.
 		let evs = [ midi::Event::new( 0.0, 0, &[ 0xb0 + self.channel as u8, 0x78, 0x00 ] ) ];
-		self.player.send( &evs ).ok();
+		self.player.send( &evs );
 	}
 
 	pub fn note_symbol( &self, n: i64 ) -> &'static str {

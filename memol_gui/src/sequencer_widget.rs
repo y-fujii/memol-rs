@@ -60,7 +60,7 @@ impl Sequencer {
 				if model.copying_notes.is_empty() {
 					let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
 					let x = f32::min( f32::max( x, 0.0 ), time_len );
-					model.player.seek( x as f64 / model.tempo ).ok();
+					model.player.seek( x as f64 / model.tempo );
 				}
 				else {
 					model.copy_notes_to_clipboard();

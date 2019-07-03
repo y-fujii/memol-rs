@@ -11,24 +11,16 @@ mod events;
 
 const BUFFER_LEN: usize = 65536;
 
-struct LockedData {
+struct SharedData {
 	events: Vec<midi::Event>,
 	changed: bool,
 	immediate_send: Vec<midi::Event>,
 	immediate_recv: Vec<midi::Event>,
 	playing: bool,
 	seconds: f64,
-}
-
-struct Exiter {
+	notified: bool,
 	exiting: bool,
 	stream: Option<net::TcpStream>,
-}
-
-struct SharedData {
-	locked: sync::Mutex<LockedData>,
-	condvar: sync::Condvar,
-	exiter: sync::Mutex<Exiter>,
 }
 
 struct Plugin {
@@ -40,19 +32,20 @@ struct Plugin {
 	immediate_recv: Vec<midi::Event>,
 	playing: bool,
 	location: isize,
-	shared: sync::Arc<SharedData>,
+	shared: sync::Arc<sync::Mutex<SharedData>>,
+	condvar: sync::Arc<sync::Condvar>,
 }
 
 impl Drop for Plugin {
 	fn drop( &mut self ) {
 		{
-			let mut exiter = self.shared.exiter.lock().unwrap();
-			exiter.exiting = true;
-			if let Some( stream ) = exiter.stream.take() {
+			let mut shared = self.shared.lock().unwrap();
+			shared.exiting = true;
+			if let Some( stream ) = shared.stream.take() {
 				stream.shutdown( net::Shutdown::Both ).ok();
 			}
 		}
-		self.shared.condvar.notify_all();
+		self.condvar.notify_all();
 		if let Some( handle ) = self.handle.take() {
 			handle.join().ok();
 		}
@@ -70,21 +63,18 @@ impl default::Default for Plugin {
 			immediate_recv: Vec::with_capacity( BUFFER_LEN ),
 			playing: false,
 			location: 0,
-			shared: sync::Arc::new( SharedData{
-				locked: sync::Mutex::new( LockedData{
-					events: Vec::new(),
-					changed: false,
-					immediate_send: Vec::new(),
-					immediate_recv: Vec::with_capacity( BUFFER_LEN ),
-					playing: false,
-					seconds: 0.0,
-				} ),
-				condvar: sync::Condvar::new(),
-				exiter: sync::Mutex::new( Exiter{
-					exiting: false,
-					stream: None,
-				} ),
-			} ),
+			shared: sync::Arc::new( sync::Mutex::new( SharedData{
+				events: Vec::new(),
+				changed: false,
+				immediate_send: Vec::new(),
+				immediate_recv: Vec::with_capacity( BUFFER_LEN ),
+				playing: false,
+				seconds: 0.0,
+				notified: false,
+				exiting: false,
+				stream: None,
+			} ) ),
+			condvar: sync::Arc::new( sync::Condvar::new() ),
 		}
 	}
 }
@@ -108,12 +98,13 @@ impl vst::plugin::Plugin for Plugin {
 
 		// XXX: finalization is not complete.
 		let shared = this.shared.clone();
+		let condvar = this.condvar.clone();
 		this.handle = Some( thread::spawn( move || {
 			loop {
 				thread::sleep( time::Duration::from_secs( 1 ) );
 				let stream = {
-					let mut exiter = shared.exiter.lock().unwrap();
-					if exiter.exiting {
+					let mut shared = shared.lock().unwrap();
+					if shared.exiting {
 						break;
 					}
 					let mut stream = None;
@@ -130,7 +121,7 @@ impl vst::plugin::Plugin for Plugin {
 						Some( s ) => s,
 						None      => continue,
 					};
-					exiter.stream = Some( match stream.try_clone() {
+					shared.stream = Some( match stream.try_clone() {
 						Ok ( s ) => s,
 						Err( _ ) => continue,
 					} );
@@ -146,21 +137,24 @@ impl vst::plugin::Plugin for Plugin {
 					};
 					move || {
 						let mut stream = io::BufReader::new( stream );
-						while !shared.exiter.lock().unwrap().exiting {
+						loop {
 							let msg = match player_net::StcMessage::deserialize_from( &mut stream ) {
 								Ok ( e ) => e,
 								Err( _ ) => break,
 							};
+
+							let mut shared = shared.lock().unwrap();
 							match msg {
 								player_net::StcMessage::Data( evs ) => {
-									let mut locked = shared.locked.lock().unwrap();
-									locked.events = evs;
-									locked.changed = true;
+									shared.events = evs;
+									shared.changed = true;
 								},
 								player_net::StcMessage::Immediate( evs ) => {
-									let mut locked = shared.locked.lock().unwrap();
-									locked.immediate_send.extend( evs );
+									shared.immediate_send.extend( evs );
 								},
+							}
+							if shared.exiting {
+								break;
 							}
 						}
 						stream.get_ref().shutdown( net::Shutdown::Both ).ok();
@@ -169,23 +163,31 @@ impl vst::plugin::Plugin for Plugin {
 
 				let mut writer = {
 					let shared = shared.clone();
+					let condvar = condvar.clone();
 					let mut stream = match stream.try_clone() {
 						Ok ( s ) => s,
 						Err( _ ) => continue,
 					};
 					move || {
+						let mut evs = Vec::with_capacity( BUFFER_LEN );
 						loop {
-							let mut evs = Vec::with_capacity( BUFFER_LEN );
 							let (playing, seconds);
 							{
-								let mut locked = shared.locked.lock().unwrap();
-								mem::swap( &mut evs, &mut locked.immediate_recv );
-								playing = locked.playing;
-								seconds = locked.seconds;
+								let mut shared = shared.lock().unwrap();
+								while !shared.exiting && !shared.notified {
+									shared = condvar.wait( shared ).unwrap();
+								}
+								if shared.exiting {
+									break;
+								}
+								shared.notified = false;
+								mem::swap( &mut evs, &mut shared.immediate_recv );
+								playing = shared.playing;
+								seconds = shared.seconds;
 							}
 
 							if evs.len() > 0 {
-								let msg = player_net::CtsMessage::Immediate( evs );
+								let msg = player_net::CtsMessage::Immediate( evs.drain( .. ).collect() );
 								match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 									Ok ( _ ) => (),
 									Err( _ ) => break,
@@ -197,14 +199,6 @@ impl vst::plugin::Plugin for Plugin {
 								Ok ( _ ) => (),
 								Err( _ ) => break,
 							}
-
-							let exiter = shared.exiter.lock().unwrap();
-							if exiter.exiting {
-								break;
-							}
-							if shared.condvar.wait( exiter ).unwrap().exiting {
-								break;
-							}
 						}
 						stream.shutdown( net::Shutdown::Both ).ok();
 					}
@@ -213,7 +207,7 @@ impl vst::plugin::Plugin for Plugin {
 				let handle = thread::spawn( reader );
 				writer();
 				handle.join().ok();
-				shared.exiter.lock().unwrap().stream = None;
+				shared.lock().unwrap().stream = None;
 			}
 		} ) );
 
@@ -258,22 +252,22 @@ impl vst::plugin::Plugin for Plugin {
 		let playing = info.flags & vst::api::TimeInfoFlags::TRANSPORT_PLAYING.bits() != 0;
 
 		let mut changed = false;
-		if let Ok( mut locked ) = self.shared.locked.try_lock() {
-			if mem::replace( &mut locked.changed, false ) {
-				mem::swap( &mut self.events, &mut locked.events );
+		if let Ok( mut shared ) = self.shared.try_lock() {
+			if mem::replace( &mut shared.changed, false ) {
+				mem::swap( &mut self.events, &mut shared.events );
 				changed = true;
 			}
 
-			locked.immediate_recv.extend( self.immediate_recv.drain( .. ) );
-			self.immediate_send.extend( locked.immediate_send.drain( .. ) );
+			shared.immediate_recv.extend( self.immediate_recv.drain( .. ) );
+			self.immediate_send.extend( shared.immediate_send.drain( .. ) );
 
 			let seconds = location as f64 / info.sample_rate;
-			if playing != locked.playing || seconds != locked.seconds || locked.immediate_recv.len() > 0 {
-				// XXX: may fail to wake the network thread.
-				self.shared.condvar.notify_one();
+			if playing != shared.playing || seconds != shared.seconds || shared.immediate_recv.len() > 0 {
+				shared.notified = true;
+				self.condvar.notify_one();
 			}
-			locked.playing = playing;
-			locked.seconds = seconds;
+			shared.playing = playing;
+			shared.seconds = seconds;
 		}
 
 		if changed || playing != self.playing || (playing && location_fixed != self.location) {

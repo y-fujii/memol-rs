@@ -120,15 +120,14 @@ impl player::Player for Player {
 
 	fn status( &self ) -> (bool, f64) {
 		let shared = self.cts_shared.lock().unwrap();
-		let playing = shared.playing;
 		let delta = shared.arrival.elapsed().unwrap_or( time::Duration::new( 0, 0 ) );
-		let loc = if playing {
+		let loc = if shared.playing {
 			1e-9 * delta.subsec_nanos() as f64 + delta.as_secs() as f64 + shared.location
 		}
 		else {
 			shared.location
 		};
-		(playing, loc)
+		(shared.playing, loc)
 	}
 
 	fn info( &self ) -> String {

@@ -13,12 +13,12 @@ const BUFFER_LEN: usize = 65536;
 
 struct SharedData {
 	events: Vec<midi::Event>,
-	changed: bool,
+	events_changed: bool,
 	immediate_send: Vec<midi::Event>,
 	immediate_recv: Vec<midi::Event>,
 	playing: bool,
 	seconds: f64,
-	notified: bool,
+	state_changed: bool,
 	exiting: bool,
 	stream: Option<net::TcpStream>,
 }
@@ -65,12 +65,12 @@ impl default::Default for Plugin {
 			location: 0,
 			shared: sync::Arc::new( sync::Mutex::new( SharedData{
 				events: Vec::new(),
-				changed: false,
+				events_changed: false,
 				immediate_send: Vec::new(),
 				immediate_recv: Vec::with_capacity( BUFFER_LEN ),
 				playing: false,
 				seconds: 0.0,
-				notified: false,
+				state_changed: true,
 				exiting: false,
 				stream: None,
 			} ) ),
@@ -147,7 +147,7 @@ impl vst::plugin::Plugin for Plugin {
 							match msg {
 								player_net::StcMessage::Data( evs ) => {
 									shared.events = evs;
-									shared.changed = true;
+									shared.events_changed = true;
 								},
 								player_net::StcMessage::Immediate( evs ) => {
 									shared.immediate_send.extend( evs );
@@ -169,32 +169,25 @@ impl vst::plugin::Plugin for Plugin {
 						Err( _ ) => continue,
 					};
 					move || {
-						let mut evs = Vec::with_capacity( BUFFER_LEN );
-						loop {
-							let (playing, seconds);
-							{
+						'outer: loop {
+							let msg = {
 								let mut shared = shared.lock().unwrap();
-								while !shared.exiting && !shared.notified {
-									shared = condvar.wait( shared ).unwrap();
+								loop {
+									if shared.exiting {
+										break 'outer;
+									}
+									if shared.immediate_recv.len() > 0 {
+										break player_net::CtsMessage::Immediate( shared.immediate_recv.drain( .. ).collect() );
+									}
+									if mem::replace( &mut shared.state_changed, false ) {
+										break player_net::CtsMessage::Status( shared.playing, shared.seconds );
+									}
+									let (tmp, timeout) = condvar.wait_timeout( shared, time::Duration::from_secs( 1 ) ).unwrap();
+									shared = tmp;
+									shared.state_changed |= timeout.timed_out();
 								}
-								if shared.exiting {
-									break;
-								}
-								shared.notified = false;
-								mem::swap( &mut evs, &mut shared.immediate_recv );
-								playing = shared.playing;
-								seconds = shared.seconds;
-							}
+							};
 
-							if evs.len() > 0 {
-								let msg = player_net::CtsMessage::Immediate( evs.drain( .. ).collect() );
-								match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
-									Ok ( _ ) => (),
-									Err( _ ) => break,
-								}
-							}
-
-							let msg = player_net::CtsMessage::Status( playing, seconds );
 							match stream.write_all( &bincode::serialize( &msg ).unwrap() ) {
 								Ok ( _ ) => (),
 								Err( _ ) => break,
@@ -253,7 +246,7 @@ impl vst::plugin::Plugin for Plugin {
 
 		let mut changed = false;
 		if let Ok( mut shared ) = self.shared.try_lock() {
-			if mem::replace( &mut shared.changed, false ) {
+			if mem::replace( &mut shared.events_changed, false ) {
 				mem::swap( &mut self.events, &mut shared.events );
 				changed = true;
 			}
@@ -261,13 +254,12 @@ impl vst::plugin::Plugin for Plugin {
 			shared.immediate_recv.extend( self.immediate_recv.drain( .. ) );
 			self.immediate_send.extend( shared.immediate_send.drain( .. ) );
 
-			let seconds = location as f64 / info.sample_rate;
-			if playing != shared.playing || seconds != shared.seconds || shared.immediate_recv.len() > 0 {
-				shared.notified = true;
+			shared.playing = playing;
+			shared.seconds = location as f64 / info.sample_rate;
+			shared.state_changed |= playing != self.playing || location_fixed != self.location;
+			if shared.state_changed || shared.immediate_recv.len() > 0 {
 				self.condvar.notify_one();
 			}
-			shared.playing = playing;
-			shared.seconds = seconds;
 		}
 
 		if changed || playing != self.playing || (playing && location_fixed != self.location) {

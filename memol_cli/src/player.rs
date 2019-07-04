@@ -54,27 +54,27 @@ impl Player for DummyPlayer {
 	}
 
 	fn ports_from( &self ) -> io::Result<Vec<(String, bool)>> {
-		Ok( Vec::new() )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn connect_from( &self, _: &str ) -> io::Result<()> {
-		Ok( () )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn disconnect_from( &self, _: &str ) -> io::Result<()> {
-		Ok( () )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn ports_to( &self ) -> io::Result<Vec<(String, bool)>> {
-		Ok( Vec::new() )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn connect_to( &self, _: &str ) -> io::Result<()> {
-		Ok( () )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn disconnect_to( &self, _: &str ) -> io::Result<()> {
-		Ok( () )
+		Err( io::ErrorKind::Other.into() )
 	}
 
 	fn send( &self, _: &[midi::Event] ) {

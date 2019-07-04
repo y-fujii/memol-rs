@@ -9,8 +9,8 @@ use crate::sequencer_widget;
 
 pub struct MainWidget {
 	pub wallpaper: Option<renderer::Texture>,
-	ports_from: Vec<(String, bool)>,
-	ports_to: Vec<(String, bool)>,
+	ports_from: Option<Vec<(String, bool)>>,
+	ports_to: Option<Vec<(String, bool)>>,
 	sequencer: sequencer_widget::Sequencer,
 }
 
@@ -18,8 +18,8 @@ impl MainWidget {
 	pub fn new() -> Self {
 		MainWidget{
 			wallpaper: None,
-			ports_from: Vec::new(),
-			ports_to: Vec::new(),
+			ports_from: None,
+			ports_to: None,
 			sequencer: sequencer_widget::Sequencer::new(),
 		}
 	}
@@ -133,36 +133,40 @@ impl MainWidget {
 			SameLine( 0.0, -1.0 );
 			if Button( c_str!( "I/O ports\u{2026}" ), &ImVec2::zero() ) {
 				OpenPopup( c_str!( "ports" ) );
-				self.ports_from = model.player.ports_from().unwrap_or_default();
-				self.ports_to   = model.player.ports_to  ().unwrap_or_default();
+				self.ports_from = model.player.ports_from().ok();
+				self.ports_to   = model.player.ports_to  ().ok();
 			}
 			if BeginPopup( c_str!( "ports" ), 0 ) {
 				Text( c_str!( "\u{f7c0} {}", model.player.info() ) );
 
-				Spacing();
-				Separator();
-				Text( c_str!( "Input from\u{2026}" ) );
-				for &mut (ref port, ref mut is_conn) in self.ports_from.iter_mut() {
-					if Checkbox( c_str!( "{}", port ), is_conn ) {
-						*is_conn = if *is_conn {
-							model.player.connect_from( port ).is_ok()
-						}
-						else {
-							model.player.disconnect_from( port ).is_err()
+				if let Some( ports ) = &mut self.ports_from {
+					Spacing();
+					Separator();
+					Text( c_str!( "Input from\u{2026}" ) );
+					for &mut (ref port, ref mut is_conn) in ports.iter_mut() {
+						if Checkbox( c_str!( "{}", port ), is_conn ) {
+							*is_conn = if *is_conn {
+								model.player.connect_from( port ).is_ok()
+							}
+							else {
+								model.player.disconnect_from( port ).is_err()
+							}
 						}
 					}
 				}
 
-				Spacing();
-				Separator();
-				Text( c_str!( "Output to\u{2026}" ) );
-				for &mut (ref port, ref mut is_conn) in self.ports_to.iter_mut() {
-					if Checkbox( c_str!( "{}", port ), is_conn ) {
-						*is_conn = if *is_conn {
-							model.player.connect_to( port ).is_ok()
-						}
-						else {
-							model.player.disconnect_to( port ).is_err()
+				if let Some( ports ) = &mut self.ports_to {
+					Spacing();
+					Separator();
+					Text( c_str!( "Output to\u{2026}" ) );
+					for &mut (ref port, ref mut is_conn) in ports.iter_mut() {
+						if Checkbox( c_str!( "{}", port ), is_conn ) {
+							*is_conn = if *is_conn {
+								model.player.connect_to( port ).is_ok()
+							}
+							else {
+								model.player.disconnect_to( port ).is_err()
+							}
 						}
 					}
 				}

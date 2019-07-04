@@ -26,7 +26,6 @@ pub enum TransportState {
 pub enum Client     {}
 pub enum Port       {}
 pub enum PortBuffer {}
-pub enum RingBuffer {}
 
 #[repr( C )]
 pub struct Position {
@@ -51,7 +50,6 @@ pub struct Position {
 }
 
 pub type ProcessCallback = extern "C" fn( u32, *const dyn any::Any ) -> i32;
-pub type SyncCallback    = extern "C" fn( TransportState, *mut Position, *const dyn any::Any ) -> i32;
 
 pub struct Library {
 	_lib: libloading::Library,

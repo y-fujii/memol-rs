@@ -100,9 +100,9 @@ impl Player for DummyPlayer {
 }
 
 impl DummyPlayer {
-	pub fn new() -> Box<DummyPlayer> {
-		Box::new( DummyPlayer{
+	pub fn new() -> DummyPlayer {
+		DummyPlayer{
 			location: cell::Cell::new( 0.0 ),
-		} )
+		}
 	}
 }

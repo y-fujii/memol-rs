@@ -45,7 +45,7 @@ impl Model {
 			follow: true,
 			autoplay: true,
 			text: None,
-			player: player::DummyPlayer::new(),
+			player: Box::new( player::DummyPlayer::new() ),
 			compile_tx: compile_tx,
 			use_sharp: false,
 			pedal: false,

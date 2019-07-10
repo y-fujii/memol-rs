@@ -77,14 +77,7 @@ impl Drop for Player {
 			unsafe { libc::shutdown( fd, libc::SHUT_RDWR ) };
 			self.thread.take().unwrap().join().ok();
 		}
-		#[cfg( target_family = "windows" )]
-		{
-			use os::windows::io::AsRawSocket;
-			let fd = self.listener.as_raw_socket();
-			unsafe { libc::shutdown( fd, libc::SHUT_RDWR ) };
-			self.thread.take().unwrap().join().ok();
-		}
-		// other OSs throw the thread away.
+		// other OSs throw the threads away.
 	}
 }
 

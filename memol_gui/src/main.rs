@@ -10,12 +10,29 @@ mod model;
 mod sequencer_widget;
 mod main_widget;
 use std::*;
+use gumdrop::Options;
 use memol::*;
 use memol_cli::{ player, player_net, player_jack };
 use memol_cli::player::PlayerExt;
 
 
 const JACK_FRAME_WAIT: i32 = 12;
+
+#[derive( gumdrop::Options )]
+struct ArgOptions {
+	#[options( free )]
+	file: Option<path::PathBuf>,
+	#[options( help = "Set a background image." )]
+	wallpaper: Option<path::PathBuf>,
+	#[options( help = "Use JACK." )]
+	jack: bool,
+	#[options( help = "Use plugins." )]
+	plugin: bool,
+	#[options( help = "Accept remote connections." )]
+	any: bool,
+	#[options( help = "Connect to specified ports.", meta = "PORT" )]
+	connect: Vec<String>,
+}
 
 enum UiMessage {
 	Data( path::PathBuf, String, Assembly, Vec<midi::Event> ),
@@ -79,22 +96,11 @@ fn lighten_image( img: &mut image::RgbaImage, ratio: f32 ) {
 fn main() {
 	|| -> Result<(), Box<dyn error::Error>> {
 		// parse the command line.
-		let mut opts = getopts::Options::new();
-		opts.optopt  ( "w", "wallpaper", "Set an background image.", "FILE" );
-		opts.optflag ( "j", "jack",      "Use JACK (Default on Linux)." );
-		opts.optmulti( "c", "connect",   "Connect to specified JACK ports.", "PORT" );
-		opts.optflag ( "n", "vst",       "Use VST plugins (Default on non-Linux OS)." );
-		opts.optflag ( "a", "any",       "Allow connection from remote VSTs." );
-		let args = match opts.parse( env::args().skip( 1 ) ) {
-			Ok ( v ) => v,
-			Err( _ ) => {
-				print!( "{}", opts.usage( "Usage: memol_gui [options] [FILE]" ) );
-				return Ok( () );
-			},
+		let args: Vec<_> = env::args().collect();
+		let opts = match ArgOptions::parse_args_default( &args[1 ..] ) {
+			Ok ( e ) => e,
+			Err( _ ) => return Err( ArgOptions::usage().into() ),
 		};
-		if args.free.len() > 1 {
-			return Err( getopts::Fail::UnexpectedArgument( String::new() ).into() );
-		}
 
 		// create instances.
 		let mut compiler = compile_thread::CompileThread::new();
@@ -105,7 +111,7 @@ fn main() {
 		// initialize a window.
 		init_imgui( window.hidpi_factor() as f32 );
 		window.update_font();
-		if let Some( Ok( img ) ) = args.opt_str( "w" ).map( image::open ) {
+		if let Some( Ok( img ) ) = opts.wallpaper.map( image::open ) {
 			let mut img = img.to_rgba();
 			lighten_image( &mut img, 0.5 );
 			let mut wallpaper = renderer::Texture::new();
@@ -140,8 +146,8 @@ fn main() {
 		} );
 
 		// initialize a player.
-		let addr = (if args.opt_present( "a" ) { net::Ipv6Addr::UNSPECIFIED } else { net::Ipv6Addr::LOCALHOST }, 27182);
-		let mut player: Box<dyn player::Player> = match (args.opt_present( "j" ),  args.opt_present( "n" )) {
+		let addr = (if opts.any { net::Ipv6Addr::UNSPECIFIED } else { net::Ipv6Addr::LOCALHOST }, 27182);
+		let mut player: Box<dyn player::Player> = match (opts.jack, opts.plugin) {
 			(true, false) => Box::new( player_jack::Player::new( "memol" )? ),
 			(false, true) => Box::new( player_net::Player::new( addr )? ),
 			_ => {
@@ -156,7 +162,7 @@ fn main() {
 			let window_tx = window.create_sender();
 			move |evs| window_tx.send( UiMessage::Midi( evs.to_vec() ) )
 		} );
-		for port in args.opt_strs( "c" ) {
+		for port in opts.connect {
 			player.connect_to( &port )?;
 		}
 		model.borrow_mut().player = player;
@@ -176,7 +182,7 @@ fn main() {
 				window_tx.send( UiMessage::Text( text ) );
 			}
 		} );
-		if let Some( path ) = args.free.first() {
+		if let Some( path ) = opts.file {
 			compiler.create_sender().send( compile_thread::Message::File( path.into() ) ).unwrap();
 		}
 		else {

@@ -8,6 +8,6 @@ workspace = ".."
 [dependencies]
 serde = { version = "*", features = ["derive"] }
 bincode = "*"
-getopts = "*"
+gumdrop = "*"
 libloading = "*"
 memol = { path = "../memol" }

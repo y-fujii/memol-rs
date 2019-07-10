@@ -3,7 +3,7 @@ use std::*;
 
 
 #[cfg( target_os = "linux" )]
-pub fn wait_file( path: &str ) -> io::Result<()> {
+pub fn wait_file<T: AsRef<path::Path>>( path: T ) -> io::Result<()> {
 	const IN_CLOEXEC: i32 = 0o2000000;
 	const IN_CLOSE_WRITE: u32 = 0x8;
 	extern "C" {
@@ -13,12 +13,17 @@ pub fn wait_file( path: &str ) -> io::Result<()> {
 	use std::io::prelude::*;
 	use std::os::unix::io::FromRawFd;
 
+	let path = match path.as_ref().to_str() {
+		Some( e ) => e,
+		None      => return Err( io::ErrorKind::Other.into() ),
+	};
+
 	unsafe {
 		let fd = inotify_init1( IN_CLOEXEC );
 		let mut fs = fs::File::from_raw_fd( fd );
 
 		if inotify_add_watch( fd, ffi::CString::new( path ).unwrap().as_ptr(), IN_CLOSE_WRITE ) < 0 {
-			return Err( io::Error::new( io::ErrorKind::Other, "" ) );
+			return Err( io::ErrorKind::Other.into() );
 		}
 
 		let mut buf: [u8; 32] = mem::uninitialized();
@@ -28,7 +33,8 @@ pub fn wait_file( path: &str ) -> io::Result<()> {
 }
 
 #[cfg( not( target_os = "linux" ) )]
-pub fn wait_file( path: &str ) -> io::Result<()> {
+pub fn wait_file<T: AsRef<path::Path>>( path: T ) -> io::Result<()> {
+	let path = path.as_ref();
 	let bgn = fs::metadata( path )?.modified()?;
 	let mut mid;
 	loop {

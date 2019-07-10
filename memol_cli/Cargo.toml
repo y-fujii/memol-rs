@@ -10,4 +10,5 @@ serde = { version = "*", features = ["derive"] }
 bincode = "*"
 gumdrop = "*"
 libloading = "*"
+libc = "*"
 memol = { path = "../memol" }

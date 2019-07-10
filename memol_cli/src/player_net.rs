@@ -62,8 +62,30 @@ struct StcShared {
 }
 
 pub struct Player {
+	listener: net::TcpListener,
+	thread: Option<thread::JoinHandle<()>>,
 	cts_shared: sync::Arc<sync::Mutex<CtsShared>>,
 	stc_shared: sync::Arc<sync::Mutex<StcShared>>,
+}
+
+impl Drop for Player {
+	fn drop( &mut self ) {
+		#[cfg( target_family = "unix" )]
+		{
+			use os::unix::io::AsRawFd;
+			let fd = self.listener.as_raw_fd();
+			unsafe { libc::shutdown( fd, libc::SHUT_RDWR ) };
+			self.thread.take().unwrap().join().ok();
+		}
+		#[cfg( target_family = "windows" )]
+		{
+			use os::windows::io::AsRawSocket;
+			let fd = self.listener.as_raw_socket();
+			unsafe { libc::shutdown( fd, libc::SHUT_RDWR ) };
+			self.thread.take().unwrap().join().ok();
+		}
+		// other OSs throw the thread away.
+	}
 }
 
 impl player::Player for Player {
@@ -137,7 +159,6 @@ impl player::Player for Player {
 }
 
 impl Player {
-	// XXX: finalization.
 	pub fn new<T: net::ToSocketAddrs>( addr: T ) -> io::Result<Self> {
 		let cts_shared = sync::Arc::new( sync::Mutex::new( CtsShared{
 			on_received: Box::new( |_| () ),
@@ -151,14 +172,20 @@ impl Player {
 		} ) );
 
 		let listener = net::TcpListener::bind( addr )?;
-		thread::spawn( {
+		let thread = thread::spawn( {
+			let listener = listener.try_clone()?;
 			let cts_shared = cts_shared.clone();
 			let stc_shared = stc_shared.clone();
 			move || {
 				for stream in listener.incoming() {
 					let stream = match stream {
 						Ok ( s ) => s,
-						Err( _ ) => continue,
+						Err( e ) => if e.kind() == io::ErrorKind::InvalidInput {
+							break;
+						}
+						else {
+							continue;
+						},
 					};
 					stream.set_nodelay( true ).ok();
 
@@ -224,6 +251,8 @@ impl Player {
 		} );
 
 		Ok( Player{
+			listener: listener,
+			thread: Some( thread ),
 			cts_shared: cts_shared,
 			stc_shared: stc_shared,
 		} )

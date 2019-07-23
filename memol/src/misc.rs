@@ -32,9 +32,7 @@ pub fn gcd( y: i64, x: i64 ) -> i64 {
 //     }
 //     return xs.len();
 pub fn bsearch_boundary<T, F: FnMut( &T ) -> bool>( xs: &[T], mut f: F ) -> usize {
-	// invariants:
-	//     f( xs[lo - 1] ) == true
-	//     f( xs[hi    ] ) == false
+	// invariants: f( xs[lo - 1] ) && !f( xs[hi] ).
 	let mut lo = 0;
 	let mut hi = xs.len();
 	while lo < hi {

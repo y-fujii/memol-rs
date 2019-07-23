@@ -2,6 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
 		<title>memol language overview</title>
 		<link href="https://fonts.googleapis.com/css?family=Inconsolata|Source+Sans+Pro:700|Source+Serif+Pro" rel="stylesheet">
 		<style>
@@ -12,8 +13,9 @@
 			}
 			body {
 				font: 100%/1.5 "Source Serif Pro", serif;
-				margin: 2rem auto;
-				max-width: 48rem;
+				margin: 0 auto;
+				padding: 0 1em;
+				max-width: 50rem;
 				text-align: justify;
 				   -moz-hyphens: auto;
 				-webkit-hyphens: auto;
@@ -46,9 +48,11 @@
 			}
 			pre, code {
 				font-family: "Inconsolata", monospace;
+				word-break: break-all;
 				background-color: #f8f8f8;
 			}
 			pre {
+				white-space: pre-wrap;
 				text-align: left;
 				padding: 0.25rem 0.5rem;
 				border: solid 1px #e0e0e0;
@@ -58,6 +62,9 @@
 				margin-bottom: 2em;
 				font-size: small;
 				text-align: right;
+			}
+			img {
+				max-width: 100%;
 			}
 		</style>
 	</head>

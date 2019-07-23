@@ -29,7 +29,7 @@ pub enum Note<'a> {
 	Value( Option<ratio::Ratio>, Option<ratio::Ratio> ),
 	Repeat( cell::Cell<Option<&'a Ast<Note<'a>>>> ),
 	Octave( i64 ),
-	OctaveByNote( char, i64, i64 ),
+	OctaveByNote( Dir, char, i64, i64 ),
 	Chord( Vec<(Box<Ast<Note<'a>>>, i64)> ),
 	Group( Vec<(Box<Ast<Note<'a>>>, i64)> ),
 	Tie( Box<Ast<Note<'a>>> ),

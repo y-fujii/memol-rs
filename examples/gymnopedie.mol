@@ -2,7 +2,7 @@
 
 score $melody_common() = {
 	_  | _    | _    | _  < | _FA | gfc  | bCD  | a    |
-	f^ | f^   | f^   | f  < | _FA | gfc  | bCD  | a    |
+	f^ | f^   | f^   | f    | _FA | gfc  | bCD  | a    |
 	C  | F >  | e^   | e^   | e   | ABC- | Edb  | Dc-b |
 	D^ | D:2D | EF-G | Ac-D | Edb | D^   | D:2D | G
 }
@@ -14,20 +14,20 @@ score $melody() = [
 
 score $chord_common() = [
 	repeat 8 { (gBDF_)  | (dACF_) } {
-	(fACF_)  | (b<BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_) | (a<AC-E_) | (DGBE_)  | (DDGBE) |
-	(Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)  | (DDGBE)   | (Dc-EAD) | (EBEG_) }
+	(fACF_)  | (bBDF_)  | (EGB__)   | (EBDG_)  | (dF-AD_) | (aAC-E_) | (DGBE_)  | (DDGBE) |
+	(Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)  | (DDGBE)  | (Dc-EAD) | (EBEG_) }
 ]
 
 score $chord() = [
 	$chord_common()
-	{ (fACF_)  | (b<BDF_)  | (ECEA_)  | (EACFA)   | E (EbAD) (EEBD) | (AgC-EA_) | (daD<DFA)  }
+	{ (fACF_)  | (bBDF_)   | (ECEA_)  | (EACFA)   | E (EbAD) (EEBD) | (AgC-EA_) | (daD<DFA)  }
 	$chord_common()
-	{ (eADF-A) | (EAC-F-_) | (EC-EA_) | (EAC-F-A) | E (EbAD) (EEBD) | (AgC-EA_) | (daD<DF-A) }
+	{ (eADF-A) | (eAC-F-_) | (eC-EA_) | (eAC-F-A) | e (ebAD) (eeBD) | (AgC-EA_) | (daD<DF-A) }
 ]
 
 score $pattern() = [
-	repeat 36 { @q0 > q0 ^ (/ @q1 Q1 Q2 Q3 Q4):2 }
-	{ (@q0 > q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 > q0 @q1 Q1 Q2 @q3 Q3 Q4 Q5) | / }
+	repeat 36 { @Q0 q0 ^ (/ @Q1 Q1 Q2 Q3 Q4):2 }
+	{ (@Q0 q0 [_ (@Q1 Q1 Q2 Q3) /]) | (@Q0 q0 @Q1 Q1 Q2 @Q3 Q3 Q4 Q5) | / }
 ]
 
 score $out.0() = [

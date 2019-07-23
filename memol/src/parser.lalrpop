@@ -228,9 +228,9 @@ octave: Box<Ast<Note<'a>>> = {
 	<lo:@L> ">" <hi:@R> =>
 		Ast::new_box( lo, hi, Note::Octave( -1 ) ),
 	<lo:@L> "@" <a:pitch_lower> <b:key_signature> <hi:@R> =>
-		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
+		Ast::new_box( lo, hi, Note::OctaveByNote( Dir::Lower, a.0, a.1, b ) ),
 	<lo:@L> "@" <a:pitch_upper> <b:key_signature> <hi:@R> =>
-		Ast::new_box( lo, hi, Note::OctaveByNote( a.0, a.1, b ) ),
+		Ast::new_box( lo, hi, Note::OctaveByNote( Dir::Upper, a.0, a.1, b ) ),
 };
 
 pitch_lower: (char, i64) = {

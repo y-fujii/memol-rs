@@ -10,6 +10,7 @@ pub type ScoreIr = Vec<FlatNote>;
 
 pub struct ScoreState<'a> {
 	nnum: i64,
+	dir: ast::Dir,
 	note: Option<&'a ast::Ast<ast::Note<'a>>>,
 	prev_ties: Vec<(i64, Ratio)>,
 	next_ties: Vec<(i64, Ratio)>,
@@ -39,6 +40,7 @@ impl<'a> Generator<'a> {
 			ast::Score::Score( ref ns ) => {
 				let mut state = ScoreState{
 					nnum: 60,
+					dir: ast::Dir::Lower,
 					note: None,
 					prev_ties: Vec::new(),
 					next_ties: Vec::new(),
@@ -157,9 +159,12 @@ impl<'a> Generator<'a> {
 					},
 				};
 				let nnum = misc::idiv( state.nnum, 12 ) * 12 + misc::imod( nnum + sig, 12 );
-				let nnum = nnum + match dir {
-					ast::Dir::Lower => if nnum <= state.nnum { 0 } else { -12 },
-					ast::Dir::Upper => if nnum >= state.nnum { 0 } else {  12 },
+				let nnum = nnum + match (state.dir, dir, nnum.cmp( &state.nnum )) {
+					(ast::Dir::Lower, ast::Dir::Upper, cmp::Ordering::Equal  ) =>  12,
+					(ast::Dir::Upper, ast::Dir::Lower, cmp::Ordering::Equal  ) => -12,
+					(_,               ast::Dir::Upper, cmp::Ordering::Less   ) =>  12,
+					(_,               ast::Dir::Lower, cmp::Ordering::Greater) => -12,
+					_ => 0,
 				};
 				let t0 = match state.prev_ties.iter().position( |e| e.0 == nnum ) {
 					Some( i ) => state.prev_ties.remove( i ).1,
@@ -178,6 +183,7 @@ impl<'a> Generator<'a> {
 					}
 				}
 				state.nnum = nnum;
+				state.dir  = dir;
 				state.note = Some( note );
 			},
 			ast::Note::Rest => {
@@ -203,22 +209,26 @@ impl<'a> Generator<'a> {
 			ast::Note::Octave( oct ) => {
 				state.nnum += oct * 12;
 			},
-			ast::Note::OctaveByNote( sym, ord, sig ) => {
+			ast::Note::OctaveByNote( dir, sym, ord, sig ) => {
 				if let Some( v ) = self.get_nnum( note, span, sym, ord )? {
 					state.nnum = v + sig;
+					state.dir  = dir;
 				}
 			},
 			ast::Note::Chord( ref ns ) => {
 				let mut nnum = state.nnum;
+				let mut dir  = state.dir;
 				let mut acc = 0;
 				for &(ref n, i) in ns.iter() {
 					self.generate_score_note( n, span, state, dst )?;
 					if i > 0 && acc == 0 {
 						nnum = state.nnum;
+						dir  = state.dir;
 					}
 					acc += i;
 				}
 				state.nnum = nnum;
+				state.dir  = dir;
 				state.note = Some( note );
 			},
 			ast::Note::Group( ref ns ) => {

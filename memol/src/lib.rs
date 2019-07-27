@@ -15,7 +15,7 @@ pub mod parser {
     // XXX
     fn remove_comments(src: &str) -> borrow::Cow<'_, str> {
         use regex::*;
-        thread_local!( static RE: Regex = Regex::new( r"(?s:/\*.*?\*/)" ).unwrap() );
+        thread_local!(static RE: Regex = Regex::new(r"(?s:/\*.*?\*/)").unwrap());
         RE.with(|re| {
             re.replace_all(src, |caps: &Captures<'_>| {
                 caps.get(0)
@@ -31,7 +31,7 @@ pub mod parser {
     pub fn parse<'a>(path: &path::Path) -> Result<Definition<'a>, misc::Error> {
         let buf = fs::read_to_string(path).map_err(|e| misc::Error::new(path, 0, format!("{}", e)))?;
 
-        thread_local!( static PARSER: definitionParser = definitionParser::new() );
+        thread_local!(static PARSER: definitionParser = definitionParser::new());
         PARSER.with(|parser| match parser.parse(path, &remove_comments(&buf)) {
             Ok(v) => Ok(v),
             Err(e) => match e {

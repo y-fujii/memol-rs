@@ -196,7 +196,7 @@ now.  I recommended to use prebuild binaries above.
 $ memol_cli
 Usage: memol_cli [options] FILE
   -v, --verbose       Be verbose.
-  -b, --batch         Generate a MIDI file.
+  -b, --batch         Generate a MIDI file and exit.
   -j, --jack          Use JACK.
   -p, --plugin        Use plugins.
   -a, --any           Accept remote connections.

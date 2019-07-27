@@ -9,7 +9,7 @@ struct ArgOptions {
     file: path::PathBuf,
     #[options(help = "Be verbose.")]
     verbose: bool,
-    #[options(help = "Generate a MIDI file.")]
+    #[options(help = "Generate a MIDI file and exit.")]
     batch: bool,
     #[options(help = "Use JACK.")]
     jack: bool,

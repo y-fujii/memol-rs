@@ -21,7 +21,7 @@ const JACK_FRAME_WAIT: i32 = 12;
 struct ArgOptions {
     #[options(free)]
     file: Option<path::PathBuf>,
-    #[options(help = "Set a background image.")]
+    #[options(help = "Set a background image.", meta = "FILE")]
     wallpaper: Option<path::PathBuf>,
     #[options(help = "Use JACK.")]
     jack: bool,

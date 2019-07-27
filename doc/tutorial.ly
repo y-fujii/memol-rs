@@ -106,7 +106,7 @@ and different from the latest implementation.</strong>
 
 score $melody_common() = {
     _  | _    | _    | _  &lt; | _FA | gfc  | bCD  | a    |
-    f^ | f^   | f^   | f  &lt; | _FA | gfc  | bCD  | a    |
+    f^ | f^   | f^   | f    | _FA | gfc  | bCD  | a    |
     C  | F &gt;  | e^   | e^   | e   | ABC- | Edb  | Dc-b |
     D^ | D:2D | EF-G | Ac-D | Edb | D^   | D:2D | G
 }
@@ -118,20 +118,20 @@ score $melody() = [
 
 score $chord_common() = [
     repeat 8 { (gBDF_)  | (dACF_) } {
-    (fACF_)  | (b&lt;BDF_) | (EGB__)   | (EBDG_)  | (dF-AD_) | (a&lt;AC-E_) | (DGBE_)  | (DDGBE) |
-    (Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)  | (DDGBE)   | (Dc-EAD) | (EBEG_) }
+    (fACF_)  | (bBDF_)  | (EGB__)   | (EBDG_)  | (dF-AD_) | (aAC-E_) | (DGBE_)  | (DDGBE) |
+    (Dc-EAD) | (Dc-FAD) | (DAC-F-_) | (DAC-E_) | (DGBE_)  | (DDGBE)  | (Dc-EAD) | (EBEG_) }
 ]
 
 score $chord() = [
     $chord_common()
-    { (fACF_)  | (b&lt;BDF_)  | (ECEA_)  | (EACFA)   | E (EbAD) (EEBD) | (AgC-EA_) | (daD&lt;DFA)  }
+    { (fACF_)  | (bBDF_)   | (ECEA_)  | (EACFA)   | E (EbAD) (EEBD) | (AgC-EA_) | (daD&lt;DFA)  }
     $chord_common()
-    { (eADF-A) | (EAC-F-_) | (EC-EA_) | (EAC-F-A) | E (EbAD) (EEBD) | (AgC-EA_) | (daD&lt;DF-A) }
+    { (eADF-A) | (eAC-F-_) | (eC-EA_) | (eAC-F-A) | e (ebAD) (eeBD) | (AgC-EA_) | (daD&lt;DF-A) }
 ]
 
 score $pattern() = [
-    repeat 36 { @q0 &gt; q0 ^ (/ @q1 Q1 Q2 Q3 Q4):2 }
-    { (@q0 &gt; q0 [_ (@q1 Q1 Q2 Q3) /]) | (@q0 &gt; q0 @q1 Q1 Q2 @q3 Q3 Q4 Q5) | / }
+    repeat 36 { @Q0 q0 ^ (/ @Q1 Q1 Q2 Q3 Q4):2 }
+    { (@Q0 q0 [_ (@Q1 Q1 Q2 Q3) /]) | (@Q0 q0 @Q1 Q1 Q2 @Q3 Q3 Q4 Q5) | / }
 ]
 
 score $out.0() = [
@@ -195,29 +195,26 @@ now.  I recommended to use prebuild binaries above.
 <pre>
 $ memol_cli
 Usage: memol_cli [options] FILE
-Options:
-    -v, --verbose
-    -b, --batch         Generate a MIDI file.
-    -c, --connect PORT  Connect to a JACK port.
-    -a, --address ADDR:PORT
-                        WebSocket address.
+  -v, --verbose       Be verbose.
+  -b, --batch         Generate a MIDI file.
+  -j, --jack          Use JACK.
+  -p, --plugin        Use plugins.
+  -a, --any           Accept remote connections.
+  -c, --connect PORT  Connect to specified ports.
 
 $ memol_gui
 Usage: memol_gui [options] [FILE]
-Options:
-    -s, --scale VALUE   Set DPI scaling.
-    -w, --wallpaper FILE
-                        Set background image.
-    -c, --connect PORT  Connect to JACK port.
-    -a, --address ADDR:PORT
-                        WebSocket address.
-
+  -w, --wallpaper FILE  Set a background image.
+  -j, --jack            Use JACK.
+  -p, --plugin          Use plugins.
+  -a, --any             Accept remote connections.
+  -c, --connect PORT    Connect to specified ports.
 </pre>
 <p>There are three way to interact with other applications.
 <ul>
 	<li>Generates MIDI file.
 	<li>Use JACK (recommended if available).
-	<li>Use VST plugin (experimental).
+	<li>Use VST plugin.
 </ul>
 <p>XXX
 <p>XXX
@@ -380,7 +377,7 @@ enables high level music description.
 <p>XXX
 <pre>
 score $chord()   = { (c E G B) (D F G B) | (c E G B) }
-score $pattern() = { [@q0 Q1 Q2 q1] (@q0 Q1 Q2 Q3) }
+score $pattern() = { [@q0 q0 Q1 Q2 q1] (@q0 q0 Q1 Q2 Q3) }
 score $out.0()   = repeat 2 $pattern() with q = $chord()
 </pre>
 <lilypond relative="1">

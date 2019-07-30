@@ -155,17 +155,26 @@ impl<'a, T> Window<'a, T> {
                 });
             }
 
-            if events.is_empty() {
-                n = cmp::max(n - 1, self.draw()?);
+            while let Ok(v) = self.rx.try_recv() {
+                n = cmp::max(n, (self.on_message)(v));
             }
+
+            let mut n_draw = 0;
             for ev in events.drain(..) {
                 let k = match self.handle_event(&ev) {
                     Some(k) => k,
                     None => return Ok(()),
                 };
-                n = cmp::max(n - 1, k);
-                n = cmp::max(n, self.draw()?);
+                if k > 0 {
+                    n = cmp::max(n - 1, k);
+                    n = cmp::max(n, self.draw()?);
+                    n_draw += 1;
+                }
             }
+            if n_draw == 0 {
+                n = cmp::max(n - 1, self.draw()?);
+            }
+
             if (0..3).any(|i| io.MouseDown[i]) {
                 n = cmp::max(n, 1);
             }
@@ -195,96 +204,95 @@ impl<'a, T> Window<'a, T> {
     fn handle_event(&mut self, ev: &glutin::Event) -> Option<i32> {
         use glutin::*;
 
-        let mut n = 1;
-
         let io = imgui::get_io();
-        if let Event::WindowEvent { event: ref ev, .. } = *ev {
-            match ev {
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(code),
-                            ..
-                        },
-                    ..
-                } => {
-                    let pressed = *state == ElementState::Pressed;
-                    match code {
-                        VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl = pressed,
-                        VirtualKeyCode::LShift | VirtualKeyCode::RShift => io.KeyShift = pressed,
-                        VirtualKeyCode::LAlt | VirtualKeyCode::RAlt => io.KeyAlt = pressed,
-                        VirtualKeyCode::LWin | VirtualKeyCode::RWin => io.KeySuper = pressed,
-                        c => io.KeysDown[*c as usize] = pressed,
-                    }
+        let ev = match ev {
+            Event::WindowEvent { event: ev, .. } => ev,
+            _ => return Some(0),
+        };
+        match ev {
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state,
+                        virtual_keycode: Some(code),
+                        ..
+                    },
+                ..
+            } => {
+                let pressed = *state == ElementState::Pressed;
+                match code {
+                    VirtualKeyCode::LControl | VirtualKeyCode::RControl => io.KeyCtrl = pressed,
+                    VirtualKeyCode::LShift | VirtualKeyCode::RShift => io.KeyShift = pressed,
+                    VirtualKeyCode::LAlt | VirtualKeyCode::RAlt => io.KeyAlt = pressed,
+                    VirtualKeyCode::LWin | VirtualKeyCode::RWin => io.KeySuper = pressed,
+                    c => io.KeysDown[*c as usize] = pressed,
                 }
-                WindowEvent::MouseInput { state, button, .. } => {
-                    let pressed = *state == ElementState::Pressed;
-                    match button {
-                        MouseButton::Left => io.MouseDown[0] = pressed,
-                        MouseButton::Right => io.MouseDown[1] = pressed,
-                        MouseButton::Middle => io.MouseDown[2] = pressed,
-                        _ => (),
-                    }
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                let pressed = *state == ElementState::Pressed;
+                match button {
+                    MouseButton::Left => io.MouseDown[0] = pressed,
+                    MouseButton::Right => io.MouseDown[1] = pressed,
+                    MouseButton::Middle => io.MouseDown[2] = pressed,
+                    _ => (),
                 }
-                WindowEvent::ReceivedCharacter(c) => {
-                    unsafe { io.AddInputCharacter(*c as u32) };
-                }
-                WindowEvent::MouseWheel {
-                    delta: MouseScrollDelta::LineDelta(x, y),
-                    phase: TouchPhase::Moved,
-                    ..
-                } => {
-                    let scale = 1.0 / 5.0;
-                    io.MouseWheelH = scale * x;
-                    io.MouseWheel = scale * y;
-                }
-                WindowEvent::MouseWheel {
-                    delta: MouseScrollDelta::PixelDelta(delta),
-                    phase: TouchPhase::Moved,
-                    ..
-                } => {
-                    // XXX
-                    let delta = delta.to_physical(self.window.window().get_hidpi_factor());
-                    let scale = 1.0 / (5.0 * unsafe { imgui::GetFontSize() });
-                    io.MouseWheelH = scale * delta.x as f32;
-                    io.MouseWheel = scale * delta.y as f32;
-                }
-                WindowEvent::CursorMoved { position: pos, .. } => {
-                    // XXX
-                    let pos = pos.to_physical(self.window.window().get_hidpi_factor());
-                    io.MousePos.x = pos.x as f32;
-                    io.MousePos.y = pos.y as f32;
-                }
-                WindowEvent::Resized(logical) => {
-                    let physical = logical.to_physical(self.window.window().get_hidpi_factor());
+            }
+            WindowEvent::ReceivedCharacter(c) => {
+                unsafe { io.AddInputCharacter(*c as u32) };
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::LineDelta(x, y),
+                phase: TouchPhase::Moved,
+                ..
+            } => {
+                let scale = 1.0 / 5.0;
+                io.MouseWheelH = scale * x;
+                io.MouseWheel = scale * y;
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::PixelDelta(delta),
+                phase: TouchPhase::Moved,
+                ..
+            } => {
+                // XXX
+                let delta = delta.to_physical(self.window.window().get_hidpi_factor());
+                let scale = 1.0 / (5.0 * unsafe { imgui::GetFontSize() });
+                io.MouseWheelH = scale * delta.x as f32;
+                io.MouseWheel = scale * delta.y as f32;
+            }
+            WindowEvent::CursorMoved { position: pos, .. } => {
+                // XXX
+                let pos = pos.to_physical(self.window.window().get_hidpi_factor());
+                io.MousePos.x = pos.x as f32;
+                io.MousePos.y = pos.y as f32;
+            }
+            WindowEvent::Resized(logical) => {
+                let physical = logical.to_physical(self.window.window().get_hidpi_factor());
+                io.DisplaySize.x = physical.width as f32;
+                io.DisplaySize.y = physical.height as f32;
+                // Wayland needs to resize context manually.
+                self.window.resize(physical);
+            }
+            WindowEvent::HiDpiFactorChanged(factor) => {
+                if let Some(logical) = self.window.window().get_inner_size() {
+                    let physical = logical.to_physical(*factor);
                     io.DisplaySize.x = physical.width as f32;
                     io.DisplaySize.y = physical.height as f32;
                     // Wayland needs to resize context manually.
                     self.window.resize(physical);
                 }
-                WindowEvent::HiDpiFactorChanged(factor) => {
-                    if let Some(logical) = self.window.window().get_inner_size() {
-                        let physical = logical.to_physical(*factor);
-                        io.DisplaySize.x = physical.width as f32;
-                        io.DisplaySize.y = physical.height as f32;
-                        // Wayland needs to resize context manually.
-                        self.window.resize(physical);
-                    }
-                }
-                WindowEvent::DroppedFile(ref path) => {
-                    n = cmp::max(n, (self.on_file_dropped)(path));
-                }
-                WindowEvent::CloseRequested => {
-                    return None;
-                }
-                _ => (),
+            }
+            WindowEvent::DroppedFile(ref path) => {
+                let n = (self.on_file_dropped)(path);
+                return Some(n);
+            }
+            WindowEvent::CloseRequested => {
+                return None;
+            }
+            _ => {
+                return Some(0);
             }
         }
-
-        while let Ok(v) = self.rx.try_recv() {
-            n = cmp::max(n, (self.on_message)(v));
-        }
-        Some(n)
+        return Some(1);
     }
 }

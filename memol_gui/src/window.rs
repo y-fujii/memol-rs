@@ -159,20 +159,29 @@ impl<'a, T> Window<'a, T> {
                 n = cmp::max(n, (self.on_message)(v));
             }
 
-            let mut n_draw = 0;
+            // DeltaTime == 0.0 cause repeating clicks.
+            imgui::get_io().DeltaTime = f32::EPSILON;
             for ev in events.drain(..) {
                 let k = match self.handle_event(&ev) {
                     Some(k) => k,
                     None => return Ok(()),
                 };
                 if k > 0 {
+                    unsafe { imgui::NewFrame() };
                     n = cmp::max(n - 1, k);
-                    n = cmp::max(n, self.draw()?);
-                    n_draw += 1;
+                    n = cmp::max(n, (self.on_draw)());
+                    unsafe { imgui::EndFrame() };
                 }
             }
-            if n_draw == 0 {
-                n = cmp::max(n - 1, self.draw()?);
+
+            {
+                let timer = mem::replace(&mut self.timer, time::SystemTime::now());
+                let delta = self.timer.duration_since(timer)?;
+                let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
+                imgui::get_io().DeltaTime = f32::max(delta, f32::EPSILON);
+                unsafe { imgui::NewFrame() };
+                n = cmp::max(n - 1, (self.on_draw)());
+                unsafe { imgui::EndFrame() };
             }
 
             if (0..3).any(|i| io.MouseDown[i]) {
@@ -186,19 +195,6 @@ impl<'a, T> Window<'a, T> {
             self.renderer.render(unsafe { &*imgui::GetDrawData() }, io.DisplaySize);
             self.window.swap_buffers()?;
         }
-    }
-
-    fn draw(&mut self) -> result::Result<i32, Box<dyn error::Error>> {
-        let timer = mem::replace(&mut self.timer, time::SystemTime::now());
-        let delta = self.timer.duration_since(timer)?;
-        let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
-        // DeltaTime == 0.0 cause repeating clicks.
-        imgui::get_io().DeltaTime = f32::max(delta, f32::EPSILON);
-
-        unsafe { imgui::NewFrame() };
-        let n = (self.on_draw)();
-        unsafe { imgui::EndFrame() };
-        Ok(n)
     }
 
     fn handle_event(&mut self, ev: &glutin::Event) -> Option<i32> {

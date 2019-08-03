@@ -125,7 +125,7 @@ impl<'a, T> Window<'a, T> {
         }
     }
 
-    pub fn event_loop(&mut self) -> result::Result<(), Box<dyn error::Error>> {
+    pub fn event_loop(mut self) -> result::Result<(), Box<dyn error::Error>> {
         let io = imgui::get_io();
 
         let mut n: i32 = 1;
@@ -137,20 +137,24 @@ impl<'a, T> Window<'a, T> {
             });
         }
         loop {
+            if let Some(col) = self.background {
+                self.renderer.clear(col);
+            }
+
+            let window_id = self.window.window().id();
             if n > 0 {
                 self.looper.poll_events(|ev| {
-                    if let glutin::Event::DeviceEvent { .. } = ev {
-                    } else {
+                    if Self::is_handled_event(&ev, window_id) {
                         events.push(ev);
                     }
                 });
             } else {
                 self.looper.run_forever(|ev| {
-                    if let glutin::Event::DeviceEvent { .. } = ev {
-                        glutin::ControlFlow::Continue
-                    } else {
+                    if Self::is_handled_event(&ev, window_id) {
                         events.push(ev);
                         glutin::ControlFlow::Break
+                    } else {
+                        glutin::ControlFlow::Continue
                     }
                 });
             }
@@ -168,7 +172,7 @@ impl<'a, T> Window<'a, T> {
                 };
                 if k > 0 {
                     unsafe { imgui::NewFrame() };
-                    n = cmp::max(n - 1, k);
+                    n = cmp::max(n, k);
                     n = cmp::max(n, (self.on_draw)());
                     unsafe { imgui::EndFrame() };
                 }
@@ -180,20 +184,46 @@ impl<'a, T> Window<'a, T> {
                 let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
                 imgui::get_io().DeltaTime = f32::max(delta, f32::EPSILON);
                 unsafe { imgui::NewFrame() };
-                n = cmp::max(n - 1, (self.on_draw)());
+                n = cmp::max(n, (self.on_draw)());
                 unsafe { imgui::EndFrame() };
             }
 
+            n = cmp::max(n - 1, 0);
             if (0..3).any(|i| io.MouseDown[i]) {
                 n = cmp::max(n, 1);
             }
 
-            if let Some(col) = self.background {
-                self.renderer.clear(col);
-            }
             unsafe { imgui::Render() };
             self.renderer.render(unsafe { &*imgui::GetDrawData() }, io.DisplaySize);
             self.window.swap_buffers()?;
+        }
+    }
+
+    // XXX
+    fn is_handled_event(ev: &glutin::Event, window_id: glutin::WindowId) -> bool {
+        use glutin::*;
+
+        let ev = match ev {
+            Event::WindowEvent { window_id: id, event: ev, .. } => {
+                if *id != window_id {
+                    return false;
+                }
+                ev
+            },
+            Event::Awakened => return true,
+            _ => return false,
+        };
+        match ev {
+            WindowEvent::KeyboardInput { .. }
+            | WindowEvent::MouseInput { .. }
+            | WindowEvent::ReceivedCharacter(_)
+            | WindowEvent::MouseWheel { .. }
+            | WindowEvent::CursorMoved { .. }
+            | WindowEvent::Resized(_)
+            | WindowEvent::HiDpiFactorChanged(_)
+            | WindowEvent::DroppedFile(_)
+            | WindowEvent::CloseRequested => true,
+            _ => false,
         }
     }
 
@@ -202,7 +232,13 @@ impl<'a, T> Window<'a, T> {
 
         let io = imgui::get_io();
         let ev = match ev {
-            Event::WindowEvent { event: ev, .. } => ev,
+            Event::WindowEvent { window_id: id, event: ev, .. } => {
+                if *id != self.window.window().id() {
+                    return Some(0);
+                }
+                ev
+            },
+            Event::Awakened => return Some(1),
             _ => return Some(0),
         };
         match ev {

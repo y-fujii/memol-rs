@@ -32,7 +32,8 @@ impl Sequencer {
         }
     }
 
-    pub unsafe fn draw(&mut self, model: &mut model::Model, size: ImVec2) {
+    pub unsafe fn draw(&mut self, model: &mut model::Model, size: ImVec2) -> bool {
+        let mut changed = false;
         let (playing, loc) = model.player.status();
         let time_len = model.assembly.len.to_float() as f32;
         let time_cur = (loc * model.tempo) as f32;
@@ -64,6 +65,7 @@ impl Sequencer {
                 let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
                 let x = f32::min(f32::max(x, 0.0), time_len);
                 model.player.seek(x as f64 / model.tempo);
+                changed = true;
             } else {
                 model.copy_notes_to_clipboard();
                 model.note_off_all();
@@ -91,6 +93,8 @@ impl Sequencer {
             0.5
         };
         EndChild();
+
+        changed
     }
 
     unsafe fn draw_indicator(&mut self, ctx: &mut imutil::DrawContext, model: &mut model::Model, time_len: f32) {

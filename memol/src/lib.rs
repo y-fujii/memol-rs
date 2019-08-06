@@ -45,6 +45,7 @@ pub mod parser {
     }
 }
 
+#[derive(Debug)]
 pub struct Channel {
     pub score: generator::ScoreIr,
     pub velocity: generator::ValueIr,
@@ -54,6 +55,7 @@ pub struct Channel {
     pub ccs: Vec<(usize, generator::ValueIr)>,
 }
 
+#[derive(Debug)]
 pub struct Assembly {
     pub channels: Vec<(usize, Channel)>,
     pub tempo: generator::ValueIr,

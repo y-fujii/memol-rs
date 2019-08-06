@@ -9,7 +9,7 @@ workspace = ".."
 [dependencies]
 gumdrop = "*"
 gl = "*"
-glutin = "*"
+glutin = "0.22.0-alpha1"
 image = "*"
 clipboard = "*"
 memol = { path = "../memol" }

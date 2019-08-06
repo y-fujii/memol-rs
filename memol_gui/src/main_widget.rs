@@ -30,14 +30,14 @@ impl MainWidget {
             }
         }
 
-        let changed = self.draw_transport(model);
+        let mut changed = self.draw_transport(model);
 
         imutil::root_begin(0);
         let size = GetWindowSize();
-        match model.mode {
+        changed |= match model.mode {
             model::DisplayMode::Sequencer => self.sequencer.draw(model, size),
             model::DisplayMode::Code => self.draw_code(model, size),
-        }
+        };
 
         if let Some(ref wallpaper) = self.wallpaper {
             let scale = f32::max(size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32);
@@ -57,7 +57,7 @@ impl MainWidget {
         changed || model.player.status().0
     }
 
-    unsafe fn draw_code(&mut self, model: &mut model::Model, size: ImVec2) {
+    unsafe fn draw_code(&mut self, model: &mut model::Model, size: ImVec2) -> bool {
         BeginChild(
             c_str!("code"),
             &size,
@@ -68,6 +68,8 @@ impl MainWidget {
         imutil::show_text(&model.code);
         PopStyleColor(1);
         EndChild();
+
+        false
     }
 
     unsafe fn draw_transport(&mut self, model: &mut model::Model) -> bool {

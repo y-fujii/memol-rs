@@ -33,6 +33,7 @@ struct ArgOptions {
     connect: Vec<String>,
 }
 
+#[derive(Debug)]
 enum UiMessage {
     Data(path::PathBuf, String, Assembly, Vec<midi::Event>),
     Text(String),
@@ -99,7 +100,7 @@ fn main() {
 
         // create instances.
         let mut compiler = compile_thread::CompileThread::new();
-        let model = cell::RefCell::new(model::Model::new(compiler.create_sender()));
+        let model = rc::Rc::new(cell::RefCell::new(model::Model::new(compiler.create_sender())));
         let mut widget = main_widget::MainWidget::new();
         let mut window = window::Window::new()?;
 
@@ -116,35 +117,44 @@ fn main() {
             window.set_background(imgui::ImVec4::constant(1.0));
         }
 
-        window.on_draw(|| {
-            let changed = unsafe { widget.draw(&mut model.borrow_mut()) };
-            if changed {
+        window.on_draw({
+            let model = model.clone();
+            move || {
+                let changed = unsafe { widget.draw(&mut model.borrow_mut()) };
+                if changed {
+                    JACK_FRAME_WAIT
+                } else {
+                    0
+                }
+            }
+        });
+        window.on_message({
+            let model = model.clone();
+            move |msg| {
+                match msg {
+                    UiMessage::Data(path, code, asm, evs) => {
+                        model.borrow_mut().set_data(path, code, asm, evs);
+                    }
+                    UiMessage::Text(text) => {
+                        model.borrow_mut().text = Some(text);
+                    }
+                    UiMessage::Midi(evs) => {
+                        model.borrow_mut().handle_midi_inputs(&evs);
+                    }
+                }
                 JACK_FRAME_WAIT
-            } else {
+            }
+        });
+        window.on_file_dropped({
+            let model = model.clone();
+            move |path| {
+                model
+                    .borrow_mut()
+                    .compile_tx
+                    .send(compile_thread::Message::File(path.clone()))
+                    .unwrap();
                 0
             }
-        });
-        window.on_message(|msg| {
-            match msg {
-                UiMessage::Data(path, code, asm, evs) => {
-                    model.borrow_mut().set_data(path, code, asm, evs);
-                }
-                UiMessage::Text(text) => {
-                    model.borrow_mut().text = Some(text);
-                }
-                UiMessage::Midi(evs) => {
-                    model.borrow_mut().handle_midi_inputs(&evs);
-                }
-            }
-            JACK_FRAME_WAIT
-        });
-        window.on_file_dropped(|path| {
-            model
-                .borrow_mut()
-                .compile_tx
-                .send(compile_thread::Message::File(path.clone()))
-                .unwrap();
-            0
         });
 
         // initialize a player.
@@ -168,8 +178,8 @@ fn main() {
             }
         };
         player.on_received({
-            let window_tx = window.create_sender();
-            move |evs| window_tx.send(UiMessage::Midi(evs.to_vec()))
+            let window_tx = window.create_proxy();
+            move |evs| window_tx.send_event(UiMessage::Midi(evs.to_vec())).unwrap()
         });
         for port in opts.connect {
             player.connect_to(&port)?;
@@ -178,16 +188,16 @@ fn main() {
 
         // initialize a compiler.
         compiler.on_success({
-            let window_tx = window.create_sender();
+            let window_tx = window.create_proxy();
             move |path, asm, evs| {
                 let code = fs::read_to_string(&path).unwrap_or_else(|_| String::new());
-                window_tx.send(UiMessage::Data(path, code, asm, evs));
+                window_tx.send_event(UiMessage::Data(path, code, asm, evs)).unwrap();
             }
         });
         compiler.on_failure({
-            let window_tx = window.create_sender();
+            let window_tx = window.create_proxy();
             move |text| {
-                window_tx.send(UiMessage::Text(text));
+                window_tx.send_event(UiMessage::Text(text)).unwrap();
             }
         });
         if let Some(path) = opts.file {
@@ -197,13 +207,14 @@ fn main() {
                 .unwrap();
         } else {
             window
-                .create_sender()
-                .send(UiMessage::Text("Drag and drop to open a file.".into()));
+                .create_proxy()
+                .send_event(UiMessage::Text("Drag and drop to open a file.".into()))
+                .unwrap();
         }
         compiler.spawn();
 
-        // start an event loop.
-        window.event_loop()
+        window.run();
+        Ok(())
     }()
     .unwrap_or_else(|e| {
         eprintln!("Error: {}", e);

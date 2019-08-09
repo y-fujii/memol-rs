@@ -136,11 +136,7 @@ impl<T: fmt::Debug> Window<T> {
                         }
                         // reduce latency.  see <https://danluu.com/latency-mitigation/>.
                         self.renderer.clear(self.background);
-                        unsafe {
-                            let sync = gl::FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0);
-                            gl::ClientWaitSync(sync, 0, 100_000_000);
-                            gl::DeleteSync(sync);
-                        }
+                        self.renderer.sync();
 
                         if (0..3).any(|i| imgui::get_io().MouseDown[i]) {
                             n = cmp::max(n, 1);

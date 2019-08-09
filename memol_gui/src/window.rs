@@ -12,7 +12,7 @@ pub struct Window<T: 'static + fmt::Debug> {
     window: glutin::WindowedContext<glutin::PossiblyCurrent>,
     renderer: renderer::Renderer,
     timer: time::SystemTime,
-    background: Option<imgui::ImVec4>,
+    background: imgui::ImVec4,
     on_message: Box<dyn 'static + FnMut(T) -> i32>,
     on_draw: Box<dyn 'static + FnMut() -> i32>,
     on_file_dropped: Box<dyn 'static + FnMut(&path::PathBuf) -> i32>,
@@ -73,7 +73,7 @@ impl<T: fmt::Debug> Window<T> {
             window: window,
             renderer: renderer,
             timer: time::SystemTime::now(),
-            background: None,
+            background: imgui::ImVec4::constant(1.0),
             on_message: Box::new(|_| 0),
             on_draw: Box::new(|| 0),
             on_file_dropped: Box::new(|_| 0),
@@ -81,7 +81,7 @@ impl<T: fmt::Debug> Window<T> {
     }
 
     pub fn set_background(&mut self, col: imgui::ImVec4) {
-        self.background = Some(col);
+        self.background = col;
     }
 
     pub fn on_message<U: 'static + FnMut(T) -> i32>(&mut self, f: U) {
@@ -118,10 +118,6 @@ impl<T: fmt::Debug> Window<T> {
             match ev {
                 event::Event::EventsCleared => {
                     if n > 0 {
-                        if let Some(col) = self.background {
-                            self.renderer.clear(col);
-                        }
-
                         let timer = mem::replace(&mut self.timer, time::SystemTime::now());
                         let delta = self.timer.duration_since(timer).unwrap();
                         let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
@@ -137,6 +133,13 @@ impl<T: fmt::Debug> Window<T> {
                         if let Err(_) = self.window.swap_buffers() {
                             *flow = event_loop::ControlFlow::Exit;
                             return;
+                        }
+                        // reduce latency.  see <https://danluu.com/latency-mitigation/>.
+                        self.renderer.clear(self.background);
+                        unsafe {
+                            let sync = gl::FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0);
+                            gl::ClientWaitSync(sync, 0, 100_000_000);
+                            gl::DeleteSync(sync);
                         }
 
                         if (0..3).any(|i| imgui::get_io().MouseDown[i]) {

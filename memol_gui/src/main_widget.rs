@@ -6,6 +6,12 @@ use crate::renderer;
 use crate::sequencer_widget;
 use std::*;
 
+pub struct Fonts {
+    pub sans: *mut ImFont,
+    pub mono: *mut ImFont,
+    pub icon: *mut ImFont,
+}
+
 pub struct MainWidget {
     pub wallpaper: Option<renderer::Texture>,
     ports_from: Option<Vec<(String, bool)>>,
@@ -23,21 +29,24 @@ impl MainWidget {
         }
     }
 
-    pub unsafe fn draw(&mut self, model: &mut model::Model) -> bool {
+    pub unsafe fn draw(&mut self, model: &mut model::Model, fonts: &Fonts) -> bool {
         if let Some(ref text) = model.text {
             if imutil::message_dialog("Message", text) {
                 model.text = None;
             }
         }
 
-        let mut changed = self.draw_transport(model);
+        let mut changed = self.draw_transport(model, fonts);
 
         imutil::root_begin(0);
+
+        PushFont(fonts.mono);
         let size = GetWindowSize();
         changed |= match model.mode {
             model::DisplayMode::Sequencer => self.sequencer.draw(model, size),
             model::DisplayMode::Code => self.draw_code(model, size),
         };
+        PopFont();
 
         if let Some(ref wallpaper) = self.wallpaper {
             let scale = f32::max(size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32);
@@ -72,7 +81,7 @@ impl MainWidget {
         false
     }
 
-    unsafe fn draw_transport(&mut self, model: &mut model::Model) -> bool {
+    unsafe fn draw_transport(&mut self, model: &mut model::Model, fonts: &Fonts) -> bool {
         let mut changed = false;
 
         let padding = get_style().WindowPadding;
@@ -88,6 +97,7 @@ impl MainWidget {
         );
         PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &padding);
 
+        PushFont(fonts.icon);
         let size = ImVec2::new(GetFontSize() * 2.0, 0.0);
         if Button(c_str!("\u{f048}"), &size) {
             model.player.seek(0.0);
@@ -108,6 +118,7 @@ impl MainWidget {
             model.player.seek(model.assembly.len.to_float() / model.tempo);
             changed = true;
         }
+        PopFont();
 
         SameLine(0.0, -1.0);
         Checkbox(c_str!("Follow"), &mut model.follow);
@@ -148,7 +159,11 @@ impl MainWidget {
             self.ports_to = model.player.ports_to().ok();
         }
         if BeginPopup(c_str!("ports"), 0) {
-            Text(c_str!("\u{f7c0} {}", model.player.info()));
+            PushFont(fonts.icon);
+            Text(c_str!("\u{f7c0}"));
+            PopFont();
+            SameLine(0.0, -1.0);
+            Text(c_str!("{}", model.player.info()));
 
             if let Some(ports) = &mut self.ports_from {
                 Spacing();

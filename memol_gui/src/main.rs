@@ -40,7 +40,7 @@ enum UiMessage {
     Midi(Vec<midi::Event>),
 }
 
-fn init_imgui(scale: f32) {
+fn init_imgui(scale: f32) -> main_widget::Fonts {
     let io = imgui::get_io();
     imutil::set_theme(
         imgui::ImVec4::new(0.10, 0.10, 0.10, 1.0),
@@ -54,26 +54,36 @@ fn init_imgui(scale: f32) {
 
         let mut cfg = imgui::ImFontConfig::new();
         cfg.FontDataOwnedByAtlas = false;
-        cfg.MergeMode = false;
         cfg.GlyphOffset.y = 0.0;
-        let font = include_bytes!("../fonts/inconsolata_regular.ttf");
-        (*io.Fonts).AddFontFromMemoryTTF(
+        let font = include_bytes!("../fonts/SourceSansPro-Regular.ttf");
+        let sans = (*io.Fonts).AddFontFromMemoryTTF(
             font.as_ptr() as *mut os::raw::c_void,
             font.len() as i32,
-            (14.0 * scale).round(),
+            (16.0 * scale).round(),
             &cfg,
             [0x20, 0xff, 0x2026, 0x2027, 0].as_ptr(),
         );
-        cfg.MergeMode = true;
-        cfg.GlyphOffset.y = scale.round();
-        let font = include_bytes!("../fonts/awesome_solid.ttf");
-        (*io.Fonts).AddFontFromMemoryTTF(
+        let font = include_bytes!("../fonts/inconsolata_regular.ttf");
+        let mono = (*io.Fonts).AddFontFromMemoryTTF(
             font.as_ptr() as *mut os::raw::c_void,
             font.len() as i32,
-            (14.0 * scale).round(),
+            (16.0 * scale).round(),
+            &cfg,
+            [0x20, 0xff, 0x2026, 0x2027, 0].as_ptr(),
+        );
+        let font = include_bytes!("../fonts/awesome_solid.ttf");
+        let icon = (*io.Fonts).AddFontFromMemoryTTF(
+            font.as_ptr() as *mut os::raw::c_void,
+            font.len() as i32,
+            (16.0 * scale).round(),
             &cfg,
             [0xf000, 0xf7ff, 0].as_ptr(),
         );
+        main_widget::Fonts {
+            sans: sans,
+            mono: mono,
+            icon: icon,
+        }
     }
 }
 
@@ -105,7 +115,7 @@ fn main() {
         let mut window = window::Window::new()?;
 
         // initialize a window.
-        init_imgui(window.hidpi_factor() as f32);
+        let fonts = init_imgui(window.hidpi_factor() as f32);
         window.update_font();
         if let Some(Ok(img)) = opts.wallpaper.map(image::open) {
             let mut img = img.to_rgba();
@@ -120,7 +130,7 @@ fn main() {
         window.on_draw({
             let model = model.clone();
             move || {
-                let changed = unsafe { widget.draw(&mut model.borrow_mut()) };
+                let changed = unsafe { widget.draw(&mut model.borrow_mut(), &fonts) };
                 if changed {
                     JACK_FRAME_WAIT
                 } else {

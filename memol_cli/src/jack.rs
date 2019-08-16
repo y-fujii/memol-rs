@@ -1,4 +1,3 @@
-#![allow( improper_ctypes )]
 use std::*;
 
 pub const PORT_IS_INPUT: usize = 1;

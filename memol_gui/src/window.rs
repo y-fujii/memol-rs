@@ -54,7 +54,7 @@ impl<T: fmt::Debug> Window<T> {
         io.KeyMap[imgui::ImGuiKey_Y as usize] = VirtualKeyCode::Y as i32;
         io.KeyMap[imgui::ImGuiKey_Z as usize] = VirtualKeyCode::Z as i32;
 
-        let looper = event_loop::EventLoop::new_user_event();
+        let looper = event_loop::EventLoop::with_user_event();
         let window = glutin::ContextBuilder::new()
             .with_gl(glutin::GlRequest::GlThenGles {
                 opengl_version: (3, 3),

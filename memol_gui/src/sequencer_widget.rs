@@ -19,7 +19,7 @@ pub struct Sequencer {
 
 impl Sequencer {
     pub fn new() -> Self {
-        Self {
+        Sequencer {
             scroll_ratio: 0.0,
             dragged: false,
             time_scale: 24.0,

@@ -256,8 +256,9 @@ impl<'a> Generator<'a> {
                     return misc::error(&span.path, note.end, "zero length group.");
                 }
 
-                let mut prev_ties = Vec::new();
-                let mut next_ties = Vec::new();
+                // the most non-trivial part is here...
+                let mut prev_ties = mem::replace(&mut state.prev_ties, Vec::new());
+                let mut next_ties = mem::replace(&mut state.next_ties, Vec::new());
                 let mut acc = 0;
                 for &(ref n, i) in ns.iter() {
                     let span = Span {
@@ -266,15 +267,20 @@ impl<'a> Generator<'a> {
                         tied: acc + i == tot && span.tied, // only apply to the last note.
                         ..*span
                     };
+                    if acc == 0 {
+                        mem::swap(&mut prev_ties, &mut state.prev_ties);
+                    }
+                    if acc + i == tot {
+                        mem::swap(&mut next_ties, &mut state.next_ties);
+                    }
                     self.generate_score_note(n, &span, state, dst)?;
-                    // the most non-trivial part is here...
+                    if acc == 0 {
+                        mem::swap(&mut prev_ties, &mut state.prev_ties);
+                    }
+                    if acc + i == tot {
+                        mem::swap(&mut next_ties, &mut state.next_ties);
+                    }
                     if i > 0 {
-                        if acc == 0 {
-                            mem::swap(&mut prev_ties, &mut state.prev_ties);
-                        }
-                        if acc + i == tot {
-                            mem::swap(&mut next_ties, &mut state.next_ties);
-                        }
                         self.resolve_ties(span.t0, state, dst);
                     }
                     acc += i;

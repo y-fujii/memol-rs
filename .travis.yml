@@ -1,5 +1,5 @@
 language: rust
-dist: xenial
+dist: bionic
 
 matrix:
     include:
@@ -17,9 +17,9 @@ matrix:
           script:
               - export   CFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
               - export CXXFLAGS="--sysroot=/usr/aarch64-linux-gnu -isystem /usr/aarch64-linux-gnu/include"
-              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial           main" >> /etc/apt/sources.list'
-              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial-updates   main" >> /etc/apt/sources.list'
-              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ xenial-backports main" >> /etc/apt/sources.list'
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ bionic           main" >> /etc/apt/sources.list'
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ bionic-updates   main" >> /etc/apt/sources.list'
+              - sudo sh -c 'echo "deb [arch=arm64] http://ports.ubuntu.com/ bionic-backports main" >> /etc/apt/sources.list'
               - sudo dpkg --add-architecture arm64
               - sudo apt-get update || true
               - sudo apt-get install gcc-aarch64-linux-gnu libc-dev-arm64-cross p7zip-full libxcb-render0-dev:arm64 libxcb-shape0-dev:arm64 libxcb-xfixes0-dev:arm64
@@ -56,3 +56,4 @@ deploy:
     file: memol-${TARGET}.zip
     skip_cleanup: true
     prerelease: true
+    overwrite: true

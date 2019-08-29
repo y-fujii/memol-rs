@@ -159,6 +159,9 @@ impl<T: fmt::Debug> Window<T> {
                                 *flow = event_loop::ControlFlow::Exit;
                                 return;
                             }
+                            event::WindowEvent::RedrawRequested => {
+                                n = cmp::max(n, 1);
+                            }
                             event::WindowEvent::DroppedFile(ref path) => {
                                 n = cmp::max(n, (self.on_file_dropped)(path));
                                 n = cmp::max(n, 1);

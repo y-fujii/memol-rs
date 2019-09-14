@@ -160,6 +160,7 @@ impl<T: fmt::Debug> Window<T> {
                                 return;
                             }
                             event::WindowEvent::RedrawRequested => {
+                                self.renderer.clear(self.background);
                                 n = cmp::max(n, 1);
                             }
                             event::WindowEvent::DroppedFile(ref path) => {

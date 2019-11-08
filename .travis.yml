@@ -1,5 +1,6 @@
 language: rust
 dist: bionic
+osx_image: xcode11.2
 
 matrix:
     include:
@@ -42,6 +43,7 @@ matrix:
         - os: osx
           env: TARGET=x86_64-apple-darwin
           script:
+              - brew update
               - brew install p7zip curl
               - CC=clang CXX=clang++ RUSTFLAGS="--remap-path-prefix=${HOME}= --remap-path-prefix=${PWD}=" cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release

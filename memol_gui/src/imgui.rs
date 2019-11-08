@@ -1,5 +1,7 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-#![allow( dead_code )]
+#![allow(dead_code)]
+#![allow(deprecated)] // XXX: will be removed.
+#![allow(invalid_value)] // XXX: will be removed.
 
 include!(concat!(env!("OUT_DIR"), "/imgui_gen.rs"));
 

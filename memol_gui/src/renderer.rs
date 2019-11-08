@@ -90,7 +90,7 @@ impl Drop for Renderer {
             gl::DeleteBuffers(1, &self.vbo);
             gl::DeleteBuffers(1, &self.ebo);
 
-            let mut shaders: [u32; 2] = mem::uninitialized();
+            let mut shaders: [u32; 2] = [0; 2];
             gl::GetAttachedShaders(
                 self.program,
                 shaders.len() as i32,

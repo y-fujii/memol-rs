@@ -25,8 +25,7 @@ pub fn wait_file<T: AsRef<path::Path>>(path: T) -> io::Result<()> {
             return Err(io::ErrorKind::Other.into());
         }
 
-        let mut buf: [u8; 32] = mem::uninitialized();
-        let _ = fs.read(&mut buf)?; // XXX
+        let _ = fs.read(&mut [0])?;
     }
     Ok(())
 }

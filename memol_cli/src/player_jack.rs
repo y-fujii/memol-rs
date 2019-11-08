@@ -111,19 +111,21 @@ impl player::Player for Player {
     fn seek(&self, time: f64) {
         debug_assert!(time >= 0.0);
         unsafe {
-            let mut pos: jack::Position = mem::uninitialized();
-            (self.lib.transport_query)(self.jack, &mut pos);
+            let mut pos: mem::MaybeUninit<jack::Position> = mem::MaybeUninit::uninit();
+            (self.lib.transport_query)(self.jack, pos.as_mut_ptr());
+            let pos = pos.assume_init();
             (self.lib.transport_locate)(self.jack, (time * pos.frame_rate as f64).round() as u32);
         }
     }
 
     fn status(&self) -> (bool, f64) {
         unsafe {
-            let mut pos: jack::Position = mem::uninitialized();
-            let playing = match (self.lib.transport_query)(self.jack, &mut pos) {
+            let mut pos: mem::MaybeUninit<jack::Position> = mem::MaybeUninit::uninit();
+            let playing = match (self.lib.transport_query)(self.jack, pos.as_mut_ptr()) {
                 jack::TransportState::Stopped => false,
                 _ => true,
             };
+            let pos = pos.assume_init();
             // the resolution of jack_position_t::frame is per process cycles.
             // jack_get_current_transport_frame() estimates the current
             // position more accurately.
@@ -261,16 +263,18 @@ impl Player {
             let buf_recv = (local.lib.port_get_buffer)(local.port_recv, size);
             (local.lib.midi_clear_buffer)(buf_send);
 
-            let mut pos: jack::Position = mem::uninitialized();
-            let state = (local.lib.transport_query)(local.jack, &mut pos);
+            let mut pos: mem::MaybeUninit<jack::Position> = mem::MaybeUninit::uninit();
+            let state = (local.lib.transport_query)(local.jack, pos.as_mut_ptr());
+            let pos = pos.assume_init();
             let playing = state == jack::TransportState::Rolling;
 
             // receive midi data.
             for i in 0.. {
-                let mut ev = mem::uninitialized();
-                if (local.lib.midi_event_get)(&mut ev, buf_recv, i) != 0 {
+                let mut ev: mem::MaybeUninit<jack::MidiEvent> = mem::MaybeUninit::uninit();
+                if (local.lib.midi_event_get)(ev.as_mut_ptr(), buf_recv, i) != 0 {
                     break;
                 }
+                let ev = ev.assume_init();
                 let msg = slice::from_raw_parts(ev.buffer, ev.size);
                 let prio = match msg[0] & 0xf0 {
                     0x80 => -1,

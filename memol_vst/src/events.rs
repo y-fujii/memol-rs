@@ -18,34 +18,22 @@ pub struct EventBuffer {
 
 impl EventBuffer {
     pub fn new() -> Self {
-        let mut this = unsafe {
-            EventBuffer {
-                holder: Box::new(mem::uninitialized()),
+        unsafe {
+            let mut this = EventBuffer {
+                holder: Box::new(mem::zeroed()),
                 buffer: Box::new(Events {
                     num_events: 0,
                     _reserved: 0,
-                    events: mem::uninitialized(),
+                    events: [ptr::null_mut(); BUFFER_SIZE],
                 }),
-            }
-        };
-        for i in 0..BUFFER_SIZE {
-            this.holder[i] = vst::api::MidiEvent {
-                event_type: vst::api::EventType::Midi,
-                byte_size: mem::size_of::<vst::api::MidiEvent>() as i32,
-                delta_frames: 0,
-                flags: 0,
-                note_length: 0,
-                note_offset: 0,
-                midi_data: [0, 0, 0],
-                _midi_reserved: 0,
-                detune: 0,
-                note_off_velocity: 0,
-                _reserved1: 0,
-                _reserved2: 0,
             };
-            this.buffer.events[i] = &mut this.holder[i];
+            for i in 0..BUFFER_SIZE {
+                this.holder[i].event_type = vst::api::EventType::Midi;
+                this.holder[i].byte_size = mem::size_of::<vst::api::MidiEvent>() as i32;
+                this.buffer.events[i] = &mut this.holder[i];
+            }
+            this
         }
-        this
     }
 
     pub fn clear(&mut self) {

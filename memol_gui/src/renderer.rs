@@ -63,7 +63,7 @@ impl Texture {
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA8 as i32,
+                gl::SRGB8_ALPHA8 as i32,
                 w,
                 h,
                 0,
@@ -218,6 +218,7 @@ impl Renderer {
 
     pub fn render(&mut self, draw_data: &imgui::ImDrawData, display_size: imgui::ImVec2) {
         unsafe {
+            gl::Enable(gl::FRAMEBUFFER_SRGB);
             gl::Enable(gl::BLEND);
             // XXX: premultiplied alpha is better for interpolation.
             gl::BlendEquation(gl::FUNC_ADD);

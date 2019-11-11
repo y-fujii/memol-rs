@@ -24,11 +24,11 @@ impl Sequencer {
             dragged: false,
             time_scale: 24.0,
             line_width: 0.25,
-            color_line_0: imutil::pack_color(imutil::srgb_linear_to_gamma(ImVec4::new(0.10, 0.10, 0.10, 0.50))),
-            color_line_1: imutil::pack_color(imutil::srgb_linear_to_gamma(ImVec4::new(0.10, 0.10, 0.10, 0.25))),
-            color_note_0: imutil::pack_color(imutil::srgb_linear_to_gamma(ImVec4::new(0.10, 0.10, 0.10, 1.00))),
-            color_note_1: imutil::pack_color(imutil::srgb_linear_to_gamma(ImVec4::new(0.80, 0.40, 0.10, 1.00))),
-            color_hovered: imutil::pack_color(imutil::srgb_linear_to_gamma(ImVec4::new(1.00, 0.60, 0.30, 0.50))),
+            color_line_0: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 8.0) / 12.0),
+            color_line_1: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 4.0) / 12.0),
+            color_note_0: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 12.0) / 12.0),
+            color_note_1: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 12.0) / 12.0),
+            color_hovered: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 6.0) / 12.0),
         }
     }
 

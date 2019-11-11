@@ -43,9 +43,9 @@ enum UiMessage {
 fn init_imgui(scale: f32) -> main_widget::Fonts {
     let io = imgui::get_io();
     imutil::set_theme(
-        imgui::ImVec4::new(0.10, 0.10, 0.10, 1.0),
-        imgui::ImVec4::new(1.00, 1.00, 1.00, 1.0),
-        imgui::ImVec4::new(0.05, 0.05, 0.05, 1.0),
+        imgui::ImVec4::new(1.0, 1.0, 1.0, 12.0) / 12.0,
+        imgui::ImVec4::new(1.0, 1.0, 1.0, 1.0),
+        imgui::ImVec4::new(1.0, 1.0, 1.0, 24.0) / 24.0,
     );
     unsafe {
         imgui::get_style().FramePadding = imgui::ImVec2::new(4.0, 4.0);
@@ -54,12 +54,13 @@ fn init_imgui(scale: f32) -> main_widget::Fonts {
 
         let mut cfg = imgui::ImFontConfig::new();
         cfg.FontDataOwnedByAtlas = false;
+        cfg.OversampleH = 4;
         cfg.GlyphOffset.y = 0.0;
         let font = include_bytes!("../fonts/SourceSansPro-Regular.ttf");
         let sans = (*io.Fonts).AddFontFromMemoryTTF(
             font.as_ptr() as *mut os::raw::c_void,
             font.len() as i32,
-            (16.0 * scale).round(),
+            (18.0 * scale).round(),
             &cfg,
             [0x20, 0xff, 0x2026, 0x2027, 0].as_ptr(),
         );
@@ -67,7 +68,7 @@ fn init_imgui(scale: f32) -> main_widget::Fonts {
         let mono = (*io.Fonts).AddFontFromMemoryTTF(
             font.as_ptr() as *mut os::raw::c_void,
             font.len() as i32,
-            (16.0 * scale).round(),
+            (18.0 * scale).round(),
             &cfg,
             [0x20, 0xff, 0x2026, 0x2027, 0].as_ptr(),
         );
@@ -75,7 +76,7 @@ fn init_imgui(scale: f32) -> main_widget::Fonts {
         let icon = (*io.Fonts).AddFontFromMemoryTTF(
             font.as_ptr() as *mut os::raw::c_void,
             font.len() as i32,
-            (16.0 * scale).round(),
+            (18.0 * scale).round(),
             &cfg,
             [0xf000, 0xf7ff, 0].as_ptr(),
         );

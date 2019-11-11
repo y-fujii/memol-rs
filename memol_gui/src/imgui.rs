@@ -18,7 +18,7 @@ impl ImVec2 {
         ImVec2 { x: 0.0, y: 0.0 }
     }
 
-    pub fn round(&self) -> Self {
+    pub fn round(self) -> Self {
         ImVec2 {
             x: self.x.round(),
             y: self.y.round(),
@@ -84,11 +84,20 @@ impl ImVec4 {
         ImVec4 { x: v, y: v, z: v, w: v }
     }
 
-    pub fn dot(&self, other: &Self) -> f32 {
+    pub fn map<T: FnMut(f32) -> f32>(self, mut f: T) -> Self {
+        ImVec4 {
+            x: f(self.x),
+            y: f(self.y),
+            z: f(self.z),
+            w: f(self.w),
+        }
+    }
+
+    pub fn dot(self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
     }
 
-    pub fn round(&self) -> Self {
+    pub fn round(self) -> Self {
         ImVec4 {
             x: self.x.round(),
             y: self.y.round(),
@@ -103,6 +112,14 @@ impl ops::Add<ImVec4> for ImVec4 {
 
     fn add(self, other: ImVec4) -> ImVec4 {
         ImVec4::new(self.x + other.x, self.y + other.y, self.z + other.z, self.w + other.w)
+    }
+}
+
+impl ops::Div<f32> for ImVec4 {
+    type Output = ImVec4;
+
+    fn div(self, other: f32) -> ImVec4 {
+        ImVec4::new(self.x / other, self.y / other, self.z / other, self.w / other)
     }
 }
 

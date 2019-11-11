@@ -173,11 +173,8 @@ pub fn message_dialog(title: &str, text: &str) -> bool {
 }
 
 pub fn set_theme(base: ImVec4, fg: ImVec4, bg: ImVec4) {
-    let normal = srgb_linear_to_gamma(base);
-    let hovered = srgb_linear_to_gamma(0.8 * base + 0.2 * fg);
-    let active = srgb_linear_to_gamma(0.6 * base + 0.4 * fg);
-    let fg = srgb_linear_to_gamma(fg);
-    let bg = srgb_linear_to_gamma(bg);
+    let hovered = (5.0 * base + 1.0 * fg) / 6.0;
+    let active = (4.0 * base + 2.0 * fg) / 6.0;
 
     let style = get_style();
     style.WindowBorderSize = 0.0;
@@ -187,17 +184,17 @@ pub fn set_theme(base: ImVec4, fg: ImVec4, bg: ImVec4) {
     style.FrameRounding = 0.0;
     style.WindowMinSize = ImVec2::zero();
     style.Colors[ImGuiCol_Text as usize] = fg;
-    style.Colors[ImGuiCol_Border as usize] = normal;
+    style.Colors[ImGuiCol_Border as usize] = base;
     style.Colors[ImGuiCol_WindowBg as usize] = bg;
     style.Colors[ImGuiCol_PopupBg as usize] = bg;
     style.Colors[ImGuiCol_ScrollbarBg as usize] = bg;
-    style.Colors[ImGuiCol_ScrollbarGrab as usize] = normal;
+    style.Colors[ImGuiCol_ScrollbarGrab as usize] = base;
     style.Colors[ImGuiCol_ScrollbarGrabHovered as usize] = hovered;
     style.Colors[ImGuiCol_ScrollbarGrabActive as usize] = active;
-    style.Colors[ImGuiCol_Button as usize] = normal;
+    style.Colors[ImGuiCol_Button as usize] = base;
     style.Colors[ImGuiCol_ButtonHovered as usize] = hovered;
     style.Colors[ImGuiCol_ButtonActive as usize] = active;
-    style.Colors[ImGuiCol_FrameBg as usize] = normal;
+    style.Colors[ImGuiCol_FrameBg as usize] = base;
     style.Colors[ImGuiCol_FrameBgHovered as usize] = hovered;
     style.Colors[ImGuiCol_FrameBgActive as usize] = active;
     style.Colors[ImGuiCol_CheckMark as usize] = fg;

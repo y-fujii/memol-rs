@@ -61,6 +61,7 @@ impl<T: fmt::Debug> Window<T> {
                 opengles_version: (3, 0),
             })
             .with_gl_profile(glutin::GlProfile::Core)
+            .with_srgb(true)
             .with_vsync(true)
             .build_windowed(window::WindowBuilder::new(), &looper)?;
         let window = unsafe { window.make_current() }.map_err(|(_, e)| e)?;

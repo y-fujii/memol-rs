@@ -122,7 +122,7 @@ fn main() {
             let mut img = img.to_rgba();
             lighten_image(&mut img, 0.5);
             let mut wallpaper = renderer::Texture::new();
-            wallpaper.upload_u32(img.as_ptr(), img.width() as i32, img.height() as i32);
+            unsafe { wallpaper.upload_u32(img.as_ptr(), img.width() as i32, img.height() as i32) };
             widget.wallpaper = Some(wallpaper);
         } else {
             window.set_background(imgui::ImVec4::constant(1.0));

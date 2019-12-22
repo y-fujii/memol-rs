@@ -34,44 +34,40 @@ impl Texture {
         }
     }
 
-    pub fn upload_a8(&mut self, data: *const u8, w: i32, h: i32) {
+    pub unsafe fn upload_a8(&mut self, data: *const u8, w: i32, h: i32) {
         self.size = (w, h);
         self.bind();
-        unsafe {
-            let swizzle = [gl::ONE as i32, gl::ONE as i32, gl::ONE as i32, gl::RED as i32];
-            gl::TexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr());
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::R8 as i32,
-                w,
-                h,
-                0,
-                gl::RED,
-                gl::UNSIGNED_BYTE,
-                data as *const _,
-            );
-        }
+        let swizzle = [gl::ONE as i32, gl::ONE as i32, gl::ONE as i32, gl::RED as i32];
+        gl::TexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr());
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::R8 as i32,
+            w,
+            h,
+            0,
+            gl::RED,
+            gl::UNSIGNED_BYTE,
+            data as *const _,
+        );
     }
 
-    pub fn upload_u32(&mut self, data: *const u8, w: i32, h: i32) {
+    pub unsafe fn upload_u32(&mut self, data: *const u8, w: i32, h: i32) {
         self.size = (w, h);
         self.bind();
-        unsafe {
-            let swizzle = [gl::RED as i32, gl::GREEN as i32, gl::BLUE as i32, gl::ALPHA as i32];
-            gl::TexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr());
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::SRGB8_ALPHA8 as i32,
-                w,
-                h,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                data as *const _,
-            );
-        }
+        let swizzle = [gl::RED as i32, gl::GREEN as i32, gl::BLUE as i32, gl::ALPHA as i32];
+        gl::TexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_SWIZZLE_RGBA, swizzle.as_ptr());
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::SRGB8_ALPHA8 as i32,
+            w,
+            h,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            data as *const _,
+        );
     }
 }
 
@@ -293,8 +289,10 @@ pub fn update_font_texture(font: &mut imgui::ImFontAtlas) {
     let mut data = ptr::null_mut();
     let mut w = 0;
     let mut h = 0;
-    unsafe { font.GetTexDataAsAlpha8(&mut data, &mut w, &mut h, ptr::null_mut()) };
-    tex.upload_a8(data, w, h);
+    unsafe {
+        font.GetTexDataAsAlpha8(&mut data, &mut w, &mut h, ptr::null_mut());
+        tex.upload_a8(data, w, h);
+    }
     font.TexID = tex.id as *mut _;
     mem::forget(tex);
 }

@@ -98,7 +98,7 @@ impl<T: fmt::Debug> Window<T> {
     }
 
     pub fn hidpi_factor(&self) -> f64 {
-        self.window.window().hidpi_factor()
+        self.window.window().scale_factor()
     }
 
     pub fn update_font(&mut self) {
@@ -117,7 +117,7 @@ impl<T: fmt::Debug> Window<T> {
         let looper = self.looper.take().unwrap();
         looper.run(move |ev, _, flow| {
             match ev {
-                event::Event::EventsCleared => {
+                event::Event::MainEventsCleared => {
                     if n > 0 {
                         let timer = mem::replace(&mut self.timer, time::SystemTime::now());
                         let delta = self.timer.duration_since(timer).unwrap();
@@ -149,20 +149,22 @@ impl<T: fmt::Debug> Window<T> {
                         }
                     }
                 }
+                event::Event::RedrawRequested(wid) => {
+                    if wid == self.window.window().id() {
+                        self.renderer.clear(self.background);
+                        n = cmp::max(n, 1);
+                    }
+                }
                 event::Event::WindowEvent {
-                    window_id: id,
+                    window_id: wid,
                     event: ev,
                     ..
                 } => {
-                    if id == self.window.window().id() {
+                    if wid == self.window.window().id() {
                         match ev {
                             event::WindowEvent::CloseRequested => {
                                 *flow = event_loop::ControlFlow::Exit;
                                 return;
-                            }
-                            event::WindowEvent::RedrawRequested => {
-                                self.renderer.clear(self.background);
-                                n = cmp::max(n, 1);
                             }
                             event::WindowEvent::DroppedFile(ref path) => {
                                 n = cmp::max(n, (self.on_file_dropped)(path));
@@ -240,31 +242,27 @@ impl<T: fmt::Debug> Window<T> {
                 ..
             } => {
                 // XXX
-                let delta = delta.to_physical(self.window.window().hidpi_factor());
                 let scale = 1.0 / (5.0 * unsafe { imgui::GetFontSize() });
                 io.MouseWheelH = scale * delta.x as f32;
                 io.MouseWheel = scale * delta.y as f32;
             }
             WindowEvent::CursorMoved { position: pos, .. } => {
-                // XXX
-                let pos = pos.to_physical(self.window.window().hidpi_factor());
                 io.MousePos.x = pos.x as f32;
                 io.MousePos.y = pos.y as f32;
             }
-            WindowEvent::Resized(logical) => {
-                let physical = logical.to_physical(self.window.window().hidpi_factor());
-                io.DisplaySize.x = physical.width as f32;
-                io.DisplaySize.y = physical.height as f32;
+            WindowEvent::Resized(size) => {
+                io.DisplaySize.x = size.width as f32;
+                io.DisplaySize.y = size.height as f32;
                 // Wayland needs to resize context manually.
-                self.window.resize(physical);
+                self.window.resize(size);
             }
-            WindowEvent::HiDpiFactorChanged(factor) => {
-                let logical = self.window.window().inner_size();
-                let physical = logical.to_physical(factor);
-                io.DisplaySize.x = physical.width as f32;
-                io.DisplaySize.y = physical.height as f32;
+            WindowEvent::ScaleFactorChanged {
+                new_inner_size: size, ..
+            } => {
+                io.DisplaySize.x = size.width as f32;
+                io.DisplaySize.y = size.height as f32;
                 // Wayland needs to resize context manually.
-                self.window.resize(physical);
+                self.window.resize(*size);
             }
             _ => {
                 return false;

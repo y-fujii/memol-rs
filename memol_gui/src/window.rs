@@ -116,8 +116,9 @@ impl<T: fmt::Debug> Window<T> {
         let mut n = 1;
         let looper = self.looper.take().unwrap();
         looper.run(move |ev, _, flow| {
+            // see <https://docs.rs/winit/0.20.0/winit/event/index.html>.
             match ev {
-                event::Event::MainEventsCleared => {
+                event::Event::RedrawEventsCleared => {
                     if n > 0 {
                         let timer = mem::replace(&mut self.timer, time::Instant::now());
                         let delta = self.timer.duration_since(timer);
@@ -142,11 +143,11 @@ impl<T: fmt::Debug> Window<T> {
                         if (0..3).any(|i| imgui::get_io().MouseDown[i]) {
                             n = cmp::max(n, 1);
                         }
-                        *flow = if n > 0 {
-                            event_loop::ControlFlow::Poll
-                        } else {
-                            event_loop::ControlFlow::Wait
-                        }
+                    }
+                    *flow = if n > 0 {
+                        event_loop::ControlFlow::Poll
+                    } else {
+                        event_loop::ControlFlow::Wait
                     }
                 }
                 event::Event::RedrawRequested(wid) => {
@@ -188,7 +189,6 @@ impl<T: fmt::Debug> Window<T> {
                 }
                 _ => (),
             }
-            *flow = event_loop::ControlFlow::Wait;
         });
     }
 

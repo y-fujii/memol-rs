@@ -50,7 +50,7 @@ struct CtsShared {
     on_received: Box<dyn 'static + Fn(&[midi::Event]) + Send>,
     playing: bool,
     location: f64,
-    arrival: time::SystemTime,
+    arrival: time::Instant,
 }
 
 struct StcShared {
@@ -129,7 +129,7 @@ impl player::Player for Player {
 
     fn status(&self) -> (bool, f64) {
         let shared = self.cts_shared.lock().unwrap();
-        let delta = shared.arrival.elapsed().unwrap_or(time::Duration::new(0, 0));
+        let delta = shared.arrival.elapsed();
         let loc = if shared.playing {
             1e-9 * delta.subsec_nanos() as f64 + delta.as_secs() as f64 + shared.location
         } else {
@@ -150,7 +150,7 @@ impl Player {
             on_received: Box::new(|_| ()),
             playing: false,
             location: 0.0,
-            arrival: time::SystemTime::UNIX_EPOCH,
+            arrival: time::Instant::now(),
         }));
         let stc_shared = sync::Arc::new(sync::Mutex::new(StcShared {
             events: Vec::new(),
@@ -185,14 +185,10 @@ impl Player {
                         };
                         move || {
                             let mut stream = io::BufReader::new(stream);
-                            loop {
-                                let msg = match CtsMessage::deserialize_from(&mut stream) {
-                                    Ok(e) => e,
-                                    Err(_) => break,
-                                };
+                            while let Ok(msg) = CtsMessage::deserialize_from(&mut stream) {
                                 match msg {
                                     CtsMessage::Status(playing, location) => {
-                                        let now = time::SystemTime::now();
+                                        let now = time::Instant::now();
                                         let mut shared = shared.lock().unwrap();
                                         shared.playing = playing;
                                         shared.location = location;

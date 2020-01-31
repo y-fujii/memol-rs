@@ -11,7 +11,7 @@ pub struct Window<T: 'static + fmt::Debug> {
     looper: Option<event_loop::EventLoop<T>>,
     window: glutin::WindowedContext<glutin::PossiblyCurrent>,
     renderer: renderer::Renderer,
-    timer: time::SystemTime,
+    timer: time::Instant,
     background: imgui::ImVec4,
     on_message: Box<dyn 'static + FnMut(T) -> i32>,
     on_draw: Box<dyn 'static + FnMut() -> i32>,
@@ -73,7 +73,7 @@ impl<T: fmt::Debug> Window<T> {
             looper: Some(looper),
             window: window,
             renderer: renderer,
-            timer: time::SystemTime::now(),
+            timer: time::Instant::now(),
             background: imgui::ImVec4::constant(1.0),
             on_message: Box::new(|_| 0),
             on_draw: Box::new(|| 0),
@@ -119,8 +119,8 @@ impl<T: fmt::Debug> Window<T> {
             match ev {
                 event::Event::MainEventsCleared => {
                     if n > 0 {
-                        let timer = mem::replace(&mut self.timer, time::SystemTime::now());
-                        let delta = self.timer.duration_since(timer).unwrap();
+                        let timer = mem::replace(&mut self.timer, time::Instant::now());
+                        let delta = self.timer.duration_since(timer);
                         let delta = delta.as_secs() as f32 + delta.subsec_nanos() as f32 * 1e-9;
                         // DeltaTime == 0.0 cause repeating clicks.
                         imgui::get_io().DeltaTime = f32::max(delta, f32::EPSILON);

@@ -22,10 +22,10 @@ struct ArgOptions {
 }
 
 fn compile(path: &path::Path, verbose: bool) -> Option<Vec<memol::midi::Event>> {
-    let timer = time::SystemTime::now();
+    let timer = time::Instant::now();
     let rng = memol::random::Generator::new();
     let result = memol::compile(&rng, &path).and_then(|e| memol::assemble(&rng, &e));
-    let elapsed = timer.elapsed().unwrap();
+    let elapsed = timer.elapsed();
     if verbose {
         eprintln!(
             "compile time: {} ms",

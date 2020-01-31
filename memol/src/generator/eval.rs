@@ -27,7 +27,7 @@ impl<'a> Evaluator<'a> {
         // XXX: O(N^2).
         let mut cnt = 0;
         for g in ir.iter().filter(|g| g.t0 <= f.t0 && f.t0 < g.t1) {
-            if g as *const _ == f as *const _ {
+            if ptr::eq(g, f) {
                 self.note_nth = cnt as f64;
             }
             cnt += 1;

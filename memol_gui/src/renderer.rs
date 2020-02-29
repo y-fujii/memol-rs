@@ -206,7 +206,9 @@ impl Renderer {
 
     pub fn sync(&self) {
         unsafe {
+            // seem weird, but it is a workaround for some GPUs.
             let sync = gl::FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0);
+            gl::Finish();
             gl::ClientWaitSync(sync, 0, 100_000_000);
             gl::DeleteSync(sync);
         }

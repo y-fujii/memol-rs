@@ -80,7 +80,7 @@ and different from the latest implementation.</strong>
 	<dd>Essentially, a score is described as recursive compositions of two
 	constructs: group <code>"[...]"</code> and chord <code>"(...)"</code>.
 	<dt>Orthogonal
-	<dd>Some musical elements like scale, chord and backing pattern can be
+	<dd>Some musical elements like scale, chord, and backing pattern can be
 	described independently and composite them each other.  <code>"with"</code>
 	syntax enables (some of) them in a unified form.  Expressions (note
 	velocity, control change, ...) are also described separately.
@@ -98,9 +98,9 @@ and different from the latest implementation.</strong>
 	<dd>Staff notation generation may be implemented in the future, but memol
 	never will be a complete score typesetting language.
 	<a href="http://lilypond.org/">Lilypond</a> is awesome for this purpose (In
-	fact, the sheet musics in this page are rendered by Lilypond!).
+	fact, the sheet musics on this page are rendered by Lilypond!).
 </dl>
-<p>Here is a example written in (current) memol language.
+<p>Here is an example written in (current) memol language.
 <pre style="font-size: 87.5%">
 /* Gymnopedie No. 1, Erik Satie */
 
@@ -158,20 +158,20 @@ features for practical use.
 		extension API, etc.
 	</ul>
 <li>0% of syntax is stabilized.
-<li>20% of documentation is completed.
+<li>20% of the documentation is completed.
 <li>10% of non-language features are implemented.
 </ul>
 
 <h2>Download pre-built binaries</h2>
-<p><a href="https://github.com/y-fujii/memol-rs/releases">See GitHub Release page.</a>
+<p><a href="https://github.com/y-fujii/memol-rs/releases">See the GitHub Release page.</a>
 <p>Note that macOS binaries are never tested since I don't have a Mac...
 
 <h2>Build and install</h2>
 <p>This section is only necessary for users who want to build memol themselves.
 <p>Although memol can run potentially on any platforms which support Rust and
-JACK, I develop it primary on Linux and sometimes test it on Windows
-(<code>x86_64-pc-windows-gnu</code> target).  Please make sure that following
-programs are installed and configured properly.
+JACK, I develop it primarily on Linux and sometimes test it on Windows
+(<code>x86_64-pc-windows-gnu</code> target).  Please make sure that the
+following programs are installed and configured properly.
 <ul>
 	<li><a href="http://rust-lang.org/">Rust</a> (build dependency)
 	<li><a href="http://jackaudio.org/">JACK</a> (runtime dependency, optional but strongly recommended)
@@ -181,7 +181,7 @@ programs are installed and configured properly.
 $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_cli
 </pre>
 <p>and everything should be done.
-<p>Recent version of memol has experimental GUI program.
+<p>A recent version of memol has an experimental GUI program.
 <a href="https://clang.llvm.org/">Clang</a> must be installed to build one.
 <pre>
 $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
@@ -189,7 +189,7 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
 <p>Building <code>memol_gui</code> on Windows requires a workaround due to
 <a href="https://github.com/rust-lang/rust/issues/47048">issue #47048</a> for
-now.  I recommended to use prebuild binaries above.
+now.  I recommended using prebuild binaries above.
 
 <h2>Run</h2>
 <pre>
@@ -210,11 +210,11 @@ Usage: memol_gui [options] [FILE]
   -a, --any             Accept remote connections.
   -c, --connect PORT    Connect to specified ports.
 </pre>
-<p>There are three way to interact with other applications.
+<p>There are three ways to interact with other applications.
 <ul>
 	<li>Generates MIDI file.
 	<li>Use JACK (recommended if available).
-	<li>Use VST plugin.
+	<li>Use the VST plugin.
 </ul>
 <p>XXX
 <p>XXX
@@ -239,18 +239,18 @@ score $out.0() = { c c G G | A A g _ | f f e e | d d c _ }
 </lilypond>
 <p>memol language structure is roughly divided into two layers: inside of
 <code>{...}</code> and outside of.  Both layers have similar syntax and similar
-semantics, but different.  Inside <code>{...}</code>, sequence is splitted by
+semantics, but different.  Inside <code>{...}</code>, a sequence is split by
 <code>"|"</code> and each part gets the unit time length regardless of the
 number of the elements.
 <p>XXX
-<p>Outside <code>{...}</code>, on the other hand, all the elements have the
-specific length.
+<p>Outside <code>{...}</code>, on the other hand, all elements have specific
+lengths.
 <p>XXX
 
 <h2>Token</h2>
 <p>Unlike common programming languages, newline and whitespace characters have
 no meanings at most locations.  The exception is the one before or after the
-registerd words (<code>"score"</code>, <code>"value"</code>, etc.), symbol
+registered words (<code>"score"</code>, <code>"value"</code>, etc.), symbol
 names (<code>"$name"</code>) and numbers.  For example, <code>"(cEGB)"</code>
 and <code>"( c E G B )"</code> have the same meaning, <code>"scoreabc"</code>
 is different from <code>"score abc"</code>.
@@ -262,9 +262,10 @@ is different from <code>"score abc"</code>.
 
 <h2>Octave</h2>
 <p>memol has a mechanism to avoid annoying octave changing.  If you write a
-note in upper case, it has higher pitch than previous one within a octave.  If
-in lower case, it has lower pitch within a octave.  <code>"&lt;"</code> and
-<code>"&gt;"</code> can be used to make the current octave +1 and -1
+note in the upper case, it has a higher pitch than the previous one within an
+octave.  If in the lower case, it has a lower pitch within an octave.
+<code>"&lt;"</code> and <code>"&gt;"</code> can be used to make the current
+octave +1 and -1
 respectively.
 <pre>
 score $out.0() = { c D E d | &gt; D E &lt; c _ }
@@ -285,11 +286,11 @@ score $out.0() = { c D+ E++ F- }
 </lilypond>
 
 <h2>Group</h2>
-<p>Grouping is one of the unique features of memol.  Unlike other language,
+<p>Grouping is one of the unique features of memol.  Unlike other languages,
 absolute duration values are never specified in memol.  Grouping is noted as
 <code>"[...]"</code> and it divides the duration equally into child notes and
 serializes them.  Group notation can be nested oneself and other notation.
-Each child note have an optional number prefix, which represents a relative
+Each child note has an optional number prefix, which represents a relative
 ratio.  For example, <code>"[e:3 c:2]"</code> gives the duration 3/5 to "e" and
 2/5 to "c".
 <pre>
@@ -301,9 +302,9 @@ score $out.0() = { c | c c | c c c | c [c c c c] [c:3 c] [c:2 c:3 [c c]] }
 
 <h2>Chord</h2>
 <p>Chord is noted as <code>"(...)"</code> and child notes are located in
-parallel.  Chord can be nested oneself and other notation.  The note pitch used
-to determine the octave of next note is the first child of the chord, not the
-last child.
+parallel.  Chord can be nested oneself and other notation.  The note pitch to
+determine the next note octave is the first child of the chord, not the last
+child.
 <pre>
 score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 </pre>
@@ -317,11 +318,12 @@ score $out.0() = { (c E G) | (c E G [B C b]) (c E F A) }
 </lilypond>
 
 <h2>Tie</h2>
-<p><strong style="color: #e02020">Recently, tie related specification is
+<p><strong style="color: #e02020">Recently, tie related specifications are
 fundamentally changed.  It might be buggy for now.</strong>
-<p>Tie is noted by adding <code>"^"</code> after the note which the tie begins.
-Composite notes such as group and chord also can be tied.  A tied chord means
-all child notes are tied.  A tied group means the last note is tied.
+<p>Tie is noted by adding <code>"^"</code> after the note from which the tie
+begins.  Composite notes such as group and chord also can be tied.  A tied
+chord means all child notes are tied.  A tied group means the last note is
+tied.
 <pre>
 score $out.0() = { [c:3 c]^c [c:3 c^] c | (c E G)^(c E G) | (c^ E^ G) (c E G) }
 </pre>

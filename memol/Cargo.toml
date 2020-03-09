@@ -12,4 +12,4 @@ regex = "*"
 serde = { version = "*", features = ["derive"] }
 
 [build-dependencies]
-lalrpop = "*"
+lalrpop = { version = "*", features = ["lexer"] }

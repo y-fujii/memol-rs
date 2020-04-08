@@ -74,7 +74,7 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new() -> libloading::Result<Self> {
+    pub fn new() -> Result<Self, libloading::Error> {
         #[cfg(all(target_family = "unix", not(target_os = "macos")))]
         let path = "libjack.so.0";
         #[cfg(all(target_family = "unix", target_os = "macos"))]

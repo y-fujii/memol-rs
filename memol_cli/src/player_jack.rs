@@ -141,7 +141,7 @@ impl player::Player for Player {
 }
 
 impl Player {
-    pub fn new(name: &str) -> io::Result<Self> {
+    pub fn new(name: &str) -> Result<Self, Box<dyn error::Error>> {
         unsafe {
             let lib = sync::Arc::new(jack::Library::new()?);
 
@@ -250,8 +250,8 @@ impl Player {
         Ok(())
     }
 
-    fn error<T>(text: &str) -> io::Result<T> {
-        Err(io::Error::new(io::ErrorKind::Other, text))
+    fn error<T, U: convert::From<io::Error>>(text: &str) -> Result<T, U> {
+        Err(U::from(io::Error::new(io::ErrorKind::Other, text)))
     }
 
     // avoid freeing memory in this function.

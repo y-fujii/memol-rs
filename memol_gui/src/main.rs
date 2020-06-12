@@ -113,7 +113,7 @@ fn main() {
         let mut compiler = compile_thread::CompileThread::new();
         let model = rc::Rc::new(cell::RefCell::new(model::Model::new(compiler.create_sender())));
         let mut widget = main_widget::MainWidget::new();
-        let mut window = window::Window::new()?;
+        let mut window = window::Window::new("memol")?;
 
         // initialize a window.
         let fonts = init_imgui(window.hidpi_factor() as f32);

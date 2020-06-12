@@ -27,7 +27,7 @@ impl<T: fmt::Debug> Drop for Window<T> {
 }
 
 impl<T: fmt::Debug> Window<T> {
-    pub fn new() -> Result<Self, Box<dyn error::Error>> {
+    pub fn new(title: &str) -> Result<Self, Box<dyn error::Error>> {
         let context = unsafe { imgui::CreateContext(ptr::null_mut()) };
 
         let io = imgui::get_io();
@@ -63,7 +63,7 @@ impl<T: fmt::Debug> Window<T> {
             .with_gl_profile(glutin::GlProfile::Core)
             .with_srgb(true)
             .with_vsync(true)
-            .build_windowed(window::WindowBuilder::new(), &looper)?;
+            .build_windowed(window::WindowBuilder::new().with_title(title), &looper)?;
         let window = unsafe { window.make_current() }.map_err(|(_, e)| e)?;
         gl::load_with(|s| window.get_proc_address(s) as *const _);
         let renderer = renderer::Renderer::new(window.get_api() != glutin::Api::OpenGl);

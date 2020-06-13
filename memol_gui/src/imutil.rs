@@ -132,7 +132,7 @@ pub fn root_begin(name: &str, pos: ImVec2, size: ImVec2, pad: bool, flags: ImGui
         SetNextWindowPos(&pos, ImGuiCond_Always as i32, &ImVec2::zero());
         SetNextWindowSize(&size, ImGuiCond_Always as i32);
         Begin(
-            name.as_ptr() as *const i8,
+            name.as_ptr() as *const _,
             ptr::null_mut(),
             ((ImGuiWindowFlags_NoMove
                 | ImGuiWindowFlags_NoResize

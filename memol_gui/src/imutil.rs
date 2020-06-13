@@ -26,7 +26,8 @@ impl DrawContext {
             DrawContext {
                 draw_list: GetWindowDrawList(),
                 a: ImVec2::new(a, -a),
-                b: ImVec2::new(GetWindowContentRegionMin().x + b.x, GetWindowContentRegionMax().y - b.y),
+                b: GetWindowPos()
+                    + ImVec2::new(GetWindowContentRegionMin().x + b.x, GetWindowContentRegionMax().y - b.y),
                 clip_min: GetWindowPos(),
                 clip_max: GetWindowPos() + GetWindowSize(),
             }
@@ -34,7 +35,7 @@ impl DrawContext {
     }
 
     pub fn add_line(&mut self, v0: ImVec2, v1: ImVec2, col: u32, thickness: f32) {
-        let (lt, rb) = self.transform_rect(v0, v1);
+        let (lt, rb) = self.to_global_rect(v0, v1);
         if self.intersect_aabb(lt, rb) {
             unsafe {
                 (*self.draw_list).AddLine(&lt, &rb, col, self.a.x * thickness);
@@ -43,7 +44,7 @@ impl DrawContext {
     }
 
     pub fn add_rect_filled(&mut self, v0: ImVec2, v1: ImVec2, col: u32, rounding: f32, flags: i32) {
-        let (lt, rb) = self.transform_rect(v0, v1);
+        let (lt, rb) = self.to_global_rect(v0, v1);
         if self.intersect_aabb(lt, rb) {
             unsafe {
                 (*self.draw_list).AddRectFilled(&lt, &rb, col, self.a.x * rounding, flags);
@@ -53,7 +54,7 @@ impl DrawContext {
 
     #[allow(dead_code)]
     pub fn add_invisible_button(&mut self, v0: ImVec2, v1: ImVec2, text: &str) -> bool {
-        let (lt, rb) = self.transform_rect(v0, v1);
+        let (lt, rb) = self.to_global_rect(v0, v1);
         unsafe {
             SetCursorScreenPos(&lt);
             InvisibleButton(text.as_ptr() as *const _, &(rb - lt))
@@ -61,23 +62,27 @@ impl DrawContext {
     }
 
     pub fn add_dummy(&mut self, v0: ImVec2, v1: ImVec2) {
-        let (lt, rb) = self.transform_rect(v0, v1);
+        let (lt, rb) = self.to_global_rect(v0, v1);
         unsafe {
             SetCursorScreenPos(&lt);
             Dummy(&(rb - lt));
         }
     }
 
-    pub fn transform_loc(&self, v: ImVec2) -> ImVec2 {
+    pub fn to_global(&self, v: ImVec2) -> ImVec2 {
         self.a * v + self.b
     }
 
-    pub fn transform_rect(&self, v0: ImVec2, v1: ImVec2) -> (ImVec2, ImVec2) {
-        let v0 = self.transform_loc(v0);
-        let v1 = self.transform_loc(v1);
+    pub fn to_global_rect(&self, v0: ImVec2, v1: ImVec2) -> (ImVec2, ImVec2) {
+        let v0 = self.to_global(v0);
+        let v1 = self.to_global(v1);
         let lt = ImVec2::new(f32::min(v0.x, v1.x), f32::min(v0.y, v1.y));
         let rb = ImVec2::new(f32::max(v0.x, v1.x), f32::max(v0.y, v1.y));
         (lt, rb)
+    }
+
+    pub fn to_local(&self, v: ImVec2) -> ImVec2 {
+        (v - self.b) / self.a
     }
 
     fn intersect_aabb(&self, v0: ImVec2, v1: ImVec2) -> bool {
@@ -112,42 +117,49 @@ pub fn pack_color(col: ImVec4) -> u32 {
     f(col.x) | (f(col.y) << 8) | (f(col.z) << 16) | (f(col.w) << 24)
 }
 
-pub fn root_begin(flags: ImGuiWindowFlags_) {
+pub fn root_begin(name: &str, pos: ImVec2, size: ImVec2, pad: bool, flags: ImGuiWindowFlags_) {
+    assert!(name.ends_with('\0'));
     unsafe {
-        let size = get_io().DisplaySize;
         let rounding = get_style().WindowRounding;
+        let border = get_style().WindowBorderSize;
         let padding = get_style().WindowPadding;
         PushStyleVar(ImGuiStyleVar_WindowRounding as i32, 0.0);
-        PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &ImVec2::zero());
-        SetNextWindowPos(&ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero());
+        PushStyleVar(ImGuiStyleVar_WindowBorderSize as i32, 0.0);
+        PushStyleVar1(
+            ImGuiStyleVar_WindowPadding as i32,
+            &if pad { padding } else { ImVec2::zero() },
+        );
+        SetNextWindowPos(&pos, ImGuiCond_Always as i32, &ImVec2::zero());
         SetNextWindowSize(&size, ImGuiCond_Always as i32);
         Begin(
-            c_str!("root"),
+            name.as_ptr() as *const i8,
             ptr::null_mut(),
-            (ImGuiWindowFlags_NoMove
+            ((ImGuiWindowFlags_NoMove
                 | ImGuiWindowFlags_NoResize
                 | ImGuiWindowFlags_NoBringToFrontOnFocus
-                | ImGuiWindowFlags_NoTitleBar
-                | ImGuiWindowFlags_NoBackground
-                | flags) as i32,
+                | ImGuiWindowFlags_NoTitleBar)
+                ^ flags) as i32,
         );
         PushStyleVar(ImGuiStyleVar_WindowRounding as i32, rounding);
+        PushStyleVar(ImGuiStyleVar_WindowBorderSize as i32, border);
         PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &padding);
     }
 }
 
 pub fn root_end() {
     unsafe {
-        PopStyleVar(2);
+        PopStyleVar(3);
         End();
-        PopStyleVar(2);
+        PopStyleVar(3);
     }
 }
 
+/*
 pub fn text_size(text: &str) -> ImVec2 {
     let ptr = text.as_ptr() as *const _;
     unsafe { CalcTextSize(ptr, ptr.add(text.len()), false, -1.0) }
 }
+*/
 
 pub fn show_text(text: &str) {
     let ptr = text.as_ptr() as *const _;

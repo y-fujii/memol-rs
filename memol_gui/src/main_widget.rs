@@ -36,22 +36,31 @@ impl MainWidget {
             }
         }
 
-        let mut changed = self.draw_transport(model, fonts);
+        let size = get_io().DisplaySize;
+        let size_l = ImVec2::new(f32::round(8.0 * GetFontSize()), size.y);
+        let size_r = ImVec2::new(size.x - size_l.x, size.y);
 
-        imutil::root_begin(0);
+        let mut changed = self.draw_transport(model, ImVec2::zero(), size_l, fonts);
+
+        imutil::root_begin(
+            "sequencer\0",
+            ImVec2::new(size_l.x, 0.0),
+            size_r,
+            false,
+            ImGuiWindowFlags_NoBackground,
+        );
 
         PushFont(fonts.mono);
-        let size = GetWindowSize();
         changed |= match model.mode {
-            model::DisplayMode::Sequencer => self.sequencer.draw(model, size),
-            model::DisplayMode::Code => self.draw_code(model, size),
+            model::DisplayMode::Sequencer => self.sequencer.draw(model, size_r),
+            model::DisplayMode::Code => self.draw_code(model, size_r),
         };
         PopFont();
 
         if let Some(ref wallpaper) = self.wallpaper {
-            let scale = f32::max(size.x / wallpaper.size.0 as f32, size.y / wallpaper.size.1 as f32);
+            let scale = f32::max(size_r.x / wallpaper.size.0 as f32, size_r.y / wallpaper.size.1 as f32);
             let wsize = scale * ImVec2::new(wallpaper.size.0 as f32, wallpaper.size.1 as f32);
-            let v0 = GetWindowPos() + self.sequencer.scroll_ratio * (size - wsize);
+            let v0 = GetWindowPos() + self.sequencer.scroll_ratio * (size_r - wsize);
             (*GetWindowDrawList()).AddImage(
                 wallpaper.id as _,
                 &v0,
@@ -61,6 +70,7 @@ impl MainWidget {
                 0xffff_ffff,
             );
         }
+
         imutil::root_end();
 
         changed || model.player.status().0
@@ -81,29 +91,17 @@ impl MainWidget {
         false
     }
 
-    unsafe fn draw_transport(&mut self, model: &mut model::Model, fonts: &Fonts) -> bool {
+    unsafe fn draw_transport(&mut self, model: &mut model::Model, pos: ImVec2, size: ImVec2, fonts: &Fonts) -> bool {
         let mut changed = false;
 
-        let padding = get_style().WindowPadding;
-        PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &(0.5 * padding).round());
-        SetNextWindowPos(&ImVec2::zero(), ImGuiCond_Always as i32, &ImVec2::zero());
-        Begin(
-            c_str!("Transport"),
-            ptr::null_mut(),
-            (ImGuiWindowFlags_AlwaysAutoResize
-                | ImGuiWindowFlags_NoMove
-                | ImGuiWindowFlags_NoResize
-                | ImGuiWindowFlags_NoTitleBar) as i32,
-        );
-        PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &padding);
+        imutil::root_begin("transport\0", pos, size, true, 0);
+        PushItemWidth(-1.0);
+
+        let (_, time) = model.player.status();
+        Text(c_str!("Time: {:.02} sec.", time));
 
         PushFont(fonts.icon);
-        let size = ImVec2::new(GetFontSize() * 2.0, 0.0);
-        if Button(c_str!("\u{f048}"), &size) {
-            model.player.seek(0.0);
-            changed = true;
-        }
-        SameLine(0.0, 1.0);
+        let size = ImVec2::new(GetWindowContentRegionWidth() / 2.0 - 1.0, 0.0);
         if Button(c_str!("\u{f04b}"), &size) {
             model.player.play();
             changed = true;
@@ -113,6 +111,10 @@ impl MainWidget {
             model.player.stop();
             changed = true;
         }
+        if Button(c_str!("\u{f048}"), &size) {
+            model.player.seek(0.0);
+            changed = true;
+        }
         SameLine(0.0, 1.0);
         if Button(c_str!("\u{f051}"), &size) {
             model.player.seek(model.assembly.len.to_float() / model.tempo);
@@ -120,40 +122,13 @@ impl MainWidget {
         }
         PopFont();
 
-        SameLine(0.0, -1.0);
-        Checkbox(c_str!("Follow"), &mut model.follow);
-        SameLine(0.0, -1.0);
-        Checkbox(c_str!("Autoplay"), &mut model.autoplay);
-
-        let mode_str = |mode| match mode {
-            model::DisplayMode::Sequencer => "Sequencer",
-            model::DisplayMode::Code => "Code",
-        };
-        SameLine(0.0, -1.0);
-        SetNextItemWidth(imutil::text_size("_Sequencer____").x);
-        if BeginCombo(c_str!("##mode"), c_str!("{}", mode_str(model.mode)), 0) {
-            for &mode in [model::DisplayMode::Sequencer, model::DisplayMode::Code].iter() {
-                if Selectable(c_str!("{}", mode_str(mode)), model.mode == mode, 0, &ImVec2::zero()) {
-                    model.mode = mode;
-                }
+        if Button(c_str!("Generate SMF"), &ImVec2::new(-1.0, 0.0)) {
+            if let Err(e) = model.generate_smf() {
+                model.text = Some(format!("{}", e));
             }
-            EndCombo();
         }
 
-        SameLine(0.0, -1.0);
-        SetNextItemWidth(imutil::text_size("_Channel 00____").x);
-        if BeginCombo(c_str!("##channel"), c_str!("Channel {:2}", model.channel), 0) {
-            for &(i, _) in model.assembly.channels.iter() {
-                if Selectable(c_str!("Channel {:2}", i), i == model.channel, 0, &ImVec2::zero()) {
-                    model.channel = i;
-                    changed = true;
-                }
-            }
-            EndCombo();
-        }
-
-        SameLine(0.0, -1.0);
-        if Button(c_str!("I/O ports\u{2026}"), &ImVec2::zero()) {
+        if Button(c_str!("I/O ports\u{2026}"), &ImVec2::new(-1.0, 0.0)) {
             OpenPopup(c_str!("ports"));
             self.ports_from = model.player.ports_from().ok();
             self.ports_to = model.player.ports_to().ok();
@@ -198,16 +173,35 @@ impl MainWidget {
             EndPopup();
         }
 
-        SameLine(0.0, -1.0);
-        if Button(c_str!("Generate SMF"), &ImVec2::zero()) {
-            if let Err(e) = model.generate_smf() {
-                model.text = Some(format!("{}", e));
-            }
+        Checkbox(c_str!("Follow"), &mut model.follow);
+        Checkbox(c_str!("Autoplay"), &mut model.autoplay);
+
+        Spacing();
+        Separator();
+        Text(c_str!("Display mode"));
+
+        if RadioButton(c_str!("Score"), model.mode == model::DisplayMode::Sequencer) {
+            model.mode = model::DisplayMode::Sequencer;
+        }
+        if RadioButton(c_str!("Score + Plot"), false) {}
+        if RadioButton(c_str!("Code"), model.mode == model::DisplayMode::Code) {
+            model.mode = model::DisplayMode::Code;
         }
 
-        PopStyleVar(1);
-        End();
-        PopStyleVar(1);
+        Spacing();
+        Separator();
+        Text(c_str!("Channels"));
+
+        for &(i, _) in model.assembly.channels.iter() {
+            if RadioButton(c_str!("##radio_{:02}", i), model.channel_main == i) {
+                model.channel_main = i;
+            }
+            SameLine(0.0, -1.0);
+            Checkbox(c_str!("#{:02}", i), &mut model.channel_subs[i]);
+        }
+
+        PopItemWidth();
+        imutil::root_end();
 
         changed
     }

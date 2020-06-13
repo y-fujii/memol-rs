@@ -18,7 +18,8 @@ pub struct Model {
     pub path: path::PathBuf,
     pub code: String,
     pub mode: DisplayMode,
-    pub channel: usize,
+    pub channel_main: usize,
+    pub channel_subs: [bool; 16],
     pub follow: bool,
     pub autoplay: bool,
     pub text: Option<String>,
@@ -40,7 +41,8 @@ impl Model {
             path: path::PathBuf::new(),
             code: String::new(),
             mode: DisplayMode::Sequencer,
-            channel: 0,
+            channel_main: 0,
+            channel_subs: [false; 16],
             follow: true,
             autoplay: true,
             text: None,
@@ -102,13 +104,13 @@ impl Model {
     }
 
     pub fn note_on(&self, nn: u8) {
-        let evs = [midi::Event::new(0.0, 1, &[0x90 + self.channel as u8, nn, 0x40])];
+        let evs = [midi::Event::new(0.0, 1, &[0x90 + self.channel_main as u8, nn, 0x40])];
         self.player.send(&evs);
     }
 
     pub fn note_off_all(&self) {
         // all sound off.
-        let evs = [midi::Event::new(0.0, 0, &[0xb0 + self.channel as u8, 0x78, 0x00])];
+        let evs = [midi::Event::new(0.0, 0, &[0xb0 + self.channel_main as u8, 0x78, 0x00])];
         self.player.send(&evs);
     }
 

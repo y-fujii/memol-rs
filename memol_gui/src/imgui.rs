@@ -64,6 +64,14 @@ impl ops::Mul<ImVec2> for f32 {
     }
 }
 
+impl ops::Div<ImVec2> for ImVec2 {
+    type Output = ImVec2;
+
+    fn div(self, other: ImVec2) -> ImVec2 {
+        ImVec2::new(self.x / other.x, self.y / other.y)
+    }
+}
+
 impl ImVec4 {
     pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         ImVec4 { x: x, y: y, z: z, w: w }

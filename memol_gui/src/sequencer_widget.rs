@@ -2,7 +2,7 @@
 use crate::imgui::*;
 use crate::imutil;
 use crate::model;
-use memol::misc;
+use memol::*;
 use std::*;
 
 pub struct Sequencer {
@@ -10,11 +10,14 @@ pub struct Sequencer {
     dragged: bool,
     time_scale: f32,
     line_width: f32,
-    color_line_0: u32,
-    color_line_1: u32,
-    color_note_0: u32,
-    color_note_1: u32,
-    color_hovered: u32,
+    color_line_dark: u32,
+    color_line_light: u32,
+    color_note_bg_normal: u32,
+    color_note_bg_active: u32,
+    color_note_fg_normal: u32,
+    color_note_fg_active: u32,
+    color_hovered_vert: u32,
+    color_hovered_horz: u32,
 }
 
 impl Sequencer {
@@ -24,11 +27,14 @@ impl Sequencer {
             dragged: false,
             time_scale: 24.0,
             line_width: 0.25,
-            color_line_0: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 8.0) / 12.0),
-            color_line_1: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 4.0) / 12.0),
-            color_note_0: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 12.0) / 12.0),
-            color_note_1: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 12.0) / 12.0),
-            color_hovered: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 6.0) / 12.0),
+            color_line_dark: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 8.0) / 12.0),
+            color_line_light: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 4.0) / 12.0),
+            color_note_bg_normal: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 6.0) / 12.0),
+            color_note_bg_active: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 6.0) / 12.0),
+            color_note_fg_normal: imutil::pack_color(ImVec4::new(1.0, 1.0, 1.0, 12.0) / 12.0),
+            color_note_fg_active: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 12.0) / 12.0),
+            color_hovered_vert: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 12.0) / 12.0),
+            color_hovered_horz: imutil::pack_color(ImVec4::new(12.0, 6.0, 1.0, 6.0) / 12.0),
         }
     }
 
@@ -59,10 +65,12 @@ impl Sequencer {
             SetScrollX(a * GetScrollX() + (1.0 - a) * next);
         }
 
+        let mut ctx = imutil::DrawContext::new(unit, ImVec2::new(0.5 * unit * self.time_scale, 0.0));
+
         // seek or copy.
         if IsWindowHovered(0) && IsMouseReleased(1) && !self.dragged {
             if model.copying_notes.is_empty() {
-                let x = (GetMousePos().x - GetWindowContentRegionMin().x) / (unit * self.time_scale) - 0.5;
+                let x = ctx.to_local(GetMousePos()).x / self.time_scale;
                 let x = f32::min(f32::max(x, 0.0), time_len);
                 model.player.seek(x as f64 / model.tempo);
                 changed = true;
@@ -73,17 +81,34 @@ impl Sequencer {
         }
 
         // render.
-        let mut ctx = imutil::DrawContext::new(unit, ImVec2::new(unit * self.time_scale * 0.5, 0.0));
         self.draw_indicator(&mut ctx, model, time_len);
         self.draw_background(&mut ctx, time_len);
-        self.draw_notes(
-            &mut ctx,
-            model,
-            model.channel,
-            time_cur,
-            self.color_note_0,
-            self.color_note_1,
-        );
+        for (n, ch) in model.assembly.channels.iter() {
+            if !model.channel_subs[*n] || *n == model.channel_main {
+                continue;
+            }
+            self.draw_notes(
+                &mut ctx,
+                model,
+                &ch.score,
+                time_cur,
+                self.color_note_bg_normal,
+                self.color_note_bg_active,
+            );
+        }
+        for (n, ch) in model.assembly.channels.iter() {
+            if *n != model.channel_main {
+                continue;
+            }
+            self.draw_notes(
+                &mut ctx,
+                model,
+                &ch.score,
+                time_cur,
+                self.color_note_fg_normal,
+                self.color_note_fg_active,
+            );
+        }
         self.draw_time_bar(&mut ctx, time_cur);
 
         self.dragged = IsMouseDragging(1, -1.0);
@@ -107,7 +132,7 @@ impl Sequencer {
                 model.note_on(y as u8);
             }
             if IsItemHovered(0) || model.on_notes[y as usize] {
-                ctx.add_rect_filled(v0, v1, self.color_hovered, 0.0, !0);
+                ctx.add_rect_filled(v0, v1, self.color_hovered_horz, 0.0, !0);
             }
         }
         if model.copying_notes.len() > 0 {
@@ -130,7 +155,7 @@ impl Sequencer {
             for &(y0, y1) in ys.iter() {
                 let v0 = ImVec2::new(self.time_scale * i as f32, y0 as f32 + 0.5);
                 let v1 = ImVec2::new(self.time_scale * i as f32, y1 as f32 + 0.5);
-                ctx.add_line(v0, v1, self.color_line_0, self.line_width);
+                ctx.add_line(v0, v1, self.color_line_dark, self.line_width);
             }
         }
 
@@ -145,7 +170,7 @@ impl Sequencer {
         for &y in ys.iter() {
             let v0 = ImVec2::new(self.time_scale * 0.0 - 0.5 * self.line_width, y as f32 + 0.5);
             let v1 = ImVec2::new(self.time_scale * time_len + 0.5 * self.line_width, y as f32 + 0.5);
-            ctx.add_line(v0, v1, self.color_line_0, self.line_width);
+            ctx.add_line(v0, v1, self.color_line_dark, self.line_width);
         }
 
         // thin horizontal lines.
@@ -159,7 +184,7 @@ impl Sequencer {
         for &y in ys.iter() {
             let v0 = ImVec2::new(self.time_scale * 0.0 - 0.5 * self.line_width, y as f32 + 0.5);
             let v1 = ImVec2::new(self.time_scale * time_len + 0.5 * self.line_width, y as f32 + 0.5);
-            ctx.add_line(v0, v1, self.color_line_1, self.line_width);
+            ctx.add_line(v0, v1, self.color_line_light, self.line_width);
         }
     }
 
@@ -167,15 +192,11 @@ impl Sequencer {
         &self,
         ctx: &mut imutil::DrawContext,
         model: &model::Model,
-        ch: usize,
+        ir: &generator::ScoreIr,
         time_cur: f32,
         color_0: u32,
         color_1: u32,
     ) {
-        let ir = match model.assembly.channels.iter().filter(|&&(i, _)| i == ch).next() {
-            Some(ch) => &ch.1.score,
-            None => return,
-        };
         for note in ir.iter() {
             let nnum = match note.nnum {
                 Some(v) => v,
@@ -213,6 +234,6 @@ impl Sequencer {
     unsafe fn draw_time_bar(&self, ctx: &mut imutil::DrawContext, time_cur: f32) {
         let v0 = ImVec2::new(self.time_scale * time_cur, 0.0);
         let v1 = ImVec2::new(self.time_scale * time_cur, 128.0);
-        ctx.add_line(v0, v1, self.color_note_1, self.line_width);
+        ctx.add_line(v0, v1, self.color_hovered_vert, self.line_width);
     }
 }

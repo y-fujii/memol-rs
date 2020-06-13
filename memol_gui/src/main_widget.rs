@@ -71,7 +71,7 @@ impl MainWidget {
             );
         }
 
-        imutil::root_end();
+        End();
 
         changed || model.player.status().0
     }
@@ -201,7 +201,7 @@ impl MainWidget {
         }
 
         PopItemWidth();
-        imutil::root_end();
+        End();
 
         changed
     }

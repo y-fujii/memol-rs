@@ -120,37 +120,19 @@ pub fn pack_color(col: ImVec4) -> u32 {
 pub fn root_begin(name: &str, pos: ImVec2, size: ImVec2, pad: bool, flags: ImGuiWindowFlags_) {
     assert!(name.ends_with('\0'));
     unsafe {
-        let rounding = get_style().WindowRounding;
-        let border = get_style().WindowBorderSize;
-        let padding = get_style().WindowPadding;
         PushStyleVar(ImGuiStyleVar_WindowRounding as i32, 0.0);
         PushStyleVar(ImGuiStyleVar_WindowBorderSize as i32, 0.0);
-        PushStyleVar1(
-            ImGuiStyleVar_WindowPadding as i32,
-            &if pad { padding } else { ImVec2::zero() },
-        );
+        if !pad {
+            PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &ImVec2::zero());
+        }
         SetNextWindowPos(&pos, ImGuiCond_Always as i32, &ImVec2::zero());
         SetNextWindowSize(&size, ImGuiCond_Always as i32);
         Begin(
             name.as_ptr() as *const _,
             ptr::null_mut(),
-            ((ImGuiWindowFlags_NoMove
-                | ImGuiWindowFlags_NoResize
-                | ImGuiWindowFlags_NoBringToFrontOnFocus
-                | ImGuiWindowFlags_NoTitleBar)
-                ^ flags) as i32,
+            (ImGuiWindowFlags_NoDecoration ^ ImGuiWindowFlags_NoScrollbar ^ flags) as i32,
         );
-        PushStyleVar(ImGuiStyleVar_WindowRounding as i32, rounding);
-        PushStyleVar(ImGuiStyleVar_WindowBorderSize as i32, border);
-        PushStyleVar1(ImGuiStyleVar_WindowPadding as i32, &padding);
-    }
-}
-
-pub fn root_end() {
-    unsafe {
-        PopStyleVar(3);
-        End();
-        PopStyleVar(3);
+        PopStyleVar(if pad { 2 } else { 3 });
     }
 }
 

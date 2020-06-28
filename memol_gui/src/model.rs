@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::compile_thread;
-use clipboard::ClipboardProvider;
+use copypasta::ClipboardProvider;
 use memol::*;
 use memol_cli::player;
 use std::*;
@@ -29,7 +29,7 @@ pub struct Model {
     pub pedal: bool,
     pub on_notes: [bool; 128],
     pub copying_notes: Vec<i64>,
-    pub clipboard: Option<cell::RefCell<clipboard::ClipboardContext>>,
+    pub clipboard: Option<cell::RefCell<copypasta::ClipboardContext>>,
 }
 
 impl Model {
@@ -52,7 +52,7 @@ impl Model {
             pedal: false,
             on_notes: [false; 128],
             copying_notes: Vec::new(),
-            clipboard: clipboard::ClipboardProvider::new().map(|e| cell::RefCell::new(e)).ok(),
+            clipboard: copypasta::ClipboardContext::new().map(|e| cell::RefCell::new(e)).ok(),
         }
     }
 

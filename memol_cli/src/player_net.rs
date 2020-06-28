@@ -3,6 +3,7 @@ use crate::player;
 use memol::midi;
 use std::io::Write;
 use std::*;
+use bincode::config::Options;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum CtsMessage {
@@ -12,7 +13,7 @@ pub enum CtsMessage {
 
 impl CtsMessage {
     pub fn deserialize_from<T: io::Read>(reader: T) -> bincode::Result<Self> {
-        let msg: CtsMessage = bincode::config().limit(1 << 24).deserialize_from(reader)?;
+        let msg: CtsMessage = bincode::options().with_limit(1 << 24).deserialize_from(reader)?;
         let is_valid = match &msg {
             CtsMessage::Status(_, loc) => loc.is_finite(),
             CtsMessage::Immediate(evs) => evs.iter().all(|e| e.validate()),
@@ -33,7 +34,7 @@ pub enum StcMessage {
 
 impl StcMessage {
     pub fn deserialize_from<T: io::Read>(reader: T) -> bincode::Result<Self> {
-        let msg: StcMessage = bincode::config().limit(1 << 24).deserialize_from(reader)?;
+        let msg: StcMessage = bincode::options().with_limit(1 << 24).deserialize_from(reader)?;
         let is_valid = match &msg {
             StcMessage::Data(evs) => evs.iter().all(|e| e.validate()),
             StcMessage::Immediate(evs) => evs.iter().all(|e| e.validate()),

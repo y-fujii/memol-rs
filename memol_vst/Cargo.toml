@@ -5,7 +5,6 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2018"
 
 [dependencies]
-bincode = "*"
 vst = "*"
 memol = { path = "../memol" }
 memol_cli = { path = "../memol_cli" }

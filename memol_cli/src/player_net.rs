@@ -1,11 +1,11 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::player;
+use bincode::Options;
 use memol::midi;
 use std::io::Write;
 use std::*;
-use bincode::config::Options;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum CtsMessage {
     Status(bool, f64),
     Immediate(Vec<midi::Event>),
@@ -13,7 +13,7 @@ pub enum CtsMessage {
 
 impl CtsMessage {
     pub fn deserialize_from<T: io::Read>(reader: T) -> bincode::Result<Self> {
-        let msg: CtsMessage = bincode::options().with_limit(1 << 24).deserialize_from(reader)?;
+        let msg = bincode_options().deserialize_from(reader)?;
         let is_valid = match &msg {
             CtsMessage::Status(_, loc) => loc.is_finite(),
             CtsMessage::Immediate(evs) => evs.iter().all(|e| e.validate()),
@@ -24,9 +24,13 @@ impl CtsMessage {
             Err(Box::new(bincode::ErrorKind::Custom("invalid data.".into())))
         }
     }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        bincode_options().serialize(self).unwrap()
+    }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum StcMessage {
     Data(Vec<midi::Event>),
     Immediate(Vec<midi::Event>),
@@ -34,7 +38,7 @@ pub enum StcMessage {
 
 impl StcMessage {
     pub fn deserialize_from<T: io::Read>(reader: T) -> bincode::Result<Self> {
-        let msg: StcMessage = bincode::options().with_limit(1 << 24).deserialize_from(reader)?;
+        let msg = bincode_options().deserialize_from(reader)?;
         let is_valid = match &msg {
             StcMessage::Data(evs) => evs.iter().all(|e| e.validate()),
             StcMessage::Immediate(evs) => evs.iter().all(|e| e.validate()),
@@ -44,6 +48,10 @@ impl StcMessage {
         } else {
             Err(Box::new(bincode::ErrorKind::Custom("invalid data.".into())))
         }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        bincode_options().serialize(self).unwrap()
     }
 }
 
@@ -86,7 +94,7 @@ impl player::Player for Player {
     }
 
     fn set_data(&mut self, events: &[midi::Event]) {
-        let msg = bincode::serialize(&StcMessage::Data(events.to_vec())).unwrap();
+        let msg = StcMessage::Data(events.to_vec()).serialize();
         let mut shared = self.stc_shared.lock().unwrap();
         shared.events = events.to_vec();
         shared.senders.retain(|s| s.send(msg.clone()).is_ok());
@@ -117,7 +125,7 @@ impl player::Player for Player {
     }
 
     fn send(&self, events: &[midi::Event]) {
-        let msg = bincode::serialize(&StcMessage::Immediate(events.into())).unwrap();
+        let msg = StcMessage::Immediate(events.into()).serialize();
         let mut shared = self.stc_shared.lock().unwrap();
         shared.senders.retain(|s| s.send(msg.clone()).is_ok());
     }
@@ -221,7 +229,7 @@ impl Player {
                                     shared.senders.push(sender);
                                     shared.events.clone()
                                 };
-                                stream.write_all(&bincode::serialize(&StcMessage::Data(events)).unwrap())?;
+                                stream.write_all(&StcMessage::Data(events).serialize())?;
                                 loop {
                                     let msg = receiver.recv()?;
                                     stream.write_all(&msg)?;
@@ -242,4 +250,8 @@ impl Player {
             stc_shared: stc_shared,
         })
     }
+}
+
+fn bincode_options() -> impl bincode::Options {
+    bincode::options().with_limit(1 << 24)
 }

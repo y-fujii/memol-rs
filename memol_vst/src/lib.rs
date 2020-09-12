@@ -187,7 +187,7 @@ impl vst::plugin::Plugin for Plugin {
                             }
                         };
 
-                        match stream.write_all(&bincode::serialize(&msg).unwrap()) {
+                        match stream.write_all(&msg.serialize()) {
                             Ok(_) => (),
                             Err(_) => break,
                         }

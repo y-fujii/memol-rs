@@ -255,7 +255,7 @@ impl Player {
     }
 
     // avoid freeing memory in this function.
-    extern "C" fn process_callback(size: u32, local: *const dyn any::Any) -> i32 {
+    extern "C" fn process_callback(size: u32, local: *mut ffi::c_void) -> i32 {
         unsafe {
             let local = &mut *(local as *mut LocalData);
 

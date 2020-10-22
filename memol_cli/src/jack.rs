@@ -47,7 +47,7 @@ pub struct Position {
     pub unique_2: u64,
 }
 
-pub type ProcessCallback = extern "C" fn(u32, *const dyn any::Any) -> i32;
+pub type ProcessCallback = extern "C" fn(u32, *mut ffi::c_void) -> i32;
 
 pub struct Library {
     _lib: libloading::Library,

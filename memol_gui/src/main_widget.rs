@@ -129,7 +129,7 @@ impl MainWidget {
         }
 
         if Button(c_str!("I/O ports\u{2026}"), &ImVec2::new(-1.0, 0.0)) {
-            OpenPopup(c_str!("ports"));
+            OpenPopup(c_str!("ports"), 0);
             self.ports_from = model.player.ports_from().ok();
             self.ports_to = model.player.ports_to().ok();
         }

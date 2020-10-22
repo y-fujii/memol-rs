@@ -57,7 +57,7 @@ impl DrawContext {
         let (lt, rb) = self.to_global_rect(v0, v1);
         unsafe {
             SetCursorScreenPos(&lt);
-            InvisibleButton(text.as_ptr() as *const _, &(rb - lt))
+            InvisibleButton(text.as_ptr() as *const _, &(rb - lt), 0)
         }
     }
 

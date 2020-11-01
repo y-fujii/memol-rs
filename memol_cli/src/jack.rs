@@ -66,7 +66,7 @@ pub struct Library {
     pub port_get_buffer: unsafe extern "C" fn(*mut Port, u32) -> *mut PortBuffer,
     pub port_name: unsafe extern "C" fn(*const Port) -> *const u8,
     pub port_register: unsafe extern "C" fn(*mut Client, *const u8, *const u8, usize, usize) -> *mut Port,
-    pub set_process_callback: unsafe extern "C" fn(*mut Client, ProcessCallback, *const dyn any::Any) -> i32,
+    pub set_process_callback: unsafe extern "C" fn(*mut Client, ProcessCallback, *mut ffi::c_void) -> i32,
     pub transport_locate: unsafe extern "C" fn(*mut Client, u32) -> i32,
     pub transport_query: unsafe extern "C" fn(*const Client, *mut Position) -> TransportState,
     pub transport_start: unsafe extern "C" fn(*mut Client) -> (),

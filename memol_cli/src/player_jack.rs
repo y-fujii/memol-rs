@@ -170,7 +170,7 @@ impl Player {
                 exiting: false,
             }));
 
-            let local = Box::new(LocalData {
+            let mut local = Box::new(LocalData {
                 lib: lib.clone(),
                 jack: jack,
                 port_send: port_send,
@@ -184,7 +184,7 @@ impl Player {
                 condvar: condvar.clone(),
             });
 
-            if (lib.set_process_callback)(jack, Player::process_callback, &*local) != 0 {
+            if (lib.set_process_callback)(jack, Player::process_callback, &mut *local as *mut _ as *mut _) != 0 {
                 return Self::error("jack_set_process_callback().");
             }
             if (lib.activate)(jack) != 0 {

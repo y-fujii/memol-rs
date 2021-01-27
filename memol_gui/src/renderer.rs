@@ -102,29 +102,29 @@ impl Drop for Renderer {
 }
 
 const VERT_SHADER_CODE: &'static str = r#"
-	uniform vec2 Scale;
-	layout( location = 0 ) in vec2 pos;
-	layout( location = 1 ) in vec2 uv;
-	layout( location = 2 ) in vec4 color;
-	out vec2 frag_uv;
-	out vec4 frag_color;
+uniform vec2 u_scale;
+layout(location = 0) in vec2 a_pos;
+layout(location = 1) in vec2 a_uv;
+layout(location = 2) in vec4 a_color;
+out vec2 m_uv;
+out vec4 m_color;
 
-	void main() {
-		frag_uv = uv;
-		frag_color = color;
-		gl_Position = vec4( Scale * pos + vec2( -1.0, +1.0 ), 0.0, 1.0 );
-	}
+void main() {
+  m_uv = a_uv;
+  m_color = a_color;
+  gl_Position = vec4(u_scale * a_pos + vec2(-1.0, +1.0), 0.0, 1.0);
+}
 "#;
 
 const FRAG_SHADER_CODE: &'static str = r#"
-	uniform sampler2D Texture;
-	in vec2 frag_uv;
-	in vec4 frag_color;
-	out vec4 out_color;
+uniform sampler2D u_texture;
+in vec2 m_uv;
+in vec4 m_color;
+out vec4 o_color;
 
-	void main() {
-		out_color = frag_color * texture( Texture, frag_uv );
-	}
+void main() {
+  o_color = m_color * texture(u_texture, m_uv);
+}
 "#;
 
 unsafe fn compile_shader(ty: u32, code: &[&str]) -> u32 {
@@ -155,8 +155,8 @@ impl Renderer {
             gl::AttachShader(prog, frag);
             gl::LinkProgram(prog);
             gl::UseProgram(prog);
-            gl::Uniform1i(gl::GetUniformLocation(prog, "Texture\0".as_ptr() as _), 0);
-            let loc_scale = gl::GetUniformLocation(prog, "Scale\0".as_ptr() as _);
+            gl::Uniform1i(gl::GetUniformLocation(prog, "u_texture\0".as_ptr() as _), 0);
+            let loc_scale = gl::GetUniformLocation(prog, "u_scale\0".as_ptr() as _);
 
             // vertex objects.
             let mut vao = 0;
@@ -206,7 +206,7 @@ impl Renderer {
 
     pub fn sync(&self) {
         unsafe {
-            // seem weird, but it is a workaround for some GPUs.
+            // seems weird, but it is a workaround for some GPUs.
             let sync = gl::FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0);
             gl::Finish();
             gl::ClientWaitSync(sync, 0, 100_000_000);

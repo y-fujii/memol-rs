@@ -41,6 +41,7 @@ fn main() {
         .file("imgui/imgui.cpp")
         .file("imgui/imgui_draw.cpp")
         .file("imgui/imgui_widgets.cpp")
+        .file("imgui/imgui_tables.cpp")
         .compile("libimgui.a");
 
     println!("cargo:rerun-if-changed=imgui/");

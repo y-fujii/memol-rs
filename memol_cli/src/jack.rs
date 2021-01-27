@@ -84,8 +84,8 @@ impl Library {
         #[cfg(all(target_family = "windows", target_pointer_width = "32"))]
         let path = "libjack.dll";
 
-        let lib = libloading::Library::new(path)?;
         unsafe {
+            let lib = libloading::Library::new(path)?;
             Ok(Self {
                 activate: *lib.get(b"jack_activate\0")?,
                 client_close: *lib.get(b"jack_client_close\0")?,

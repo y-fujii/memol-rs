@@ -119,7 +119,7 @@ fn main() {
         let fonts = init_imgui(window.hidpi_factor() as f32);
         window.update_font();
         if let Some(Ok(img)) = opts.wallpaper.map(image::open) {
-            let mut img = img.to_rgba();
+            let mut img = img.to_rgba8();
             lighten_image(&mut img, 0.5);
             let mut wallpaper = renderer::Texture::new();
             unsafe { wallpaper.upload_u32(img.as_ptr(), img.width() as i32, img.height() as i32) };

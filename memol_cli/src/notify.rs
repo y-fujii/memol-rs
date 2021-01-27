@@ -16,12 +16,13 @@ pub fn wait_file<T: AsRef<path::Path>>(path: T) -> io::Result<()> {
         Some(e) => e,
         None => return Err(io::ErrorKind::Other.into()),
     };
+    let path = ffi::CString::new(path).unwrap();
 
     unsafe {
         let fd = inotify_init1(IN_CLOEXEC);
         let mut fs = fs::File::from_raw_fd(fd);
 
-        if inotify_add_watch(fd, ffi::CString::new(path).unwrap().as_ptr(), IN_CLOSE_WRITE) < 0 {
+        if inotify_add_watch(fd, path.as_ptr(), IN_CLOSE_WRITE) < 0 {
             return Err(io::ErrorKind::Other.into());
         }
 

@@ -1,6 +1,6 @@
 language: rust
-dist: bionic
-osx_image: xcode11.2
+dist: focal
+osx_image: xcode12.2
 
 matrix:
     include:

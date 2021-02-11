@@ -1,6 +1,6 @@
 # memol - a music description language
 
-[![Build Status](https://travis-ci.org/y-fujii/memol-rs.svg?branch=master)](https://travis-ci.org/y-fujii/memol-rs/)
+[![Build Status](https://travis-ci.com/y-fujii/memol-rs.svg?branch=master)](https://travis-ci.com/y-fujii/memol-rs/)
 
 memol is a music description language which features:
 

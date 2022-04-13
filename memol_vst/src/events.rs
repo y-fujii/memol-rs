@@ -16,6 +16,8 @@ pub struct EventBuffer {
     buffer: Box<Events>,
 }
 
+unsafe impl Send for Events {}
+
 impl EventBuffer {
     pub fn new() -> Self {
         unsafe {

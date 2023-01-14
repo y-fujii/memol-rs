@@ -11,7 +11,6 @@ matrix:
               - CC=clang CXX=clang++ RUSTFLAGS="--remap-path-prefix=${HOME}= --remap-path-prefix=${PWD}=" cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
-              - strip --strip-all memol_cli memol_gui memol_vst.so
               - 7z a -mtc=off -mx=9 memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
           env: TARGET=aarch64-unknown-linux-gnu
@@ -29,7 +28,6 @@ matrix:
               - CC=clang CXX=clang++ RUSTFLAGS="--remap-path-prefix=${HOME}= --remap-path-prefix=${PWD}=" cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.so memol_vst.so
-              - aarch64-linux-gnu-strip --strip-all memol_cli memol_gui memol_vst.so
               - 7z a -mtc=off -mx=9 memol-${TARGET}.zip memol_cli memol_gui memol_vst.so
         - os: linux
           env: TARGET=x86_64-pc-windows-gnu
@@ -38,7 +36,6 @@ matrix:
               - rustup target add ${TARGET}
               - CC=clang CXX=clang++ RUSTFLAGS="--remap-path-prefix=${HOME}= --remap-path-prefix=${PWD}=" cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
-              - x86_64-w64-mingw32-strip --strip-all memol_cli.exe memol_gui.exe memol_vst.dll
               - 7z a -mtc=off -mx=9 memol-${TARGET}.zip memol_cli.exe memol_gui.exe memol_vst.dll
         - os: osx
           env: TARGET=x86_64-apple-darwin
@@ -48,7 +45,6 @@ matrix:
               - CC=clang CXX=clang++ RUSTFLAGS="--remap-path-prefix=${HOME}= --remap-path-prefix=${PWD}=" cargo build --release --target=${TARGET}
               - cd target/${TARGET}/release
               - mv libmemol_vst.dylib memol_vst.dylib
-              - strip memol_cli memol_gui
               - 7z a -mtc=off -mx=9 memol-${TARGET}.zip memol_cli memol_gui memol_vst.dylib
 
 deploy:

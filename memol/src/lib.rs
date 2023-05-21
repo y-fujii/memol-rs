@@ -38,7 +38,7 @@ pub mod parser {
                 ParseError::InvalidToken { location: i }
                 | ParseError::UnrecognizedToken { token: (i, _, _), .. }
                 | ParseError::ExtraToken { token: (i, _, _) } => misc::error(path, i, "unexpected token."),
-                ParseError::UnrecognizedEOF { .. } => misc::error(path, buf.len(), "unexpected EOF."),
+                ParseError::UnrecognizedEof { .. } => misc::error(path, buf.len(), "unexpected EOF."),
                 ParseError::User { error: err } => Err(err),
             },
         })

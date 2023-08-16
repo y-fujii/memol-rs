@@ -1,12 +1,5 @@
 use std::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Context {
-    First,
-    Tension,
-    Addition,
-}
-
 struct Stream<'a> {
     text: &'a str,
     pos: usize,
@@ -22,7 +15,7 @@ struct Notes {
     n07_candidate: isize,
     n07: Option<isize>,
     n09f: Option<isize>,
-    n09: Option<isize>,
+    n09n: Option<isize>,
     n09s: Option<isize>,
     n11: Option<isize>,
     n13: Option<isize>,
@@ -65,8 +58,8 @@ impl Notes {
             n06: None,
             n07_candidate: 10,
             n07: None,
-            n09: None,
             n09f: None,
+            n09n: None,
             n09s: None,
             n11: None,
             n13: None,
@@ -82,7 +75,7 @@ impl Notes {
         dst.push(root);
         let notes = [
             self.n02, self.n03, self.n04, self.n05, self.n06, self.n07, //
-            self.n09f, self.n09, self.n09s, self.n11, self.n13,
+            self.n09f, self.n09n, self.n09s, self.n11, self.n13,
         ];
         for n in notes.iter() {
             if let Some(n) = *n {
@@ -90,16 +83,6 @@ impl Notes {
             }
         }
         dst
-    }
-}
-
-fn parse_sign(s: &mut Stream) -> isize {
-    if s.get_token("-") || s.get_token("b") {
-        -1
-    } else if s.get_token("+") || s.get_token("#") {
-        1
-    } else {
-        0
     }
 }
 
@@ -135,6 +118,43 @@ fn parse_note(s: &mut Stream, notes: &mut Notes) -> bool {
     true
 }
 
+fn parse_tension(s: &mut Stream) -> Option<(isize, isize)> {
+    let pos = s.pos;
+
+    let sign = if s.get_token("-") || s.get_token("b") {
+        -1
+    } else if s.get_token("+") || s.get_token("#") {
+        1
+    } else {
+        0
+    };
+
+    let note = if s.get_token("13") {
+        13
+    } else if s.get_token("11") {
+        11
+    } else if s.get_token("9") {
+        9
+    } else if s.get_token("7") {
+        7
+    } else if s.get_token("6") {
+        6
+    } else if s.get_token("5") {
+        5
+    } else if s.get_token("4") {
+        4
+    } else if s.get_token("3") {
+        3
+    } else if s.get_token("2") {
+        2
+    } else {
+        s.pos = pos;
+        return None;
+    };
+
+    Some((note, sign))
+}
+
 fn parse_symbol(s: &mut Stream, notes: &mut Notes) -> bool {
     let pos = s.pos;
     if s.get_token("maj") || s.get_token("Maj") || s.get_token("M") || s.get_token("^") {
@@ -157,85 +177,101 @@ fn parse_symbol(s: &mut Stream, notes: &mut Notes) -> bool {
         notes.n03 = None;
         notes.n04 = Some(5);
     } else if s.get_token("add") {
-        if !parse_tension(s, notes, Context::Addition) {
+        let Some(tension) = parse_tension(s) else {
             s.pos = pos;
             return false;
-        }
+        };
+        add_tension_explicit(notes, tension);
+    } else if s.get_token("omit") || s.get_token("no") {
+        let Some(tension) = parse_tension(s) else {
+            s.pos = pos;
+            return false;
+        };
+        omit_tension_explicit(notes, tension);
     } else {
         return false;
     }
     true
 }
 
-fn parse_tension(s: &mut Stream, notes: &mut Notes, ctx: Context) -> bool {
-    let pos = s.pos;
-    let sign = parse_sign(s);
-    if s.get_token("13") {
-        notes.n13 = Some(9 + sign);
-        if ctx != Context::Addition {
-            notes.n05 = None;
-        }
-        if ctx == Context::First {
-            notes.n05 = None;
-            notes.n07 = Some(notes.n07_candidate);
-            notes.n09 = Some(2);
-            notes.n11 = Some(5);
-        }
-    } else if s.get_token("11") {
-        notes.n11 = Some(5 + sign);
-        if ctx != Context::Addition {
+fn omit_tension_explicit(notes: &mut Notes, (note, sign): (isize, isize)) {
+    match note {
+        13 => notes.n13 = None,
+        11 => notes.n11 = None,
+        9 => match sign {
+            -1 => notes.n09f = None,
+            0 => {
+                // XXX
+                notes.n09f = None;
+                notes.n09n = None;
+                notes.n09s = None;
+            }
+            1 => notes.n09s = None,
+            _ => unreachable!(),
+        },
+        7 => notes.n07 = None,
+        6 => notes.n06 = None,
+        5 => notes.n05 = None,
+        4 => notes.n04 = None,
+        3 => notes.n03 = None,
+        2 => notes.n02 = None,
+        _ => (),
+    }
+}
+
+fn omit_tension_implicit(notes: &mut Notes, tension: (isize, isize)) {
+    match tension {
+        (13, _) => notes.n05 = None,
+        (11, -1) => notes.n03 = None,
+        (11, 0) => notes.n03 = None,
+        (11, 1) => notes.n05 = None,
+        (5, 0) => notes.n03 = None,
+        (4, _) => notes.n03 = None,
+        (3, _) => notes.n05 = None,
+        (2, _) => notes.n03 = None,
+        _ => (),
+    }
+}
+
+fn add_tension_explicit(notes: &mut Notes, (note, sign): (isize, isize)) {
+    match note {
+        13 => notes.n13 = Some(9 + sign),
+        11 => notes.n11 = Some(5 + sign),
+        9 => {
+            notes.n09n = None; // XXX
             match sign {
-                -1 | 0 => notes.n03 = None,
-                1 => notes.n05 = None,
+                -1 => notes.n09f = Some(1),
+                0 => notes.n09n = Some(2),
+                1 => notes.n09s = Some(3),
                 _ => unreachable!(),
             }
         }
-        if ctx == Context::First {
-            notes.n07 = Some(notes.n07_candidate);
-            notes.n09 = Some(2);
-        }
-    } else if s.get_token("9") {
-        notes.n09 = None;
-        match sign {
-            -1 => notes.n09f = Some(1),
-            0 => notes.n09 = Some(2),
-            1 => notes.n09s = Some(3),
-            _ => unreachable!(),
-        }
-        if ctx == Context::First {
-            notes.n07 = Some(notes.n07_candidate);
-        }
-    } else if s.get_token("7") {
-        // XXX: sign?
-        notes.n07 = Some(notes.n07_candidate + sign);
-    } else if s.get_token("6") {
-        notes.n06 = Some(9 + sign);
-    } else if s.get_token("5") {
-        notes.n05 = Some(7 + sign);
-        // XXX: dim5, aug5.
-        if sign == 0 && ctx == Context::First {
-            notes.n03 = None;
-        }
-    } else if s.get_token("4") {
-        notes.n04 = Some(5 + sign);
-        if ctx == Context::First {
-            notes.n03 = None;
-        }
-    } else if s.get_token("3") {
-        notes.n03 = Some(4 + sign);
-        if ctx == Context::First {
-            notes.n05 = None;
-        }
-    } else if s.get_token("2") {
-        notes.n02 = Some(2 + sign);
-        if ctx == Context::First {
-            notes.n03 = None;
-        }
-    } else {
-        s.pos = pos;
-        return false;
+        7 => notes.n07 = Some(notes.n07_candidate + sign),
+        6 => notes.n06 = Some(9 + sign),
+        5 => notes.n05 = Some(7 + sign),
+        4 => notes.n04 = Some(5 + sign),
+        3 => notes.n03 = Some(4 + sign),
+        2 => notes.n02 = Some(2 + sign),
+        _ => (),
     }
-    true
+}
+
+fn add_tension_implicit(notes: &mut Notes, (note, _): (isize, isize)) {
+    match note {
+        13 => {
+            notes.n07 = Some(notes.n07_candidate);
+            notes.n09n = Some(2);
+            notes.n11 = Some(5);
+        }
+        11 => {
+            notes.n07 = Some(notes.n07_candidate);
+            notes.n09n = Some(2);
+        }
+        9 => {
+            notes.n07 = Some(notes.n07_candidate);
+        }
+        _ => (),
+    }
 }
 
 fn parse_chord(s: &mut Stream, notes: &mut Notes) -> bool {
@@ -250,24 +286,29 @@ fn parse_chord(s: &mut Stream, notes: &mut Notes) -> bool {
         notes.n05 = Some(8);
     };
 
-    let mut ctx = Context::First;
+    let mut is_first = true;
     loop {
         if parse_symbol(s, notes) {
             continue;
         }
-        if parse_tension(s, notes, ctx) {
-            ctx = Context::Tension;
+        if let Some(tension) = parse_tension(s) {
+            add_tension_explicit(notes, tension);
+            omit_tension_implicit(notes, tension);
+            if is_first {
+                add_tension_implicit(notes, tension);
+                is_first = false;
+            }
             continue;
         }
         if s.get_token("(") {
-            ctx = Context::Tension;
+            is_first = false;
             continue;
         }
 
         break;
     }
 
-    // ToDo: no, omit, alt, dim5, aug5, on-chords, fractional chords.
+    // ToDo: alt, dim5, aug5, on-chords, fractional chords.
     true
 }
 

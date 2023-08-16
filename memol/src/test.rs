@@ -180,6 +180,8 @@ fn test_chord_others() {
     assert_eq!(parse("C13sus4add9(#11)"), vec![0, 5, 10, 2, 6, 9]);
     assert_eq!(parse("Cm7b5"), vec![0, 3, 6, 10]);
     assert_eq!(parse("C7(b9, #9, b13)"), vec![0, 4, 10, 1, 3, 8]);
+    assert_eq!(parse("C7(no3)"), vec![0, 7, 10]);
+    assert_eq!(parse("C7(omit5)"), vec![0, 4, 10]);
 }
 
 #[test]

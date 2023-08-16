@@ -292,6 +292,33 @@ impl<'a> Generator<'a> {
                 let span = Span { tied: true, ..*span };
                 self.generate_score_note(n, &span, state, dst)?
             }
+            // XXX
+            ast::Note::ChordSymbol(ref text) => {
+                use crate::chord;
+                use crate::voicing;
+                let chord = chord::parse(text);
+                let chord = voicing::voice_closed_with_center(&chord, 60);
+                for n in chord.iter() {
+                    let nnum = *n as i64;
+                    // XXX
+                    let t0 = match state.prev_ties.iter().position(|e| e.0 == nnum) {
+                        Some(i) => state.prev_ties.remove(i).1,
+                        None => span.t0,
+                    };
+                    if span.tied {
+                        state.next_ties.push((nnum, t0));
+                    } else {
+                        if span.dt != Ratio::zero() {
+                            dst.push(FlatNote {
+                                t0: t0,
+                                t1: span.t0 + span.dt,
+                                nnum: Some(nnum),
+                            });
+                        }
+                    }
+                }
+                state.note = Some(note);
+            }
             _ => {
                 return misc::error(&span.path, note.bgn, "syntax error.");
             }

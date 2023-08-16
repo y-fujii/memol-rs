@@ -32,6 +32,8 @@ pub enum Note<'a> {
     Chord(Vec<(Box<Ast<Note<'a>>>, i64)>),
     Group(Vec<(Box<Ast<Note<'a>>>, i64)>),
     Tie(Box<Ast<Note<'a>>>),
+    // XXX
+    ChordSymbol(String),
 }
 
 #[derive(Debug)]

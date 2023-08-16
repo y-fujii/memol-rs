@@ -55,14 +55,3 @@ impl XoroShiro128StarStar {
         self.s1.set(s1);
     }
 }
-
-#[test]
-fn test() {
-    let rng = Generator::new();
-    assert!(rng.next_u64() == 10582614419484085930);
-    assert!(rng.next_u64() == 16147916016143995109);
-    assert!(rng.next_u64() == 5691192622506874316);
-    assert!(rng.next_u64() == 14606526736076162211);
-    rng.jump();
-    assert!(rng.next_u64() == 4275479514889395181);
-}

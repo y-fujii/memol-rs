@@ -1,11 +1,15 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 pub mod ast;
+pub mod chord;
 pub mod generator;
 pub mod midi;
 pub mod misc;
 pub mod random;
 pub mod ratio;
 pub mod smf;
+#[cfg(test)]
+pub mod test;
+pub mod voicing;
 use crate::ratio::Ratio;
 use std::*;
 

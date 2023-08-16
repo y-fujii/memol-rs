@@ -296,7 +296,7 @@ impl<'a> Generator<'a> {
             ast::Note::ChordSymbol(ref text) => {
                 use crate::chord;
                 use crate::voicing;
-                let chord = chord::parse(text);
+                let (_, chord) = chord::parse(text);
                 let chord = voicing::voice_closed_with_center(&chord, 60);
                 for n in chord.iter() {
                     let nnum = *n as i64;

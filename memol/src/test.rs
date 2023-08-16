@@ -11,9 +11,8 @@ fn test_random() {
 }
 
 #[test]
-fn test_chord() {
+fn test_chord_from_chordpro() {
     use crate::chord::parse;
-
     // <https://www.chordpro.org/chordpro/chordpro-chords/>.
     assert_eq!(parse("C2"), vec![0, 2, 7]);
     assert_eq!(parse("C3"), vec![0, 4]);
@@ -141,7 +140,11 @@ fn test_chord() {
     assert_eq!(parse("Ch7"), vec![]);
     assert_eq!(parse("Ch9"), vec![]);
     */
+}
 
+#[test]
+fn test_chord_others() {
+    use crate::chord::parse;
     assert_eq!(parse("C"), vec![0, 4, 7]);
     assert_eq!(parse("D"), vec![2, 6, 9]);
     assert_eq!(parse("Db"), vec![1, 5, 8]);

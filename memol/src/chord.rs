@@ -28,7 +28,7 @@ impl<'a> Stream<'a> {
 
     fn skip_ws(&mut self) {
         for (i, c) in self.text[self.pos..].char_indices() {
-            if !c.is_whitespace() && c != ',' && c != ')' {
+            if !c.is_whitespace() && c != ',' {
                 self.pos += i;
                 return;
             }
@@ -264,6 +264,7 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
     parse_symbol(stream, &mut tensions);
 
     let mut is_first = true;
+    let mut nest_level = 0;
     loop {
         if let Some(t) = parse_tension(stream) {
             add_tension_explicit(&mut tensions, t);
@@ -278,6 +279,11 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
         }
         if stream.get_token("(") {
             is_first = false;
+            nest_level += 1;
+            continue;
+        }
+        if nest_level > 0 && stream.get_token(")") {
+            nest_level -= 1;
             continue;
         }
 

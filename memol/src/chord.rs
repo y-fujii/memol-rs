@@ -249,20 +249,11 @@ fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
 }
 
 fn add_tension_implicit(tensions: &mut Tensions, (note, _): (isize, isize)) {
-    match note {
-        13 => {
-            tensions.n07 = Some(tensions.n07_candidate);
-            tensions.n09n = Some(2);
-            tensions.n11 = Some(5);
+    for i in [7, 9, 11] {
+        if i < note {
+            add_tension_explicit(tensions, (i, 0));
+            omit_tension_implicit(tensions, (i, 0));
         }
-        11 => {
-            tensions.n07 = Some(tensions.n07_candidate);
-            tensions.n09n = Some(2);
-        }
-        9 => {
-            tensions.n07 = Some(tensions.n07_candidate);
-        }
-        _ => (),
     }
 }
 

@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 
 pub fn voice_closed_with_center(notes: &[isize], center: isize) -> Vec<isize> {

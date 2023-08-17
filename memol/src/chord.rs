@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 
 struct Stream<'a> {
@@ -213,9 +214,8 @@ fn omit_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
 fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
         (13, _) => tensions.n05 = None,
-        (11, -1) => tensions.n03 = None,
-        (11, 0) => tensions.n03 = None,
         (11, 1) => tensions.n05 = None,
+        (11, _) => tensions.n03 = None,
         (5, 0) => tensions.n03 = None,
         (4, _) => tensions.n03 = None,
         (3, _) => tensions.n05 = None,
@@ -239,9 +239,8 @@ fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
         }
         (7, s) => tensions.n07 = Some(tensions.n07_candidate + s),
         (6, s) => tensions.n06 = Some(9 + s),
-        (5, -1) => tensions.n05 = Some(7 - 1),
         (5, 0) => (), // XXX: workaround for dim5 and aug5.
-        (5, 1) => tensions.n05 = Some(7 + 1),
+        (5, s) => tensions.n05 = Some(7 + s),
         (4, s) => tensions.n04 = Some(5 + s),
         (3, s) => tensions.n03 = Some(4 + s),
         (2, s) => tensions.n02 = Some(2 + s),

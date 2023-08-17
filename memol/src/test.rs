@@ -190,6 +190,8 @@ fn test_chord_others() {
     test_chord("C7(omit5)", &[0, 4, 10]);
     test_chord("C/D", &[2, 0, 4, 7]);
     test_chord("C/DM", &[2, 6, 9, 0, 4, 7]);
+    test_chord("Cdim5", &[0, 6]);
+    test_chord("Caug5", &[0, 8]);
 }
 
 #[test]

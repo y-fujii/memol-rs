@@ -58,10 +58,10 @@ fn test_chord_from_chordpro() {
     test_chord("C7-13sus", &[0, 5, 10, 8]);
     test_chord("C7sus", &[0, 5, 7, 10]);
     test_chord("C7susadd3", &[0, 4, 5, 7, 10]);
-    //test_chord("C7+", &[0, 4, 8, 10]);
+    test_chord("C7+", &[0, 4, 8, 10]);
     test_chord("C7alt", &[0, 4, 10, 8]);
     test_chord("C9", &[0, 4, 7, 10, 2]);
-    //test_chord("C9+", &[0, 4, 8, 10, 2]);
+    test_chord("C9+", &[0, 4, 8, 10, 2]);
     test_chord("C9#5", &[0, 4, 8, 10, 2]);
     test_chord("C9b5", &[0, 4, 6, 10, 2]);
     test_chord("C9-5", &[0, 4, 6, 10, 2]);

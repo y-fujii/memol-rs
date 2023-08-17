@@ -150,13 +150,13 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
     let pos = stream.pos;
     if stream.get_token("maj") || stream.get_token("Maj") || stream.get_token("M") || stream.get_token("^") {
         tensions.n07_candidate = 11;
-    } else if stream.get_token("m") {
+    } else if stream.get_token("m") || stream.get_token("-") {
         tensions.n03 = Some(3);
     } else if stream.get_token("dim") || stream.get_token("0") {
         tensions.n03 = Some(3);
         tensions.n05 = Some(6);
         tensions.n07_candidate = 9;
-    } else if stream.get_token("aug") {
+    } else if stream.get_token("aug") || stream.get_token("+") {
         tensions.n05 = Some(8);
     } else if stream.get_token("h") {
         tensions.n03 = Some(3);
@@ -261,23 +261,19 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
     let mut tensions = Tensions::new();
 
     // "C-9" == "Cm9" != "C(-9)", "C+9" == "Caug9" != "C(+9)".
-    if stream.get_token("-") {
-        tensions.n03 = Some(3);
-    } else if stream.get_token("+") {
-        tensions.n05 = Some(8);
-    };
+    parse_symbol(stream, &mut tensions);
 
     let mut is_first = true;
     loop {
-        if parse_symbol(stream, &mut tensions) {
-            continue;
-        }
         if let Some(t) = parse_tension(stream) {
             add_tension_explicit(&mut tensions, t);
             omit_tension_implicit(&mut tensions, t);
             if mem::replace(&mut is_first, false) {
                 add_tension_implicit(&mut tensions, t);
             }
+            continue;
+        }
+        if parse_symbol(stream, &mut tensions) {
             continue;
         }
         if stream.get_token("(") {

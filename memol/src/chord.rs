@@ -207,9 +207,6 @@ fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
         (13, _) => tensions.n05 = None,
         (11, _) => tensions.n03 = None,
-        (4, _) => tensions.n03 = None,
-        (3, _) => tensions.n05 = None,
-        (2, _) => tensions.n03 = None,
         _ => (),
     }
 }
@@ -235,17 +232,21 @@ fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
     }
 }
 
-fn add_tension_implicit(tensions: &mut Tensions, tension: (isize, isize)) {
-    if tension == (5, 0) {
-        tensions.n03 = None;
-        return;
-    }
-    for i in [7, 9, 11] {
-        if i >= tension.0 {
-            return;
+fn add_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
+    match t {
+        (5, 0) => tensions.n03 = None,
+        (4, _) => tensions.n03 = None,
+        (3, _) => tensions.n05 = None,
+        (2, _) => tensions.n03 = None,
+        (n, _) => {
+            for i in [7, 9, 11] {
+                if i >= n {
+                    break;
+                }
+                add_tension_explicit(tensions, (i, 0));
+                omit_tension_implicit(tensions, (i, 0));
+            }
         }
-        add_tension_explicit(tensions, (i, 0));
-        omit_tension_implicit(tensions, (i, 0));
     }
 }
 

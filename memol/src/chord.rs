@@ -47,9 +47,42 @@ impl Tensions {
         }
     }
 
+    fn add(&mut self, t: (usize, isize)) {
+        match (t.0 % 7, t.1) {
+            (1, -1) => {
+                self.n1[0] = true;
+                self.n1[1] = false;
+            }
+            (1, 0) => self.n1 = [false, true, false],
+            (1, 1) => {
+                self.n1[1] = false;
+                self.n1[2] = true;
+            }
+            (6, 0) => self.ns[6] = Some(self.n6_candidate),
+            (n, s) => self.ns[n] = Some(s),
+        }
+    }
+
+    fn omit(&mut self, t: (usize, isize)) {
+        match (t.0 % 7, t.1) {
+            (1, -1) => self.n1[0] = false,
+            (1, 0) => self.n1.fill(false),
+            (1, 1) => self.n1[2] = false,
+            (n, _) => self.ns[n] = None,
+        }
+    }
+
+    fn omit_by(&mut self, t: (usize, isize)) {
+        match t.0 {
+            10 => self.ns[2] = None,
+            12 => self.ns[4] = None,
+            _ => (),
+        }
+    }
+
     fn get_notes_rev(&self, dst: &mut Vec<isize>, root: isize) {
         let mixolydian = [0, 2, 4, 5, 7, 9, 10];
-        for i in (1..7).rev() {
+        for i in (2..7).rev() {
             if let Some(s) = self.ns[i] {
                 dst.push(root + mixolydian[i] + s);
             }
@@ -161,13 +194,13 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
             stream.pos = pos;
             return false;
         };
-        add_tension(tensions, t);
+        tensions.add(t);
     } else if stream.get_token("omit") || stream.get_token("no") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
             return false;
         };
-        omit_tension(tensions, t);
+        tensions.omit(t);
     } else if stream.get_token("alt") {
         tensions.n1[1] = false;
         tensions.ns[4] = None;
@@ -176,39 +209,6 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
         return false;
     }
     true
-}
-
-fn omit_tension(tensions: &mut Tensions, t: (usize, isize)) {
-    match (t.0 % 7, t.1) {
-        (1, -1) => tensions.n1[0] = false,
-        (1, 0) => tensions.n1.fill(false),
-        (1, 1) => tensions.n1[2] = false,
-        (n, _) => tensions.ns[n] = None,
-    }
-}
-
-fn omit_tension_by(tensions: &mut Tensions, t: (usize, isize)) {
-    match t.0 {
-        10 => tensions.ns[2] = None,
-        12 => tensions.ns[4] = None,
-        _ => (),
-    }
-}
-
-fn add_tension(tensions: &mut Tensions, t: (usize, isize)) {
-    match (t.0 % 7, t.1) {
-        (1, -1) => {
-            tensions.n1[0] = true;
-            tensions.n1[1] = false;
-        }
-        (1, 0) => tensions.n1 = [false, true, false],
-        (1, 1) => {
-            tensions.n1[1] = false;
-            tensions.n1[2] = true;
-        }
-        (6, 0) => tensions.ns[6] = Some(tensions.n6_candidate),
-        (n, s) => tensions.ns[n] = Some(s),
-    }
 }
 
 fn set_tension_first(tensions: &mut Tensions, t: (usize, isize)) {
@@ -220,15 +220,15 @@ fn set_tension_first(tensions: &mut Tensions, t: (usize, isize)) {
         _ => (),
     }
     if t != (2, 0) && t != (4, 0) {
-        add_tension(tensions, t);
-        omit_tension_by(tensions, t);
+        tensions.add(t);
+        tensions.omit_by(t);
     }
     for i in [6, 8, 10] {
         if i >= t.0 {
             break;
         }
-        add_tension(tensions, (i, 0));
-        omit_tension_by(tensions, (i, 0));
+        tensions.add((i, 0));
+        tensions.omit_by((i, 0));
     }
 }
 
@@ -247,8 +247,8 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
             if mem::replace(&mut is_first, false) {
                 set_tension_first(&mut tensions, t);
             } else {
-                add_tension(&mut tensions, t);
-                omit_tension_by(&mut tensions, t);
+                tensions.add(t);
+                tensions.omit_by(t);
             }
             continue;
         }

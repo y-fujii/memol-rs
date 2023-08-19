@@ -167,7 +167,7 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
             stream.pos = pos;
             return false;
         };
-        add_tension_explicit(tensions, t);
+        add_tension(tensions, t);
     } else if stream.get_token("omit") || stream.get_token("no") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
@@ -211,7 +211,7 @@ fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
     }
 }
 
-fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
+fn add_tension(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
         (13, s) | (6, s) => tensions.n13 = Some(9 + s),
         (11, s) | (4, s) => tensions.n11 = Some(5 + s),
@@ -228,29 +228,32 @@ fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
             tensions.n09n = None;
             tensions.n09s = Some(3);
         }
-        (7, s) => tensions.n07 = Some(tensions.n07_candidate + s),
-        (5, 0) => (), // XXX: workaround for dim5 and aug5.
+        (7, 0) => tensions.n07 = Some(tensions.n07_candidate),
+        (7, s) => tensions.n07 = Some(10 + s),
         (5, s) => tensions.n05 = Some(7 + s),
         (3, s) => tensions.n03 = Some(4 + s),
         _ => (),
     }
 }
 
-fn add_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
+fn set_tension_first(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
         (5, 0) => tensions.n03 = None,
         (4, _) => tensions.n03 = None,
-        (3, _) => tensions.n05 = None,
+        (3, 0) => tensions.n05 = None,
         (2, _) => tensions.n03 = None,
-        (n, _) => {
-            for i in [7, 9, 11] {
-                if i >= n {
-                    break;
-                }
-                add_tension_explicit(tensions, (i, 0));
-                omit_tension_implicit(tensions, (i, 0));
-            }
+        _ => (),
+    }
+    if t != (5, 0) && t != (3, 0) {
+        add_tension(tensions, t);
+        omit_tension_implicit(tensions, t);
+    }
+    for i in [7, 9, 11] {
+        if i >= t.0 {
+            break;
         }
+        add_tension(tensions, (i, 0));
+        omit_tension_implicit(tensions, (i, 0));
     }
 }
 
@@ -264,10 +267,11 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
     let mut nest_level = 0;
     loop {
         if let Some(t) = parse_tension(stream) {
-            add_tension_explicit(&mut tensions, t);
-            omit_tension_implicit(&mut tensions, t);
             if mem::replace(&mut is_first, false) {
-                add_tension_implicit(&mut tensions, t);
+                set_tension_first(&mut tensions, t);
+            } else {
+                add_tension(&mut tensions, t);
+                omit_tension_implicit(&mut tensions, t);
             }
             continue;
         }

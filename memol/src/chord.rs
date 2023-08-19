@@ -219,7 +219,11 @@ fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
             tensions.n09n = None;
             tensions.n09f = Some(1);
         }
-        (9, 0) | (2, 0) => tensions.n09n = Some(2),
+        (9, 0) | (2, 0) => {
+            tensions.n09f = None;
+            tensions.n09n = Some(2);
+            tensions.n09s = None;
+        }
         (9, 1) | (2, 1) => {
             tensions.n09n = None;
             tensions.n09s = Some(3);

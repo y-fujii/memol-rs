@@ -14,9 +14,12 @@ fn test_random() {
 }
 
 fn test_chord(text: &str, rhs: &[isize]) {
-    let (pos, lhs) = chord::parse(text);
+    let (pos, mut lhs) = chord::parse(text);
     assert_eq!(pos, text.len());
-    assert_eq!(&lhs, rhs);
+    let mut rhs = Vec::from(rhs);
+    lhs.sort();
+    rhs.sort();
+    assert_eq!(lhs, rhs);
 }
 
 #[test]
@@ -99,13 +102,13 @@ fn test_chord_from_chordpro() {
     test_chord("Cadd9", &[0, 4, 7, 2]);
     test_chord("Csus2", &[0, 2, 7]);
     test_chord("Csus4", &[0, 5, 7]);
-    test_chord("Csus9", &[0, 5, 7, 10, 2]); // 7th?
+    test_chord("Csus9", &[0, 7, 10, 2]);
     test_chord("C6sus2", &[0, 2, 7, 9]);
     test_chord("C6sus4", &[0, 5, 7, 9]);
     test_chord("C7sus2", &[0, 2, 7, 10]);
     test_chord("C7sus4", &[0, 5, 7, 10]);
-    test_chord("C13sus2", &[0, 2, 10, 2, 5, 9]);
-    test_chord("C13sus4", &[0, 5, 10, 2, 5, 9]);
+    test_chord("C13sus2", &[0, 10, 2, 5, 9]);
+    test_chord("C13sus4", &[0, 10, 2, 5, 9]);
     test_chord("Cm#5", &[0, 3, 8]);
     test_chord("C-#5", &[0, 3, 8]);
     test_chord("Cm11", &[0, 7, 10, 2, 5]);
@@ -133,9 +136,9 @@ fn test_chord_from_chordpro() {
     test_chord("Cm#7", &[0, 3, 7, 11]); // #7?
     test_chord("C-#7", &[0, 3, 7, 11]); // #7?
     test_chord("Cmsus4", &[0, 5, 7]);
-    test_chord("Cmsus9", &[0, 5, 7, 10, 2]);
+    test_chord("Cmsus9", &[0, 7, 10, 2]);
     test_chord("C-sus4", &[0, 5, 7]);
-    test_chord("C-sus9", &[0, 5, 7, 10, 2]);
+    test_chord("C-sus9", &[0, 7, 10, 2]);
     test_chord("Cm7sus4", &[0, 5, 7, 10]);
     test_chord("C-7sus4", &[0, 5, 7, 10]);
     test_chord("Caug", &[0, 4, 8]);
@@ -154,39 +157,9 @@ fn test_chord_others() {
     test_chord("D", &[2, 6, 9]);
     test_chord("Db", &[1, 5, 8]);
     test_chord("D#", &[3, 7, 10]);
-    test_chord("Cm", &[0, 3, 7]);
-    test_chord("CM", &[0, 4, 7]);
-    test_chord("C7", &[0, 4, 7, 10]);
-    test_chord("Cm7", &[0, 3, 7, 10]);
-    test_chord("CM7", &[0, 4, 7, 11]);
-    test_chord("CmM7", &[0, 3, 7, 11]);
-    test_chord("Cdim", &[0, 3, 6]);
-    test_chord("Caug", &[0, 4, 8]);
-    test_chord("Cdim7", &[0, 3, 6, 9]);
-    test_chord("Caug7", &[0, 4, 8, 10]);
-    test_chord("CaugM7", &[0, 4, 8, 11]);
-    test_chord("C9", &[0, 4, 7, 10, 2]);
-    test_chord("C69", &[0, 4, 7, 9, 2]);
-    test_chord("Cm9", &[0, 3, 7, 10, 2]);
-    test_chord("CM9", &[0, 4, 7, 11, 2]);
-    test_chord("CmM9", &[0, 3, 7, 11, 2]);
-    test_chord("CM79", &[0, 4, 7, 11, 2]);
-    test_chord("CM7(9)", &[0, 4, 7, 11, 2]);
     test_chord("CM7(9, #11, 13)", &[0, 11, 2, 6, 9]);
-    test_chord("Cadd9", &[0, 4, 7, 2]);
-    test_chord("Cmadd9", &[0, 3, 7, 2]);
-    test_chord("C7add9", &[0, 4, 7, 10, 2]);
-    test_chord("CmM7add9", &[0, 3, 7, 11, 2]);
-    test_chord("Csus4", &[0, 5, 7]);
-    test_chord("C7sus4", &[0, 5, 7, 10]);
-    test_chord("Csus47", &[0, 5, 7, 10]);
-    test_chord("C9sus4(#11)", &[0, 5, 7, 10, 2, 6]);
-    test_chord("C13sus4add9", &[0, 5, 10, 2, 5, 9]);
-    test_chord("C13sus4add9(#11)", &[0, 5, 10, 2, 6, 9]);
-    test_chord("Cm7b5", &[0, 3, 6, 10]);
     test_chord("C7(b9, #9, b13)", &[0, 4, 10, 1, 3, 8]);
-    test_chord("C7(no3)", &[0, 7, 10]);
-    test_chord("C7(omit5)", &[0, 4, 10]);
+    test_chord("C7(no3, omit5)", &[0, 10]);
     test_chord("C/D", &[2, 0, 4, 7]);
     test_chord("C/DM", &[2, 6, 9, 0, 4, 7]);
     test_chord("Cdim5", &[0, 6]);

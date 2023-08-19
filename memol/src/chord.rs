@@ -7,11 +7,8 @@ struct Stream<'a> {
 }
 
 struct Tensions {
-    n02: Option<isize>,
     n03: Option<isize>,
-    n04: Option<isize>,
     n05: Option<isize>,
-    n06: Option<isize>,
     n07_candidate: isize,
     n07: Option<isize>,
     n09f: Option<isize>,
@@ -50,11 +47,8 @@ impl<'a> Stream<'a> {
 impl Tensions {
     fn new() -> Self {
         Tensions {
-            n02: None,
             n03: Some(4),
-            n04: None,
             n05: Some(7),
-            n06: None,
             n07_candidate: 10,
             n07: None,
             n09f: None,
@@ -67,8 +61,7 @@ impl Tensions {
 
     fn notes_rev(&self, dst: &mut Vec<isize>, root: isize) {
         let tensions = [
-            self.n13, self.n11, self.n09s, self.n09n, self.n09f, //
-            self.n07, self.n06, self.n05, self.n04, self.n03, self.n02,
+            self.n07, self.n13, self.n05, self.n11, self.n03, self.n09s, self.n09n, self.n09f,
         ];
         for n in tensions.iter() {
             if let Some(n) = *n {
@@ -161,12 +154,14 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
     } else if stream.get_token("h") {
         tensions.n03 = Some(3);
         tensions.n05 = Some(6);
-    } else if stream.get_token("sus2") {
+    } else if stream.get_token("sus") {
+        // XXX
+        let pos = stream.pos;
+        if let None = parse_tension(stream) {
+            tensions.n11 = Some(5);
+        }
+        stream.pos = pos;
         tensions.n03 = None;
-        tensions.n02 = Some(2);
-    } else if stream.get_token("sus4") || stream.get_token("sus") {
-        tensions.n03 = None;
-        tensions.n04 = Some(5);
     } else if stream.get_token("add") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
@@ -192,21 +187,18 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
 
 fn omit_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
-        (13, _) => tensions.n13 = None,
-        (11, _) => tensions.n11 = None,
-        (9, -1) => tensions.n09f = None,
-        (9, 0) => {
+        (13, _) | (6, _) => tensions.n13 = None,
+        (11, _) | (4, _) => tensions.n11 = None,
+        (9, -1) | (2, -1) => tensions.n09f = None,
+        (9, 0) | (2, 0) => {
             tensions.n09f = None;
             tensions.n09n = None;
             tensions.n09s = None;
         }
-        (9, 1) => tensions.n09s = None,
+        (9, 1) | (2, 1) => tensions.n09s = None,
         (7, _) => tensions.n07 = None,
-        (6, _) => tensions.n06 = None,
         (5, _) => tensions.n05 = None,
-        (4, _) => tensions.n04 = None,
         (3, _) => tensions.n03 = None,
-        (2, _) => tensions.n02 = None,
         _ => (),
     }
 }
@@ -224,24 +216,21 @@ fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
 
 fn add_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
-        (13, s) => tensions.n13 = Some(9 + s),
-        (11, s) => tensions.n11 = Some(5 + s),
-        (9, -1) => {
+        (13, s) | (6, s) => tensions.n13 = Some(9 + s),
+        (11, s) | (4, s) => tensions.n11 = Some(5 + s),
+        (9, -1) | (2, -1) => {
             tensions.n09n = None;
             tensions.n09f = Some(1);
         }
-        (9, 0) => tensions.n09n = Some(2),
-        (9, 1) => {
+        (9, 0) | (2, 0) => tensions.n09n = Some(2),
+        (9, 1) | (2, 1) => {
             tensions.n09n = None;
             tensions.n09s = Some(3);
         }
         (7, s) => tensions.n07 = Some(tensions.n07_candidate + s),
-        (6, s) => tensions.n06 = Some(9 + s),
         (5, 0) => (), // XXX: workaround for dim5 and aug5.
         (5, s) => tensions.n05 = Some(7 + s),
-        (4, s) => tensions.n04 = Some(5 + s),
         (3, s) => tensions.n03 = Some(4 + s),
-        (2, s) => tensions.n02 = Some(2 + s),
         _ => (),
     }
 }

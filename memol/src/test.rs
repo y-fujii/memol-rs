@@ -165,6 +165,9 @@ fn test_chord_others() {
     test_chord("Cm3", &[0, 3]);
     test_chord("Cdim5", &[0, 6]);
     test_chord("Caug5", &[0, 8]);
+    test_chord("Cma", &[0, 4, 7]);
+    test_chord("Cmadd9", &[0, 3, 7, 2]);
+    test_chord("Cmaadd9", &[0, 4, 7, 2]);
 }
 
 #[test]

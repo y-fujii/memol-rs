@@ -168,9 +168,13 @@ fn parse_tension(stream: &mut Stream) -> Option<(usize, isize)> {
 
 fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
     let pos = stream.pos;
-    if stream.get_token("maj") || stream.get_token("Maj") || stream.get_token("M") || stream.get_token("^") {
+    if stream.get_token("madd") || stream.get_token("maug") || stream.get_token("malt") {
+        stream.pos = pos;
+        stream.get_token("m");
+        tensions.ns[2] = Some(-1);
+    } else if stream.get_token("maj") || stream.get_token("ma") || stream.get_token("M") || stream.get_token("^") {
         tensions.n6_candidate = 1;
-    } else if stream.get_token("m") || stream.get_token("-") {
+    } else if stream.get_token("min") || stream.get_token("mi") || stream.get_token("m") || stream.get_token("-") {
         tensions.ns[2] = Some(-1);
     } else if stream.get_token("dim") || stream.get_token("0") {
         tensions.ns[2] = Some(-1);

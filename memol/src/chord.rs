@@ -7,15 +7,9 @@ struct Stream<'a> {
 }
 
 struct Tensions {
-    n03: Option<isize>,
-    n05: Option<isize>,
-    n07_candidate: isize,
-    n07: Option<isize>,
-    n09f: Option<isize>,
-    n09n: Option<isize>,
-    n09s: Option<isize>,
-    n11: Option<isize>,
-    n13: Option<isize>,
+    ns: [Option<isize>; 7],
+    n1: [bool; 3],
+    n6_candidate: isize,
 }
 
 impl<'a> Stream<'a> {
@@ -47,25 +41,24 @@ impl<'a> Stream<'a> {
 impl Tensions {
     fn new() -> Self {
         Tensions {
-            n03: Some(4),
-            n05: Some(7),
-            n07_candidate: 10,
-            n07: None,
-            n09f: None,
-            n09n: None,
-            n09s: None,
-            n11: None,
-            n13: None,
+            ns: [None; 7],
+            n1: [false; 3],
+            n6_candidate: 0,
         }
     }
 
-    fn notes_rev(&self, dst: &mut Vec<isize>, root: isize) {
-        let tensions = [
-            self.n07, self.n13, self.n05, self.n11, self.n03, self.n09s, self.n09n, self.n09f,
-        ];
-        for n in tensions.iter() {
-            if let Some(n) = *n {
-                dst.push(root + n);
+    fn get_notes_rev(&self, dst: &mut Vec<isize>, root: isize) {
+        let mixolydian = [0, 2, 4, 5, 7, 9, 10];
+        for i in (1..7).rev() {
+            if let Some(s) = self.ns[i] {
+                dst.push(root + mixolydian[i] + s);
+            }
+        }
+
+        let offsets = [1, 2, 3];
+        for i in (0..3).rev() {
+            if self.n1[i] {
+                dst.push(root + offsets[i]);
             }
         }
     }
@@ -102,7 +95,7 @@ fn parse_note(stream: &mut Stream) -> Option<isize> {
     Some(note + sign)
 }
 
-fn parse_tension(stream: &mut Stream) -> Option<(isize, isize)> {
+fn parse_tension(stream: &mut Stream) -> Option<(usize, isize)> {
     let pos = stream.pos;
 
     let sign = if stream.get_token("-") || stream.get_token("b") {
@@ -143,26 +136,26 @@ fn parse_tension(stream: &mut Stream) -> Option<(isize, isize)> {
 fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
     let pos = stream.pos;
     if stream.get_token("maj") || stream.get_token("Maj") || stream.get_token("M") || stream.get_token("^") {
-        tensions.n07_candidate = 11;
+        tensions.n6_candidate = 1;
     } else if stream.get_token("m") || stream.get_token("-") {
-        tensions.n03 = Some(3);
+        tensions.ns[2] = Some(-1);
     } else if stream.get_token("dim") || stream.get_token("0") {
-        tensions.n03 = Some(3);
-        tensions.n05 = Some(6);
-        tensions.n07_candidate = 9;
+        tensions.ns[2] = Some(-1);
+        tensions.ns[4] = Some(-1);
+        tensions.n6_candidate = -1;
     } else if stream.get_token("aug") || stream.get_token("+") {
-        tensions.n05 = Some(8);
+        tensions.ns[4] = Some(1);
     } else if stream.get_token("h") {
-        tensions.n03 = Some(3);
-        tensions.n05 = Some(6);
+        tensions.ns[2] = Some(-1);
+        tensions.ns[4] = Some(-1);
     } else if stream.get_token("sus") {
         // XXX
         let pos = stream.pos;
         if let None = parse_tension(stream) {
-            tensions.n11 = Some(5);
+            tensions.ns[3] = Some(0);
         }
         stream.pos = pos;
-        tensions.n03 = None;
+        tensions.ns[2] = None;
     } else if stream.get_token("add") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
@@ -174,92 +167,75 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
             stream.pos = pos;
             return false;
         };
-        omit_tension_explicit(tensions, t);
+        omit_tension(tensions, t);
     } else if stream.get_token("alt") {
-        // XXX
-        tensions.n05 = None;
-        tensions.n09n = None;
-        tensions.n13 = Some(8);
+        tensions.n1[1] = false;
+        tensions.ns[4] = None;
+        tensions.ns[5] = Some(-1);
     } else {
         return false;
     }
     true
 }
 
-fn omit_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
+fn omit_tension(tensions: &mut Tensions, t: (usize, isize)) {
     match (t.0 % 7, t.1) {
-        (1, -1) => tensions.n09f = None,
-        (1, 0) => {
-            tensions.n09f = None;
-            tensions.n09n = None;
-            tensions.n09s = None;
-        }
-        (1, 1) => tensions.n09s = None,
-        (2, _) => tensions.n03 = None,
-        (3, _) => tensions.n11 = None,
-        (4, _) => tensions.n05 = None,
-        (5, _) => tensions.n13 = None,
-        (6, _) => tensions.n07 = None,
+        (1, -1) => tensions.n1[0] = false,
+        (1, 0) => tensions.n1.fill(false),
+        (1, 1) => tensions.n1[2] = false,
+        (n, _) => tensions.ns[n] = None,
+    }
+}
+
+fn omit_tension_by(tensions: &mut Tensions, t: (usize, isize)) {
+    match t.0 {
+        10 => tensions.ns[2] = None,
+        12 => tensions.ns[4] = None,
         _ => (),
     }
 }
 
-fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
-    match t {
-        (10, _) => tensions.n03 = None,
-        (12, _) => tensions.n05 = None,
-        _ => (),
-    }
-}
-
-fn add_tension(tensions: &mut Tensions, t: (isize, isize)) {
+fn add_tension(tensions: &mut Tensions, t: (usize, isize)) {
     match (t.0 % 7, t.1) {
         (1, -1) => {
-            tensions.n09n = None;
-            tensions.n09f = Some(1);
+            tensions.n1[0] = true;
+            tensions.n1[1] = false;
         }
-        (1, 0) => {
-            tensions.n09f = None;
-            tensions.n09n = Some(2);
-            tensions.n09s = None;
-        }
+        (1, 0) => tensions.n1 = [false, true, false],
         (1, 1) => {
-            tensions.n09n = None;
-            tensions.n09s = Some(3);
+            tensions.n1[1] = false;
+            tensions.n1[2] = true;
         }
-        (2, s) => tensions.n03 = Some(4 + s),
-        (3, s) => tensions.n11 = Some(5 + s),
-        (4, s) => tensions.n05 = Some(7 + s),
-        (5, s) => tensions.n13 = Some(9 + s),
-        (6, 0) => tensions.n07 = Some(tensions.n07_candidate),
-        (6, s) => tensions.n07 = Some(10 + s),
-        _ => (),
+        (6, 0) => tensions.ns[6] = Some(tensions.n6_candidate),
+        (n, s) => tensions.ns[n] = Some(s),
     }
 }
 
-fn set_tension_first(tensions: &mut Tensions, t: (isize, isize)) {
+fn set_tension_first(tensions: &mut Tensions, t: (usize, isize)) {
     match t {
-        (1, _) => tensions.n03 = None,
-        (2, 0) => tensions.n05 = None,
-        (3, _) => tensions.n03 = None,
-        (4, 0) => tensions.n03 = None,
+        (1, _) => tensions.ns[2] = None,
+        (2, 0) => tensions.ns[4] = None,
+        (3, _) => tensions.ns[2] = None,
+        (4, 0) => tensions.ns[2] = None,
         _ => (),
     }
     if t != (2, 0) && t != (4, 0) {
         add_tension(tensions, t);
-        omit_tension_implicit(tensions, t);
+        omit_tension_by(tensions, t);
     }
     for i in [6, 8, 10] {
         if i >= t.0 {
             break;
         }
         add_tension(tensions, (i, 0));
-        omit_tension_implicit(tensions, (i, 0));
+        omit_tension_by(tensions, (i, 0));
     }
 }
 
 fn parse_elements(stream: &mut Stream) -> Tensions {
     let mut tensions = Tensions::new();
+    tensions.ns[2] = Some(0);
+    tensions.ns[4] = Some(0);
 
     // "C-9" == "Cm9" != "C(-9)", "C+9" == "Caug9" != "C(+9)".
     parse_symbol(stream, &mut tensions);
@@ -272,7 +248,7 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
                 set_tension_first(&mut tensions, t);
             } else {
                 add_tension(&mut tensions, t);
-                omit_tension_implicit(&mut tensions, t);
+                omit_tension_by(&mut tensions, t);
             }
             continue;
         }
@@ -303,7 +279,7 @@ pub fn parse(text: &str) -> (usize, Vec<isize>) {
         return (stream.pos, Vec::new());
     };
     let t = parse_elements(&mut stream);
-    t.notes_rev(&mut notes, root);
+    t.get_notes_rev(&mut notes, root);
     notes.push(root);
 
     loop {
@@ -319,7 +295,7 @@ pub fn parse(text: &str) -> (usize, Vec<isize>) {
         let t = parse_elements(&mut stream);
         if stream.pos > pos {
             // polychord.
-            t.notes_rev(&mut notes, root);
+            t.get_notes_rev(&mut notes, root);
         }
         notes.push(root);
     }

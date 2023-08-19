@@ -90,7 +90,7 @@ fn parse_note(stream: &mut Stream) -> Option<isize> {
         return None;
     };
 
-    // "C+" == "Caug" != "C#", "C-" == "Cdim" != "Cb".
+    // "C+" == "Caug" != "C#", "C-" == "Cm" != "Cb".
     let sign = if stream.get_token("b") {
         -1
     } else if stream.get_token("#") {
@@ -113,24 +113,25 @@ fn parse_tension(stream: &mut Stream) -> Option<(isize, isize)> {
         0
     };
 
+    // returns zero-based index.
     let note = if stream.get_token("13") {
-        13
+        12
     } else if stream.get_token("11") {
-        11
+        10
     } else if stream.get_token("9") {
-        9
+        8
     } else if stream.get_token("7") {
-        7
-    } else if stream.get_token("6") {
         6
-    } else if stream.get_token("5") {
+    } else if stream.get_token("6") {
         5
-    } else if stream.get_token("4") {
+    } else if stream.get_token("5") {
         4
-    } else if stream.get_token("3") {
+    } else if stream.get_token("4") {
         3
-    } else if stream.get_token("2") {
+    } else if stream.get_token("3") {
         2
+    } else if stream.get_token("2") {
+        1
     } else {
         stream.pos = pos;
         return None;
@@ -186,69 +187,69 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
 }
 
 fn omit_tension_explicit(tensions: &mut Tensions, t: (isize, isize)) {
-    match t {
-        (13, _) | (6, _) => tensions.n13 = None,
-        (11, _) | (4, _) => tensions.n11 = None,
-        (9, -1) | (2, -1) => tensions.n09f = None,
-        (9, 0) | (2, 0) => {
+    match (t.0 % 7, t.1) {
+        (1, -1) => tensions.n09f = None,
+        (1, 0) => {
             tensions.n09f = None;
             tensions.n09n = None;
             tensions.n09s = None;
         }
-        (9, 1) | (2, 1) => tensions.n09s = None,
-        (7, _) => tensions.n07 = None,
-        (5, _) => tensions.n05 = None,
-        (3, _) => tensions.n03 = None,
+        (1, 1) => tensions.n09s = None,
+        (2, _) => tensions.n03 = None,
+        (3, _) => tensions.n11 = None,
+        (4, _) => tensions.n05 = None,
+        (5, _) => tensions.n13 = None,
+        (6, _) => tensions.n07 = None,
         _ => (),
     }
 }
 
 fn omit_tension_implicit(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
-        (13, _) => tensions.n05 = None,
-        (11, _) => tensions.n03 = None,
+        (10, _) => tensions.n03 = None,
+        (12, _) => tensions.n05 = None,
         _ => (),
     }
 }
 
 fn add_tension(tensions: &mut Tensions, t: (isize, isize)) {
-    match t {
-        (13, s) | (6, s) => tensions.n13 = Some(9 + s),
-        (11, s) | (4, s) => tensions.n11 = Some(5 + s),
-        (9, -1) | (2, -1) => {
+    match (t.0 % 7, t.1) {
+        (1, -1) => {
             tensions.n09n = None;
             tensions.n09f = Some(1);
         }
-        (9, 0) | (2, 0) => {
+        (1, 0) => {
             tensions.n09f = None;
             tensions.n09n = Some(2);
             tensions.n09s = None;
         }
-        (9, 1) | (2, 1) => {
+        (1, 1) => {
             tensions.n09n = None;
             tensions.n09s = Some(3);
         }
-        (7, 0) => tensions.n07 = Some(tensions.n07_candidate),
-        (7, s) => tensions.n07 = Some(10 + s),
-        (5, s) => tensions.n05 = Some(7 + s),
-        (3, s) => tensions.n03 = Some(4 + s),
+        (2, s) => tensions.n03 = Some(4 + s),
+        (3, s) => tensions.n11 = Some(5 + s),
+        (4, s) => tensions.n05 = Some(7 + s),
+        (5, s) => tensions.n13 = Some(9 + s),
+        (6, 0) => tensions.n07 = Some(tensions.n07_candidate),
+        (6, s) => tensions.n07 = Some(10 + s),
         _ => (),
     }
 }
 
 fn set_tension_first(tensions: &mut Tensions, t: (isize, isize)) {
     match t {
-        (5, 0) => tensions.n03 = None,
-        (4, _) => tensions.n03 = None,
-        (3, 0) => tensions.n05 = None,
-        (2, _) => tensions.n03 = None,
+        (1, _) => tensions.n03 = None,
+        (2, 0) => tensions.n05 = None,
+        (3, _) => tensions.n03 = None,
+        (4, 0) => tensions.n03 = None,
         _ => (),
     }
-    if t != (5, 0) && t != (3, 0) {
+    if t != (2, 0) && t != (4, 0) {
         add_tension(tensions, t);
         omit_tension_implicit(tensions, t);
     }
-    for i in [7, 9, 11] {
+    for i in [6, 8, 10] {
         if i >= t.0 {
             break;
         }

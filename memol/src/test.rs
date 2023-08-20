@@ -151,6 +151,89 @@ fn test_chord_from_chordpro() {
     test_chord("Ch9", &[0, 3, 6, 10, 2]);
 }
 
+//#[test]
+fn test_chord_from_wikibooks() {
+    // <https://en.wikibooks.org/wiki/Music_Theory/Complete_List_of_Chord_Patterns>.
+    //test_chord("Cmajor", &[]);
+    test_chord("C", &[]);
+    test_chord("CM", &[]);
+    test_chord("Cmaj7", &[]);
+    //test_chord("CΔ7", &[]);
+    test_chord("Cma7", &[]);
+    test_chord("CM7", &[]);
+    //test_chord("CΔ", &[]);
+    test_chord("Cmaj9", &[]);
+    test_chord("Cmaj13", &[]);
+    test_chord("C6", &[]);
+    test_chord("Cadd6", &[]);
+    test_chord("Cadd13", &[]);
+    //test_chord("C6/9", &[]);
+    test_chord("C69", &[]);
+    test_chord("Cmaj#4", &[]);
+    //test_chord("CΔ#4", &[]);
+    //test_chord("CΔ#11", &[]);
+    test_chord("Cmaj7b6", &[]);
+    test_chord("Cma7b6", &[]);
+    test_chord("CM7b6", &[]);
+    test_chord("C7", &[]);
+    //test_chord("Cdom", &[]);
+    test_chord("C9", &[]);
+    test_chord("C13", &[]);
+    test_chord("C7#11", &[]);
+    test_chord("C7#4", &[]);
+    test_chord("C7b9", &[]);
+    test_chord("C7#9", &[]);
+    test_chord("Calt7", &[]);
+    test_chord("Csus4", &[]);
+    test_chord("Csus2", &[]);
+    test_chord("C7sus4", &[]);
+    test_chord("C11", &[]);
+    test_chord("Csus", &[]);
+    test_chord("Bb/C", &[]);
+    test_chord("Cb9sus", &[]);
+    //test_chord("Cphryg", &[]);
+    test_chord("Cmin", &[]);
+    test_chord("Cm", &[]);
+    test_chord("C-", &[]);
+    //mi7, min7, m7, -7
+    //m/ma7, m/maj7, mM7, m/M7, -Δ7, mΔ
+    //m6
+    //m9
+    //m11
+    //m13
+    //dim, °
+    //dim7, °, °7
+    //m7♭5, ø
+    //5, (no 3rd)
+    //aug, +
+    //+7, aug7 or 7♯5
+    //augM7, +M7, M7♯5, M7(♯5), M7/♯5, M7+5, maj+7, etc.
+    //maj7♯11, Δ♯11, Δ♯4
+    //7♯9
+    //♭9sus
+    //7alt
+    //D|Cmaj7
+    //Cmaj13(♯11)
+    //D|C7
+    //C13(♯11)
+    //A|C7
+    //C13(♭9)
+    //F♯7|C(bass)
+    //C7♭9♭5
+    //Ab|C7
+    //C7alt = C7(#5,#9)
+    //Bb|Cdim
+    //Cø11
+    //Gm|C
+    //C9
+    //G|C
+    //Cmaj9
+    //Gm|Cm
+    //Cm9
+    //G|Cm
+    //Cm,maj9
+}
+
 #[test]
 fn test_chord_others() {
     test_chord("C", &[0, 4, 7]);

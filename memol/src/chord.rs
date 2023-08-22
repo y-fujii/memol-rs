@@ -7,9 +7,9 @@ struct Stream<'a> {
 }
 
 struct Tensions {
-    ns: [Option<isize>; 7],
-    n1: [bool; 3],
-    n6_candidate: isize,
+    acc: [isize; 7],
+    use_: [bool; 7],
+    alt9: [bool; 2],
 }
 
 impl<'a> Stream<'a> {
@@ -41,57 +41,44 @@ impl<'a> Stream<'a> {
 impl Tensions {
     fn new() -> Self {
         Tensions {
-            ns: [None; 7],
-            n1: [false; 3],
-            n6_candidate: 0,
+            acc: [0; 7],
+            use_: [false; 7],
+            alt9: [false; 2],
         }
     }
 
-    fn add(&mut self, t: (usize, isize)) {
-        match (t.0 % 7, t.1) {
-            (1, -1) => {
-                self.n1[0] = true;
-                self.n1[1] = false;
-            }
-            (1, 0) => self.n1 = [false, true, false],
-            (1, 1) => {
-                self.n1[1] = false;
-                self.n1[2] = true;
-            }
-            (6, 0) => self.ns[6] = Some(self.n6_candidate),
-            (n, s) => self.ns[n] = Some(s),
+    fn set_acc(&mut self, (n, acc): (usize, isize)) {
+        // XXX
+        if n >= 7 || acc != 0 {
+            self.acc[n % 7] = acc;
         }
     }
 
-    fn omit(&mut self, t: (usize, isize)) {
-        match (t.0 % 7, t.1) {
-            (1, -1) => self.n1[0] = false,
-            (1, 0) => self.n1.fill(false),
-            (1, 1) => self.n1[2] = false,
-            (n, _) => self.ns[n] = None,
+    fn set_use(&mut self, (n, acc): (usize, isize), use_: bool) {
+        self.use_[n % 7] = use_;
+        if n % 7 == 1 && acc != 0 {
+            self.alt9[((1 + acc) / 2) as usize] = use_;
         }
     }
 
-    fn omit_by(&mut self, t: (usize, isize)) {
-        match t.0 {
-            10 => self.ns[2] = None,
-            12 => self.ns[4] = None,
-            _ => (),
+    fn omit_by(&mut self, (n, _): (usize, isize)) {
+        if n >= 7 {
+            self.use_[n - 8] = false;
         }
     }
 
     fn get_notes_rev(&self, dst: &mut Vec<isize>, root: isize) {
         let mixolydian = [0, 2, 4, 5, 7, 9, 10];
-        for i in (2..7).rev() {
-            if let Some(s) = self.ns[i] {
-                dst.push(root + mixolydian[i] + s);
-            }
-        }
-
-        let offsets = [1, 2, 3];
-        for i in (0..3).rev() {
-            if self.n1[i] {
-                dst.push(root + offsets[i]);
+        for i in (0..7).rev() {
+            if i == 1 && self.acc[1] != 0 {
+                if self.alt9[1] {
+                    dst.push(root + 3);
+                }
+                if self.alt9[0] {
+                    dst.push(root + 1);
+                }
+            } else if self.use_[i] {
+                dst.push(root + mixolydian[i] + self.acc[i]);
             }
         }
     }
@@ -171,44 +158,45 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
     if stream.get_token("madd") || stream.get_token("maug") || stream.get_token("malt") {
         stream.pos = pos;
         stream.get_token("m");
-        tensions.ns[2] = Some(-1);
+        tensions.acc[2] = -1;
     } else if stream.get_token("maj") || stream.get_token("ma") || stream.get_token("M") || stream.get_token("^") {
-        tensions.n6_candidate = 1;
+        tensions.acc[6] = 1;
     } else if stream.get_token("min") || stream.get_token("mi") || stream.get_token("m") || stream.get_token("-") {
-        tensions.ns[2] = Some(-1);
+        tensions.acc[2] = -1;
     } else if stream.get_token("dim") || stream.get_token("0") {
-        tensions.ns[2] = Some(-1);
-        tensions.ns[4] = Some(-1);
-        tensions.n6_candidate = -1;
+        tensions.acc[2] = -1;
+        tensions.acc[4] = -1;
+        tensions.acc[6] = -1;
     } else if stream.get_token("aug") || stream.get_token("+") {
-        tensions.ns[4] = Some(1);
+        tensions.acc[2] = 0;
+        tensions.acc[4] = 1;
     } else if stream.get_token("h") {
-        tensions.ns[2] = Some(-1);
-        tensions.ns[4] = Some(-1);
+        tensions.acc[2] = -1;
+        tensions.acc[4] = -1;
     } else if stream.get_token("sus") {
         // XXX
         let pos = stream.pos;
         if let None = parse_tension(stream) {
-            tensions.ns[3] = Some(0);
+            tensions.use_[3] = true;
         }
         stream.pos = pos;
-        tensions.ns[2] = None;
+        tensions.use_[2] = false;
     } else if stream.get_token("add") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
             return false;
         };
-        tensions.add(t);
+        tensions.set_acc(t);
+        tensions.set_use(t, true);
     } else if stream.get_token("omit") || stream.get_token("no") {
         let Some(t) = parse_tension(stream) else {
             stream.pos = pos;
             return false;
         };
-        tensions.omit(t);
+        tensions.set_use(t, false);
     } else if stream.get_token("alt") {
-        tensions.n1[1] = false;
-        tensions.ns[4] = None;
-        tensions.ns[5] = Some(-1);
+        // XXX
+        tensions.acc = [0, 1, 0, 1, 1, -1, 0];
     } else {
         return false;
     }
@@ -217,29 +205,26 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
 
 fn set_tension_first(tensions: &mut Tensions, t: (usize, isize)) {
     match t {
-        (1, _) => tensions.ns[2] = None,
-        (2, 0) => tensions.ns[4] = None,
-        (3, _) => tensions.ns[2] = None,
-        (4, 0) => tensions.ns[2] = None,
+        (1, _) => tensions.use_[2] = false,
+        (2, 0) => tensions.use_[4] = false,
+        (3, _) => tensions.use_[2] = false,
+        (4, 0) => tensions.use_[2] = false,
         _ => (),
-    }
-    if t != (2, 0) && t != (4, 0) {
-        tensions.add(t);
-        tensions.omit_by(t);
     }
     for i in [6, 8, 10] {
         if i >= t.0 {
             break;
         }
-        tensions.add((i, 0));
+        tensions.set_use((i, 0), true);
         tensions.omit_by((i, 0));
     }
 }
 
 fn parse_elements(stream: &mut Stream) -> Tensions {
     let mut tensions = Tensions::new();
-    tensions.ns[2] = Some(0);
-    tensions.ns[4] = Some(0);
+    //tensions.use_[0] = true;
+    tensions.use_[2] = true;
+    tensions.use_[4] = true;
 
     // "C-9" == "Cm9" != "C(-9)", "C+9" == "Caug9" != "C(+9)".
     parse_symbol(stream, &mut tensions);
@@ -250,10 +235,10 @@ fn parse_elements(stream: &mut Stream) -> Tensions {
         if let Some(t) = parse_tension(stream) {
             if mem::replace(&mut is_first, false) {
                 set_tension_first(&mut tensions, t);
-            } else {
-                tensions.add(t);
-                tensions.omit_by(t);
             }
+            tensions.set_acc(t);
+            tensions.set_use(t, true);
+            tensions.omit_by(t);
             continue;
         }
         if parse_symbol(stream, &mut tensions) {

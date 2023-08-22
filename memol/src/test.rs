@@ -151,51 +151,54 @@ fn test_chord_from_chordpro() {
     test_chord("Ch9", &[0, 3, 6, 10, 2]);
 }
 
-//#[test]
+#[test]
 fn test_chord_from_wikibooks() {
     // <https://en.wikibooks.org/wiki/Music_Theory/Complete_List_of_Chord_Patterns>.
-    //test_chord("Cmajor", &[]);
-    test_chord("C", &[]);
-    test_chord("CM", &[]);
-    test_chord("Cmaj7", &[]);
-    //test_chord("CΔ7", &[]);
-    test_chord("Cma7", &[]);
-    test_chord("CM7", &[]);
+    //test_chord("Cmajor", &[0, 4, 7]);
+    test_chord("C", &[0, 4, 7]);
+    test_chord("CM", &[0, 4, 7]);
+    test_chord("Cmaj7", &[0, 4, 7, 11]);
+    //test_chord("CΔ7", &[0, 4, 7, 11]);
+    test_chord("Cma7", &[0, 4, 7, 11]);
+    test_chord("CM7", &[0, 4, 7, 11]);
     //test_chord("CΔ", &[]);
-    test_chord("Cmaj9", &[]);
-    test_chord("Cmaj13", &[]);
-    test_chord("C6", &[]);
-    test_chord("Cadd6", &[]);
-    test_chord("Cadd13", &[]);
-    //test_chord("C6/9", &[]);
-    test_chord("C69", &[]);
-    test_chord("Cmaj#4", &[]);
+    test_chord("Cmaj9", &[0, 2, 4, 7, 11]);
+    test_chord("Cmaj13", &[0, 2, 5, 9, 11]);
+    test_chord("C6", &[0, 4, 7, 9]);
+    test_chord("Cadd6", &[0, 4, 7, 9]);
+    test_chord("Cadd13", &[0, 4, 7, 9]);
+    //test_chord("C6/9", &[0, 2, 4, 7, 9]);
+    test_chord("C69", &[0, 2, 4, 7, 9]);
+    test_chord("Cmaj#4", &[0, 6, 7]);
     //test_chord("CΔ#4", &[]);
     //test_chord("CΔ#11", &[]);
-    test_chord("Cmaj7b6", &[]);
-    test_chord("Cma7b6", &[]);
-    test_chord("CM7b6", &[]);
-    test_chord("C7", &[]);
+    test_chord("Cmaj7b6", &[0, 4, 7, 8, 11]);
+    test_chord("Cma7b6", &[0, 4, 7, 8, 11]);
+    test_chord("CM7b6", &[0, 4, 7, 8, 11]);
+    test_chord("C7", &[0, 4, 7, 10]);
     //test_chord("Cdom", &[]);
-    test_chord("C9", &[]);
-    test_chord("C13", &[]);
-    test_chord("C7#11", &[]);
-    test_chord("C7#4", &[]);
-    test_chord("C7b9", &[]);
-    test_chord("C7#9", &[]);
-    test_chord("Calt7", &[]);
-    test_chord("Csus4", &[]);
-    test_chord("Csus2", &[]);
-    test_chord("C7sus4", &[]);
-    test_chord("C11", &[]);
-    test_chord("Csus", &[]);
-    test_chord("Bb/C", &[]);
-    test_chord("Cb9sus", &[]);
+    test_chord("C9", &[0, 2, 4, 7, 10]);
+    test_chord("C13", &[0, 2, 5, 9, 10]);
+    test_chord("C7#11", &[0, 6, 7, 10]);
+    test_chord("C7#4", &[0, 4, 6, 7, 10]); // omission?
+    test_chord("C7b9", &[0, 1, 4, 7, 10]);
+    test_chord("C7#9", &[0, 3, 4, 7, 10]);
+    test_chord("Calt7", &[0, 4, 8, 10]);
+    test_chord("Csus4", &[0, 5, 7]);
+    test_chord("Csus2", &[0, 2, 7]);
+    test_chord("C7sus4", &[0, 5, 7, 10]);
+    test_chord("C11", &[0, 2, 5, 7, 10]);
+    test_chord("Csus", &[0, 5, 7]);
+    test_chord("Bb/C", &[0, 10, 14, 17]);
+    //test_chord("Cb9sus", &[]);
     //test_chord("Cphryg", &[]);
-    test_chord("Cmin", &[]);
-    test_chord("Cm", &[]);
-    test_chord("C-", &[]);
-    //mi7, min7, m7, -7
+    test_chord("Cmin", &[0, 3, 7]);
+    test_chord("Cm", &[0, 3, 7]);
+    test_chord("C-", &[0, 3, 7]);
+    test_chord("Cmi7", &[0, 3, 7, 10]);
+    test_chord("Cmin7", &[0, 3, 7, 10]);
+    test_chord("Cm7", &[0, 3, 7, 10]);
+    test_chord("C-7", &[0, 3, 7, 10]);
     //m/ma7, m/maj7, mM7, m/M7, -Δ7, mΔ
     //m6
     //m9
@@ -251,6 +254,10 @@ fn test_chord_others() {
     test_chord("Cma", &[0, 4, 7]);
     test_chord("Cmadd9", &[0, 3, 7, 2]);
     test_chord("Cmaadd9", &[0, 4, 7, 2]);
+    test_chord("Cdim7", &[0, 3, 6, 9]);
+    test_chord("C7dim", &[0, 3, 6, 9]);
+    test_chord("Calt7", &[0, 4, 8, 10]);
+    test_chord("C7alt", &[0, 4, 8, 10]);
 }
 
 #[test]

@@ -168,7 +168,6 @@ fn parse_symbol(stream: &mut Stream, tensions: &mut Tensions) -> bool {
         tensions.acc[4] = -1;
         tensions.acc[6] = -1;
     } else if stream.get_token("aug") || stream.get_token("+") {
-        tensions.acc[2] = 0;
         tensions.acc[4] = 1;
     } else if stream.get_token("h") {
         tensions.acc[2] = -1;

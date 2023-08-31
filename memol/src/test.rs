@@ -190,7 +190,7 @@ fn test_chord_from_wikibooks() {
     test_chord("C11", &[0, 2, 5, 7, 10]);
     test_chord("Csus", &[0, 5, 7]);
     test_chord("Bb/C", &[0, 10, 14, 17]);
-    //test_chord("Cb9sus", &[]);
+    //test_chord("Cb9sus", &[]); // ???
     //test_chord("Cphryg", &[]);
     test_chord("Cmin", &[0, 3, 7]);
     test_chord("Cm", &[0, 3, 7]);
@@ -199,42 +199,62 @@ fn test_chord_from_wikibooks() {
     test_chord("Cmin7", &[0, 3, 7, 10]);
     test_chord("Cm7", &[0, 3, 7, 10]);
     test_chord("C-7", &[0, 3, 7, 10]);
-    //m/ma7, m/maj7, mM7, m/M7, -Δ7, mΔ
-    //m6
-    //m9
-    //m11
-    //m13
-    //dim, °
-    //dim7, °, °7
-    //m7♭5, ø
-    //5, (no 3rd)
-    //aug, +
-    //+7, aug7 or 7♯5
-    //augM7, +M7, M7♯5, M7(♯5), M7/♯5, M7+5, maj+7, etc.
-    //maj7♯11, Δ♯11, Δ♯4
-    //7♯9
-    //♭9sus
-    //7alt
+    //m/ma7
+    //m/maj7
+    test_chord("CmM7", &[0, 3, 7, 11]);
+    //m/M7
+    //-Δ7
+    //mΔ
+    test_chord("Cm6", &[0, 3, 7, 9]);
+    test_chord("Cm9", &[0, 2, 3, 7, 10]);
+    test_chord("Cm11", &[0, 2, 5, 7, 10]);
+    test_chord("Cm13", &[0, 2, 5, 9, 10]);
+    test_chord("Cdim", &[0, 3, 6]);
+    //°
+    test_chord("Cdim7", &[0, 3, 6, 9]);
+    //°7
+    //m7♭5
+    //ø
+    test_chord("C5", &[0, 7]);
+    //test_chord("C(no 3rd)", &[0, 7]);
+    test_chord("Caug", &[0, 4, 8]);
+    test_chord("C+", &[0, 4, 8]);
+    test_chord("C+7", &[0, 4, 8, 10]);
+    test_chord("Caug7", &[0, 4, 8, 10]);
+    test_chord("C7#5", &[0, 4, 8, 10]);
+    test_chord("CaugM7", &[0, 4, 8, 11]);
+    test_chord("C+M7", &[0, 4, 8, 11]);
+    test_chord("CM7#5", &[0, 4, 8, 11]);
+    test_chord("CM7(#5)", &[0, 4, 8, 11]);
+    //test_chord("CM7/#5", &[0, 4, 8, 11]);
+    test_chord("CM7+5", &[0, 4, 8, 11]);
+    //test_chord("Cmaj+7", &[]); // ???
+    test_chord("Cmaj7#11", &[0, 6, 7, 11]);
+    //Δ♯11
+    //Δ♯4
+    test_chord("C7#9", &[0, 3, 4, 7, 10]);
+    //test_chord("Cb9sus", &[]); // ???
+    test_chord("C7alt", &[0, 4, 8, 10]);
     //D|Cmaj7
-    //Cmaj13(♯11)
+    test_chord("Cmaj13(#11)", &[0, 2, 6, 9, 11]);
     //D|C7
     //C13(♯11)
     //A|C7
     //C13(♭9)
     //F♯7|C(bass)
-    //C7♭9♭5
+    test_chord("C7b9b5", &[0, 1, 4, 6, 10]);
     //Ab|C7
-    //C7alt = C7(#5,#9)
+    test_chord("C7(#5,#9)", &[0, 3, 4, 8, 10]);
     //Bb|Cdim
     //Cø11
     //Gm|C
-    //C9
+    test_chord("C9", &[0, 2, 4, 7, 10]);
     //G|C
-    //Cmaj9
+    test_chord("Cmaj9", &[0, 2, 4, 7, 11]);
     //Gm|Cm
-    //Cm9
+    test_chord("Cm9", &[0, 2, 3, 7, 10]);
     //G|Cm
-    //Cm,maj9
+    test_chord("Cm,maj9", &[0, 2, 3, 7, 11]);
 }
 
 #[test]

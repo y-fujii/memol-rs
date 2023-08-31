@@ -51,6 +51,7 @@ jobs:
             mingw-w64-ucrt-x86_64-rust
             mingw-w64-ucrt-x86_64-7zip
             mingw-w64-ucrt-x86_64-github-cli
+            git
 
       - run: CC=clang CXX=clang++ cargo test
       - run: CC=clang CXX=clang++ cargo build --release

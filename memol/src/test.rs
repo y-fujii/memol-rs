@@ -213,7 +213,7 @@ fn test_chord_from_wikibooks() {
     //°
     test_chord("Cdim7", &[0, 3, 6, 9]);
     //°7
-    //m7♭5
+    test_chord("Cm7b5", &[0, 3, 6, 10]);
     //ø
     test_chord("C5", &[0, 7]);
     //test_chord("C(no 3rd)", &[0, 7]);
@@ -238,9 +238,9 @@ fn test_chord_from_wikibooks() {
     //D|Cmaj7
     test_chord("Cmaj13(#11)", &[0, 2, 6, 9, 11]);
     //D|C7
-    //C13(♯11)
+    test_chord("C13(#11)", &[0, 2, 6, 9, 10]);
     //A|C7
-    //C13(♭9)
+    test_chord("C13(b9)", &[0, 1, 5, 9, 10]);
     //F♯7|C(bass)
     test_chord("C7b9b5", &[0, 1, 4, 6, 10]);
     //Ab|C7

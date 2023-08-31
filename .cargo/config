@@ -1,18 +1,5 @@
-[target.x86_64-unknown-linux-musl]
-rustflags = ["-C", "target-feature=-crt-static"]
-
-[target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gnu-gcc"
-ar     = "aarch64-linux-gnu-ar"
-
-[target.x86_64-pc-windows-gnu]
-linker = "x86_64-w64-mingw32-gcc"
-ar     = "x86_64-w64-mingw32-ar"
-
 [alias]
 rc = "run --bin=memol_cli --"
 rg = "run --bin=memol_gui --"
 rj = "run --bin=memol_gui -- -j examples/gymnopedie.mol"
 rp = "run --bin=memol_gui -- -p examples/gymnopedie.mol"
-install-cli = "install --force --path=memol_cli"
-install-gui = "install --force --path=memol_gui"

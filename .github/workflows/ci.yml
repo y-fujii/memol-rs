@@ -1,39 +1,40 @@
-name: ci
 on: [push]
 jobs:
-  ci_linux_x64:
+  x64_linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
+
       - run: cargo test
       - run: cargo build --release
       - run: |
           cd target/release
           mv libmemol_vst.so memol_vst.so
-          tar czf memol_linux_x64.tar.gz memol_cli memol_gui memol_vst.so
-      - uses: actions/upload-artifact@v3
-        with:
-          path: target/release/memol_linux_x64.tar.gz
+          tar czf memol_x64_linux.tar.gz memol_cli memol_gui memol_vst.so
+          gh release upload build_nightly memol_x64_linux.tar.gz --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  ci_macos_x64:
+  x64_macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
+
       - run: cargo test
       - run: cargo build --release
       - run: |
           cd target/release
           mv libmemol_vst.dylib memol_vst.dylib
-          7z a memol_macos_x64.zip memol_cli memol_gui memol_vst.dylib
-      - uses: actions/upload-artifact@v3
-        with:
-          path: target/release/memol_macos_x64.zip
+          7z a memol_x64_macos.zip memol_cli memol_gui memol_vst.dylib
+          gh release upload build_nightly memol_x64_macos.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  ci_windows_x64:
+  x64_windows:
     runs-on: windows-latest
     defaults:
       run:
@@ -45,15 +46,16 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          install: >-
+          install: |
             mingw-w64-ucrt-x86_64-clang
             mingw-w64-ucrt-x86_64-rust
             mingw-w64-ucrt-x86_64-7zip
+
       - run: CC=clang CXX=clang++ cargo test
       - run: CC=clang CXX=clang++ cargo build --release
       - run: |
           cd target/release
-          7z a memol_windows_x64.zip memol_cli.exe memol_gui.exe memol_vst.dll
-      - uses: actions/upload-artifact@v3
-        with:
-          path: target/release/memol_windows_x64.zip
+          7z a memol_x64_windows.zip memol_cli.exe memol_gui.exe memol_vst.dll
+          gh release upload build_nightly memol_x64_windows.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

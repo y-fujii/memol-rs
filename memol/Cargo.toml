@@ -7,7 +7,7 @@ edition = "2021"
 workspace = ".."
 
 [dependencies]
-lalrpop-util = "*"
+lalrpop-util = { version = "*", features = ["lexer"] }
 regex = "*"
 serde = { version = "*", features = ["derive"] }
 

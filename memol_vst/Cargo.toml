@@ -5,7 +5,7 @@ authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2021"
 
 [dependencies]
-vst = "*"
+vst = { version = "*", features = ["disable_deprecation_warning"] }
 memol = { path = "../memol" }
 memol_cli = { path = "../memol_cli" }
 

@@ -225,13 +225,13 @@ impl Player {
                         r_result.push((v.into(), is_conn != 0));
                     }
                     Err(_) => {
-                        (self.lib.free)(c_result);
+                        (self.lib.free)(c_result as *mut ffi::c_void);
                         return Self::error("jack_get_ports().");
                     }
                 }
                 it = it.offset(1);
             }
-            (self.lib.free)(c_result);
+            (self.lib.free)(c_result as *mut ffi::c_void);
             Ok(r_result)
         }
     }

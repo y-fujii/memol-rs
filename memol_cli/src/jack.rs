@@ -56,7 +56,7 @@ pub struct Library {
     pub client_open: unsafe extern "C" fn(*const u8, u32, *mut u32, ...) -> *mut Client,
     pub connect: unsafe extern "C" fn(*mut Client, *const u8, *const u8) -> i32,
     pub disconnect: unsafe extern "C" fn(*mut Client, *const u8, *const u8) -> i32,
-    pub free: unsafe extern "C" fn(*const dyn any::Any) -> (),
+    pub free: unsafe extern "C" fn(*mut ffi::c_void) -> (),
     pub get_current_transport_frame: unsafe extern "C" fn(*const Client) -> u32,
     pub get_ports: unsafe extern "C" fn(*mut Client, *const u8, *const u8, usize) -> *const *const u8,
     pub midi_clear_buffer: unsafe extern "C" fn(*mut PortBuffer) -> (),

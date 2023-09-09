@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use gumdrop::Options;
-use memol_cli::*;
+use memol_util::*;
 use std::*;
 
 #[derive(gumdrop::Options)]

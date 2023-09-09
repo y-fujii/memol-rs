@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use memol::{midi, misc};
-use memol_cli::player_net;
+use memol_util::player_net;
 use std::io::Write;
 use std::net::ToSocketAddrs;
 use std::*;

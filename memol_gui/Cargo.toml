@@ -13,7 +13,7 @@ glutin = "0.29.*"
 image = "*"
 copypasta = "*"
 memol = { path = "../memol" }
-memol_cli = { path = "../memol_cli" }
+memol_util = { path = "../memol_util" }
 
 [build-dependencies]
 cc = "*"

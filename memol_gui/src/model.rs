@@ -2,7 +2,7 @@
 use crate::compile_thread;
 use copypasta::ClipboardProvider;
 use memol::*;
-use memol_cli::player;
+use memol_util::player;
 use std::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]

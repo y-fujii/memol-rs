@@ -1,11 +1,13 @@
 [package]
-name = "memol_cli"
+name = "memol_util"
 version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2021"
 workspace = ".."
 
 [dependencies]
-gumdrop = "*"
+serde = { version = "*", features = ["derive"] }
+bincode = "*"
+libloading = "*"
+libc = "*"
 memol = { path = "../memol" }
-memol_util = { path = "../memol_util" }

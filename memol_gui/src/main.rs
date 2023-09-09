@@ -11,8 +11,8 @@ mod sequencer_widget;
 mod window;
 use gumdrop::Options;
 use memol::*;
-use memol_cli::player::PlayerExt;
-use memol_cli::{player, player_jack, player_net};
+use memol_util::player::PlayerExt;
+use memol_util::{player, player_jack, player_net};
 use std::*;
 
 const JACK_FRAME_WAIT: i32 = 12;

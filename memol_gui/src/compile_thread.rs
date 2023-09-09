@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use memol::*;
-use memol_cli::notify;
+use memol_util::notify;
 use std::*;
 
 pub enum Message {

@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 vst = { version = "*", features = ["disable_deprecation_warning"] }
 memol = { path = "../memol" }
-memol_cli = { path = "../memol_cli" }
+memol_util = { path = "../memol_util" }
 
 [lib]
 crate-type = ["cdylib"]

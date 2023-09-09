@@ -101,7 +101,7 @@ impl MainWidget {
         Text(c_str!("Time: {:.02} sec.", time));
 
         PushFont(fonts.icon);
-        let size = ImVec2::new(GetWindowContentRegionWidth() / 2.0 - 1.0, 0.0);
+        let size = ImVec2::new(GetContentRegionAvail().x / 2.0 - 1.0, 0.0);
         if Button(c_str!("\u{f04b}"), &size) {
             model.player.play();
             changed = true;

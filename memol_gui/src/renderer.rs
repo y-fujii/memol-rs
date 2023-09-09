@@ -234,7 +234,7 @@ impl Renderer {
             gl::BindVertexArray(self.vao);
 
             for i in 0..draw_data.CmdListsCount {
-                let cmd_list = &**draw_data.CmdLists.offset(i as isize);
+                let cmd_list = &**draw_data.CmdLists.Data.offset(i as isize);
 
                 gl::BufferData(
                     gl::ARRAY_BUFFER,

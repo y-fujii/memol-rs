@@ -2,9 +2,14 @@
 members = ["memol", "memol_util", "memol_cli", "memol_gui", "memol_vst"]
 resolver = "2"
 
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+overflow-checks = false
+debug = false
+
 [profile.release]
-panic = "abort"
-lto = true
 codegen-units = 1
-incremental = false
-strip = "symbols"
+lto = true
+strip = true

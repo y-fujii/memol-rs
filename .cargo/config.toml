@@ -1,4 +1,5 @@
 [alias]
+bundle = "run --package xtask --release -- bundle memol_nih --release"
 rc = "run --bin=memol_cli --"
 rg = "run --bin=memol_gui --"
 rj = "run --bin=memol_gui -- -j examples/gymnopedie.mol"

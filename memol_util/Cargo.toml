@@ -1,9 +1,6 @@
 [package]
 name = "memol_util"
-version = "0.1.0"
-authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2021"
-workspace = ".."
 
 [dependencies]
 serde = { version = "*", features = ["derive"] }

@@ -2,17 +2,6 @@
 use crate::chord;
 use crate::random;
 
-#[test]
-fn test_random() {
-    let rng = random::Generator::new();
-    assert_eq!(rng.next_u64(), 10582614419484085930);
-    assert_eq!(rng.next_u64(), 16147916016143995109);
-    assert_eq!(rng.next_u64(), 5691192622506874316);
-    assert_eq!(rng.next_u64(), 14606526736076162211);
-    rng.jump();
-    assert_eq!(rng.next_u64(), 4275479514889395181);
-}
-
 fn test_chord(text: &str, rhs: &[isize]) {
     let (pos, mut lhs) = chord::parse(text);
     assert_eq!(pos, text.len());

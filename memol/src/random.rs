@@ -8,21 +8,28 @@ pub struct Generator {
     s: cell::Cell<u64>,
 }
 
+fn lea64(z: u64) -> u64 {
+    let z = (z ^ (z >> 32)).wrapping_mul(0xdaba0b6eb09322e3);
+    let z = (z ^ (z >> 32)).wrapping_mul(0xdaba0b6eb09322e3);
+    z ^ (z >> 32)
+}
+
 impl Generator {
-    pub fn new() -> Self {
-        let seed = 0;
+    const M: u64 = 0xd1342543de82ef95;
+
+    pub fn new(seed: u64) -> Self {
+        assert!(seed < Self::M - 1 >> 1);
+        let seed = seed << 1 | 1;
         Generator {
-            a: (seed << 1) | 1,
-            s: cell::Cell::new(0),
+            a: seed,
+            s: cell::Cell::new(lea64(seed)),
         }
     }
 
     pub fn next_u64(&self) -> u64 {
-        let z = self.s.get().wrapping_mul(0xd1342543de82ef95) + self.a;
-        self.s.set(z);
-        let z = (z ^ (z >> 32)).wrapping_mul(0xdaba0b6eb09322e3);
-        let z = (z ^ (z >> 32)).wrapping_mul(0xdaba0b6eb09322e3);
-        z ^ (z >> 32)
+        let z = self.s.get();
+        self.s.set(z.wrapping_mul(Self::M) + self.a);
+        lea64(z)
     }
 
     pub fn next_f64(&self) -> f64 {

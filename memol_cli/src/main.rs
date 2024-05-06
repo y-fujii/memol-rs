@@ -23,7 +23,7 @@ struct ArgOptions {
 
 fn compile(path: &path::Path, verbose: bool) -> Option<Vec<memol::midi::Event>> {
     let timer = time::Instant::now();
-    let rng = memol::random::Generator::new();
+    let rng = memol::random::Generator::new(0);
     let result = memol::compile(&rng, &path).and_then(|e| memol::assemble(&rng, &e));
     let elapsed = timer.elapsed();
     if verbose {

@@ -3,4 +3,5 @@ name = "xtask"
 edition = "2021"
 
 [dependencies]
+cargo_metadata = "*"
 nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug.git" }

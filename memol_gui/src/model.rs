@@ -63,7 +63,7 @@ impl Model {
         self.events = evs;
         self.text = None;
         // XXX
-        let rng = random::Generator::new(1);
+        let rng = memol::random::Generator::new(1);
         let evaluator = generator::Evaluator::new(&rng);
         self.tempo = evaluator.eval(&self.assembly.tempo, ratio::Ratio::zero());
 

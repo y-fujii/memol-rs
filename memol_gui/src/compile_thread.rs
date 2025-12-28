@@ -63,7 +63,7 @@ impl CompileThread {
                     continue;
                 }
 
-                let rng = random::Generator::new(0);
+                let rng = memol::random::Generator::new(0);
                 let asm = match compile(&rng, &path) {
                     Ok(v) => v,
                     Err(e) => {

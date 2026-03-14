@@ -1,6 +1,6 @@
 [package]
 name = "memol_vst"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 vst = { version = "*", features = ["disable_deprecation_warning"] }

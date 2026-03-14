@@ -98,108 +98,112 @@ impl vst::plugin::Plugin for Plugin {
         // XXX: finalization is not complete.
         let shared = this.shared.clone();
         let condvar = this.condvar.clone();
-        this.handle = Some(thread::spawn(move || loop {
-            thread::sleep(time::Duration::from_secs(1));
-            let stream = {
-                let mut shared = shared.lock().unwrap();
-                if shared.exiting {
-                    break;
-                }
-                let mut stream = None;
-                for addr in addrs.iter() {
-                    match net::TcpStream::connect_timeout(addr, time::Duration::from_secs(3)) {
-                        Ok(s) => {
-                            stream = Some(s);
-                            break;
-                        }
+        this.handle = Some(thread::spawn(move || {
+            loop {
+                thread::sleep(time::Duration::from_secs(1));
+                let stream = {
+                    let mut shared = shared.lock().unwrap();
+                    if shared.exiting {
+                        break;
+                    }
+                    let mut stream = None;
+                    for addr in addrs.iter() {
+                        match net::TcpStream::connect_timeout(addr, time::Duration::from_secs(3)) {
+                            Ok(s) => {
+                                stream = Some(s);
+                                break;
+                            }
+                            Err(_) => continue,
+                        };
+                    }
+                    let stream = match stream {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    shared.stream = Some(match stream.try_clone() {
+                        Ok(s) => s,
+                        Err(_) => continue,
+                    });
+                    stream
+                };
+                stream.set_nodelay(true).ok();
+
+                let reader = {
+                    let shared = shared.clone();
+                    let stream = match stream.try_clone() {
+                        Ok(s) => s,
                         Err(_) => continue,
                     };
-                }
-                let stream = match stream {
-                    Some(s) => s,
-                    None => continue,
-                };
-                shared.stream = Some(match stream.try_clone() {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                });
-                stream
-            };
-            stream.set_nodelay(true).ok();
+                    move || {
+                        let mut stream = io::BufReader::new(stream);
+                        loop {
+                            let msg = match player_net::StcMessage::deserialize_from(&mut stream) {
+                                Ok(e) => e,
+                                Err(_) => break,
+                            };
 
-            let reader = {
-                let shared = shared.clone();
-                let stream = match stream.try_clone() {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                };
-                move || {
-                    let mut stream = io::BufReader::new(stream);
-                    loop {
-                        let msg = match player_net::StcMessage::deserialize_from(&mut stream) {
-                            Ok(e) => e,
-                            Err(_) => break,
-                        };
-
-                        let mut shared = shared.lock().unwrap();
-                        match msg {
-                            player_net::StcMessage::Data(evs) => {
-                                shared.events = evs;
-                                shared.events_changed = true;
-                            }
-                            player_net::StcMessage::Immediate(evs) => {
-                                shared.immediate_send.extend(evs);
-                            }
-                        }
-                        if shared.exiting {
-                            break;
-                        }
-                    }
-                    stream.get_ref().shutdown(net::Shutdown::Both).ok();
-                }
-            };
-
-            let mut writer = {
-                let shared = shared.clone();
-                let condvar = condvar.clone();
-                let mut stream = match stream.try_clone() {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                };
-                move || {
-                    'outer: loop {
-                        let msg = {
                             let mut shared = shared.lock().unwrap();
-                            loop {
-                                if shared.exiting {
-                                    break 'outer;
+                            match msg {
+                                player_net::StcMessage::Data(evs) => {
+                                    shared.events = evs;
+                                    shared.events_changed = true;
                                 }
-                                if shared.immediate_recv.len() > 0 {
-                                    break player_net::CtsMessage::Immediate(shared.immediate_recv.drain(..).collect());
+                                player_net::StcMessage::Immediate(evs) => {
+                                    shared.immediate_send.extend(evs);
                                 }
-                                if mem::replace(&mut shared.state_changed, false) {
-                                    break player_net::CtsMessage::Status(shared.playing, shared.seconds);
-                                }
-                                let (tmp, timeout) =
-                                    condvar.wait_timeout(shared, time::Duration::from_secs(1)).unwrap();
-                                shared = tmp;
-                                shared.state_changed |= timeout.timed_out();
                             }
-                        };
-
-                        match stream.write_all(&msg.serialize()) {
-                            Ok(_) => (),
-                            Err(_) => break,
+                            if shared.exiting {
+                                break;
+                            }
                         }
+                        stream.get_ref().shutdown(net::Shutdown::Both).ok();
                     }
-                    stream.shutdown(net::Shutdown::Both).ok();
-                }
-            };
+                };
 
-            let handle = thread::spawn(reader);
-            writer();
-            handle.join().ok();
-            shared.lock().unwrap().stream = None;
+                let mut writer = {
+                    let shared = shared.clone();
+                    let condvar = condvar.clone();
+                    let mut stream = match stream.try_clone() {
+                        Ok(s) => s,
+                        Err(_) => continue,
+                    };
+                    move || {
+                        'outer: loop {
+                            let msg = {
+                                let mut shared = shared.lock().unwrap();
+                                loop {
+                                    if shared.exiting {
+                                        break 'outer;
+                                    }
+                                    if shared.immediate_recv.len() > 0 {
+                                        break player_net::CtsMessage::Immediate(
+                                            shared.immediate_recv.drain(..).collect(),
+                                        );
+                                    }
+                                    if mem::replace(&mut shared.state_changed, false) {
+                                        break player_net::CtsMessage::Status(shared.playing, shared.seconds);
+                                    }
+                                    let (tmp, timeout) =
+                                        condvar.wait_timeout(shared, time::Duration::from_secs(1)).unwrap();
+                                    shared = tmp;
+                                    shared.state_changed |= timeout.timed_out();
+                                }
+                            };
+
+                            match stream.write_all(&msg.serialize()) {
+                                Ok(_) => (),
+                                Err(_) => break,
+                            }
+                        }
+                        stream.shutdown(net::Shutdown::Both).ok();
+                    }
+                };
+
+                let handle = thread::spawn(reader);
+                writer();
+                handle.join().ok();
+                shared.lock().unwrap().stream = None;
+            }
         }));
 
         this

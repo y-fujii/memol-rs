@@ -239,14 +239,14 @@ impl Player {
     }
 
     unsafe fn connect(&self, from: *const u8, to: *const u8) -> io::Result<()> {
-        if (self.lib.connect)(self.jack, from, to) != 0 {
+        if unsafe { (self.lib.connect)(self.jack, from, to) } != 0 {
             return Self::error("jack_connect().");
         }
         Ok(())
     }
 
     unsafe fn disconnect(&self, from: *const u8, to: *const u8) -> io::Result<()> {
-        if (self.lib.disconnect)(self.jack, from, to) != 0 {
+        if unsafe { (self.lib.disconnect)(self.jack, from, to) } != 0 {
             return Self::error("jack_disconnect().");
         }
         Ok(())

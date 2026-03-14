@@ -3,11 +3,7 @@ use std::*;
 
 pub fn idiv(x: i64, y: i64) -> i64 {
     let r = x / y;
-    if r * y <= x {
-        r
-    } else {
-        r - 1
-    }
+    if r * y <= x { r } else { r - 1 }
 }
 
 pub fn imod(x: i64, y: i64) -> i64 {
@@ -24,11 +20,7 @@ pub fn gcd(y: i64, x: i64) -> i64 {
         y = x;
         x = t;
     }
-    if s {
-        -y
-    } else {
-        y
-    }
+    if s { -y } else { y }
 }
 
 // semantically equivalent to:

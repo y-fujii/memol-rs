@@ -84,18 +84,18 @@ pub const TICK: i64 = 240;
 
 pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, misc::Error> {
     let tree = parser::parse(src)?;
-    let gen = generator::Generator::new(rng, &tree);
+    let genr = generator::Generator::new(rng, &tree);
 
     let mut scores = Vec::new();
     for ch in 0..16 {
-        if let Some(ir) = gen.generate_score(&format!("out.{}", ch))? {
+        if let Some(ir) = genr.generate_score(&format!("out.{}", ch))? {
             scores.push((ch, ir));
         }
     }
 
     let mut channels = Vec::new();
     for (ch, score) in scores.into_iter() {
-        let velocity = gen
+        let velocity = genr
             .generate_value(&format!("out.{}.velocity", ch))?
             .unwrap_or(generator::ValueIr::Value(
                 Ratio::zero(),
@@ -103,7 +103,7 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
                 Ratio::new(5, 8),
                 Ratio::new(5, 8),
             ));
-        let offset = gen
+        let offset = genr
             .generate_value(&format!("out.{}.offset", ch))?
             .unwrap_or(generator::ValueIr::Value(
                 Ratio::zero(),
@@ -111,10 +111,10 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
                 Ratio::zero(),
                 Ratio::zero(),
             ));
-        let duration = gen
+        let duration = genr
             .generate_value(&format!("out.{}.duration", ch))?
             .unwrap_or(generator::ValueIr::NoteLen);
-        let pitch = gen
+        let pitch = genr
             .generate_value(&format!("out.{}.pitch", ch))?
             .unwrap_or(generator::ValueIr::Value(
                 Ratio::zero(),
@@ -124,7 +124,7 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
             ));
         let mut ccs = Vec::new();
         for cc in 0..128 {
-            if let Some(ir) = gen.generate_value(&format!("out.{}.cc{}", ch, cc))? {
+            if let Some(ir) = genr.generate_value(&format!("out.{}.cc{}", ch, cc))? {
                 ccs.push((cc, ir));
             }
         }
@@ -141,7 +141,7 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
         ));
     }
 
-    let tempo = gen.generate_value("out.tempo")?.unwrap_or(generator::ValueIr::Value(
+    let tempo = genr.generate_value("out.tempo")?.unwrap_or(generator::ValueIr::Value(
         Ratio::zero(),
         Ratio::one(),
         Ratio::new(1, 2),
@@ -156,11 +156,11 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
         .unwrap_or(Ratio::zero());
 
     let evaluator = generator::Evaluator::new(rng);
-    let bgn = match gen.generate_value("out.begin")? {
+    let bgn = match genr.generate_value("out.begin")? {
         Some(ir) => (evaluator.eval(&ir, Ratio::zero()) * TICK as f64).round() as i64,
         None => 0,
     };
-    let end = match gen.generate_value("out.end")? {
+    let end = match genr.generate_value("out.end")? {
         Some(ir) => (evaluator.eval(&ir, Ratio::zero()) * TICK as f64).round() as i64,
         None => (len * TICK).round(),
     };

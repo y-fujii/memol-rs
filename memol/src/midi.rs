@@ -5,7 +5,7 @@ use crate::random;
 use crate::ratio::Ratio;
 use std::*;
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Event {
     pub time: f64,
     pub prio: i8,

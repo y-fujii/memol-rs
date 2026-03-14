@@ -3,7 +3,6 @@ pub mod notify;
 pub mod player;
 pub mod player_dummy;
 pub mod player_jack;
-pub mod player_net;
 #[cfg(target_family = "windows")]
 pub mod player_winmm;
 use std::*;

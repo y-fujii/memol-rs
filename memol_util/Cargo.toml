@@ -3,10 +3,7 @@ name = "memol_util"
 edition = "2024"
 
 [dependencies]
-serde = { version = "*", features = ["derive"] }
-bincode = "1"
 libloading = "*"
-libc = "*"
 memol = { path = "../memol" }
 
 [target.'cfg(target_family = "windows")'.dependencies]

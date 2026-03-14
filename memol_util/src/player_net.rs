@@ -68,7 +68,9 @@ struct StcShared {
 }
 
 pub struct Player {
+    #[allow(unused)]
     listener: net::TcpListener,
+    #[allow(unused)]
     thread: Option<thread::JoinHandle<()>>,
     cts_shared: sync::Arc<sync::Mutex<CtsShared>>,
     stc_shared: sync::Arc<sync::Mutex<StcShared>>,
@@ -100,43 +102,45 @@ impl player::Player for Player {
         shared.senders.retain(|s| s.send(msg.clone()).is_ok());
     }
 
-    fn ports_from(&self) -> io::Result<Vec<(String, bool)>> {
+    fn ports_from(&mut self) -> io::Result<Vec<(String, bool)>> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn connect_from(&self, _: &str) -> io::Result<()> {
+    fn connect_from(&mut self, _: &str) -> io::Result<()> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn disconnect_from(&self, _: &str) -> io::Result<()> {
+    fn disconnect_from(&mut self, _: &str) -> io::Result<()> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn ports_to(&self) -> io::Result<Vec<(String, bool)>> {
+    fn ports_to(&mut self) -> io::Result<Vec<(String, bool)>> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn connect_to(&self, _: &str) -> io::Result<()> {
+    fn connect_to(&mut self, _: &str) -> io::Result<()> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn disconnect_to(&self, _: &str) -> io::Result<()> {
+    fn disconnect_to(&mut self, _: &str) -> io::Result<()> {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn send(&self, events: &[midi::Event]) {
+    fn send(&mut self, events: &[midi::Event]) {
         let msg = StcMessage::Immediate(events.into()).serialize();
         let mut shared = self.stc_shared.lock().unwrap();
         shared.senders.retain(|s| s.send(msg.clone()).is_ok());
     }
 
-    fn play(&self) {}
+    fn play(&mut self) -> io::Result<()> {
+        Err(io::ErrorKind::Other.into())
+    }
 
-    fn stop(&self) {}
+    fn stop(&mut self) {}
 
-    fn seek(&self, _: f64) {}
+    fn seek(&mut self, _: f64) {}
 
-    fn status(&self) -> (bool, f64) {
+    fn status(&mut self) -> (bool, f64) {
         let shared = self.cts_shared.lock().unwrap();
         let delta = shared.arrival.elapsed();
         let loc = if shared.playing {
@@ -147,7 +151,7 @@ impl player::Player for Player {
         (shared.playing, loc)
     }
 
-    fn info(&self) -> String {
+    fn info(&mut self) -> String {
         let cnt = self.stc_shared.lock().unwrap().senders.len();
         format!("{} VST plugin(s) are connected.", cnt)
     }

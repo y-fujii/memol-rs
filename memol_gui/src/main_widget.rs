@@ -7,6 +7,7 @@ use crate::sequencer_widget;
 use std::*;
 
 pub struct Fonts {
+    #[allow(unused)]
     pub sans: *mut ImFont,
     pub mono: *mut ImFont,
     pub icon: *mut ImFont,
@@ -103,7 +104,9 @@ impl MainWidget {
         PushFont(fonts.icon);
         let size = ImVec2::new(GetContentRegionAvail().x / 2.0 - 1.0, 0.0);
         if Button(c_str!("\u{f04b}"), &size) {
-            model.player.play();
+            if let Err(e) = model.player.play() {
+                model.text = Some(format!("{}", e));
+            }
             changed = true;
         }
         SameLine(0.0, 1.0);
@@ -144,14 +147,19 @@ impl MainWidget {
                 Spacing();
                 Separator();
                 Text(c_str!("Input from\u{2026}"));
-                for &mut (ref port, ref mut is_conn) in ports.iter_mut() {
-                    if Checkbox(c_str!("{}", port), is_conn) {
-                        *is_conn = if *is_conn {
-                            model.player.connect_from(port).is_ok()
+                let mut changed = false;
+                for (port, mut is_conn) in ports.iter() {
+                    if Checkbox(c_str!("{}", port), &mut is_conn) {
+                        changed = true;
+                        if is_conn {
+                            model.player.connect_from(port).ok();
                         } else {
-                            model.player.disconnect_from(port).is_err()
+                            model.player.disconnect_from(port).ok();
                         }
                     }
+                }
+                if changed {
+                    self.ports_from = model.player.ports_from().ok();
                 }
             }
 
@@ -159,14 +167,19 @@ impl MainWidget {
                 Spacing();
                 Separator();
                 Text(c_str!("Output to\u{2026}"));
-                for &mut (ref port, ref mut is_conn) in ports.iter_mut() {
-                    if Checkbox(c_str!("{}", port), is_conn) {
-                        *is_conn = if *is_conn {
-                            model.player.connect_to(port).is_ok()
+                let mut changed = false;
+                for (port, mut is_conn) in ports.iter() {
+                    if Checkbox(c_str!("{}", port), &mut is_conn) {
+                        changed = true;
+                        if is_conn {
+                            model.player.connect_to(port).ok();
                         } else {
-                            model.player.disconnect_to(port).is_err()
+                            model.player.disconnect_to(port).ok();
                         }
                     }
+                }
+                if changed {
+                    self.ports_to = model.player.ports_to().ok();
                 }
             }
 

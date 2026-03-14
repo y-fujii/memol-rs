@@ -2,7 +2,7 @@
 use crate::compile_thread;
 use copypasta::ClipboardProvider;
 use memol::*;
-use memol_util::player;
+use memol_util::*;
 use std::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -46,7 +46,7 @@ impl Model {
             follow: true,
             autoplay: true,
             text: None,
-            player: Box::new(player::DummyPlayer::new()),
+            player: Box::new(player_dummy::Player::new()),
             compile_tx: compile_tx,
             use_sharp: false,
             pedal: false,
@@ -74,7 +74,7 @@ impl Model {
         self.player.set_data(&self.events);
         if self.autoplay && !self.player.status().0 {
             self.player.seek(bgn);
-            self.player.play();
+            self.player.play().ok();
         }
     }
 
@@ -103,12 +103,12 @@ impl Model {
         }
     }
 
-    pub fn note_on(&self, nn: u8) {
+    pub fn note_on(&mut self, nn: u8) {
         let evs = [midi::Event::new(0.0, 1, &[0x90 + self.channel_main as u8, nn, 0x40])];
         self.player.send(&evs);
     }
 
-    pub fn note_off_all(&self) {
+    pub fn note_off_all(&mut self) {
         // all sound off.
         let evs = [midi::Event::new(0.0, 0, &[0xb0 + self.channel_main as u8, 0x78, 0x00])];
         self.player.send(&evs);

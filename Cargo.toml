@@ -2,12 +2,10 @@
 members = ["xtask", "memol", "memol_util", "memol_cli", "memol_gui", "memol_vst", "memol_nih"]
 resolver = "2"
 
-[profile.dev]
-opt-level = 1
-
 [profile.dev.package."*"]
 overflow-checks = false
 debug = false
+opt-level = 1
 
 [profile.release]
 codegen-units = 1

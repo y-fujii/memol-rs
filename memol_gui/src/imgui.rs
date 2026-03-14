@@ -1,5 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #![allow(dead_code)]
+#![allow(unnecessary_transmutes)]
 
 include!(concat!(env!("OUT_DIR"), "/imgui_gen.rs"));
 

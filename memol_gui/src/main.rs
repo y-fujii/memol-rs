@@ -1,5 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[macro_use]
 mod imutil;
 mod compile_thread;
@@ -12,7 +12,6 @@ mod window;
 use gumdrop::Options;
 use memol::*;
 use memol_util::player::PlayerExt;
-use memol_util::{player, player_jack, player_net};
 use std::*;
 
 const JACK_FRAME_WAIT: i32 = 12;
@@ -23,12 +22,6 @@ struct ArgOptions {
     file: Option<path::PathBuf>,
     #[options(help = "Set a background image.", meta = "FILE")]
     wallpaper: Option<path::PathBuf>,
-    #[options(help = "Use JACK.")]
-    jack: bool,
-    #[options(help = "Use plugins.")]
-    plugin: bool,
-    #[options(help = "Accept remote connections.")]
-    any: bool,
     #[options(help = "Connect to specified ports.", meta = "PORT")]
     connect: Vec<String>,
 }
@@ -168,26 +161,7 @@ fn main() {
             }
         });
 
-        // initialize a player.
-        let addr = (
-            if opts.any {
-                net::Ipv6Addr::UNSPECIFIED
-            } else {
-                net::Ipv6Addr::LOCALHOST
-            },
-            27182,
-        );
-        let mut player: Box<dyn player::Player> = match (opts.jack, opts.plugin) {
-            (true, false) => Box::new(player_jack::Player::new("memol")?),
-            (false, true) => Box::new(player_net::Player::new(addr)?),
-            _ => {
-                #[cfg(all(target_family = "unix", not(target_os = "macos")))]
-                let player = player_jack::Player::new("memol");
-                #[cfg(not(all(target_family = "unix", not(target_os = "macos"))))]
-                let player = player_net::Player::new(addr);
-                Box::new(player?)
-            }
-        };
+        let mut player = memol_util::new_player(&args[0]);
         player.on_received({
             let window_tx = window.create_proxy();
             move |evs| window_tx.send_event(UiMessage::Midi(evs.to_vec())).unwrap()

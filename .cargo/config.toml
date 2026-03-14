@@ -1,6 +1,3 @@
 [alias]
 xtask = "run --package xtask --"
-rc = "run --bin=memol_cli --"
-rg = "run --bin=memol_gui --"
-rj = "run --bin=memol_gui -- -j examples/gymnopedie.mol"
-rp = "run --bin=memol_gui -- -p examples/gymnopedie.mol"
+rg = "run --bin=memol_gui -- examples/gymnopedie.mol"

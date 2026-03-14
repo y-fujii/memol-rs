@@ -5,18 +5,18 @@ use std::*;
 pub trait Player: Send {
     fn on_received_boxed(&mut self, _: Box<dyn 'static + Fn(&[midi::Event]) + Send>);
     fn set_data(&mut self, _: &[midi::Event]);
-    fn ports_from(&self) -> io::Result<Vec<(String, bool)>>;
-    fn connect_from(&self, _: &str) -> io::Result<()>;
-    fn disconnect_from(&self, _: &str) -> io::Result<()>;
-    fn ports_to(&self) -> io::Result<Vec<(String, bool)>>;
-    fn connect_to(&self, _: &str) -> io::Result<()>;
-    fn disconnect_to(&self, _: &str) -> io::Result<()>;
-    fn send(&self, _: &[midi::Event]);
-    fn play(&self);
-    fn stop(&self);
-    fn seek(&self, _: f64);
-    fn status(&self) -> (bool, f64);
-    fn info(&self) -> String;
+    fn ports_from(&mut self) -> io::Result<Vec<(String, bool)>>;
+    fn connect_from(&mut self, _: &str) -> io::Result<()>;
+    fn disconnect_from(&mut self, _: &str) -> io::Result<()>;
+    fn ports_to(&mut self) -> io::Result<Vec<(String, bool)>>;
+    fn connect_to(&mut self, _: &str) -> io::Result<()>;
+    fn disconnect_to(&mut self, _: &str) -> io::Result<()>;
+    fn send(&mut self, _: &[midi::Event]);
+    fn play(&mut self) -> io::Result<()>;
+    fn stop(&mut self);
+    fn seek(&mut self, _: f64);
+    fn status(&mut self) -> (bool, f64);
+    fn info(&mut self) -> String;
 }
 
 pub trait PlayerExt {
@@ -38,65 +38,5 @@ impl PlayerExt for &mut dyn Player {
 impl PlayerExt for Box<dyn Player> {
     fn on_received<T: 'static + Fn(&[midi::Event]) + Send>(&mut self, f: T) {
         self.on_received_boxed(Box::new(f));
-    }
-}
-
-pub struct DummyPlayer {
-    location: cell::Cell<f64>,
-}
-
-impl Player for DummyPlayer {
-    fn on_received_boxed(&mut self, _: Box<dyn 'static + Fn(&[midi::Event]) + Send>) {}
-
-    fn set_data(&mut self, _: &[midi::Event]) {}
-
-    fn ports_from(&self) -> io::Result<Vec<(String, bool)>> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn connect_from(&self, _: &str) -> io::Result<()> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn disconnect_from(&self, _: &str) -> io::Result<()> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn ports_to(&self) -> io::Result<Vec<(String, bool)>> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn connect_to(&self, _: &str) -> io::Result<()> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn disconnect_to(&self, _: &str) -> io::Result<()> {
-        Err(io::ErrorKind::Other.into())
-    }
-
-    fn send(&self, _: &[midi::Event]) {}
-
-    fn play(&self) {}
-
-    fn stop(&self) {}
-
-    fn seek(&self, loc: f64) {
-        self.location.set(loc);
-    }
-
-    fn status(&self) -> (bool, f64) {
-        (false, self.location.get())
-    }
-
-    fn info(&self) -> String {
-        String::new()
-    }
-}
-
-impl DummyPlayer {
-    pub fn new() -> DummyPlayer {
-        DummyPlayer {
-            location: cell::Cell::new(0.0),
-        }
     }
 }

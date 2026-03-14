@@ -8,3 +8,6 @@ bincode = "1"
 libloading = "*"
 libc = "*"
 memol = { path = "../memol" }
+
+[target.'cfg(target_family = "windows")'.dependencies]
+windows = { version = "*", features = ["Win32_Media_Audio"] }

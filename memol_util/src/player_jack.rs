@@ -62,53 +62,55 @@ impl player::Player for Player {
     }
 
     fn set_data(&mut self, events: &[midi::Event]) {
+        let events = events.to_vec();
         let mut shared = self.shared.lock().unwrap();
-        shared.events = events.to_vec();
+        shared.events = events;
         shared.changed = true;
     }
 
-    fn ports_from(&self) -> io::Result<Vec<(String, bool)>> {
+    fn ports_from(&mut self) -> io::Result<Vec<(String, bool)>> {
         self.ports(jack::PORT_IS_OUTPUT)
     }
 
-    fn connect_from(&self, port: &str) -> io::Result<()> {
+    fn connect_from(&mut self, port: &str) -> io::Result<()> {
         unsafe { self.connect(format!("{}\0", port).as_ptr(), (self.lib.port_name)(self.port_recv)) }
     }
 
-    fn disconnect_from(&self, port: &str) -> io::Result<()> {
+    fn disconnect_from(&mut self, port: &str) -> io::Result<()> {
         unsafe { self.disconnect(format!("{}\0", port).as_ptr(), (self.lib.port_name)(self.port_recv)) }
     }
 
-    fn ports_to(&self) -> io::Result<Vec<(String, bool)>> {
+    fn ports_to(&mut self) -> io::Result<Vec<(String, bool)>> {
         self.ports(jack::PORT_IS_INPUT)
     }
 
-    fn connect_to(&self, port: &str) -> io::Result<()> {
+    fn connect_to(&mut self, port: &str) -> io::Result<()> {
         unsafe { self.connect((self.lib.port_name)(self.port_send), format!("{}\0", port).as_ptr()) }
     }
 
-    fn disconnect_to(&self, port: &str) -> io::Result<()> {
+    fn disconnect_to(&mut self, port: &str) -> io::Result<()> {
         unsafe { self.disconnect((self.lib.port_name)(self.port_send), format!("{}\0", port).as_ptr()) }
     }
 
-    fn send(&self, evs: &[midi::Event]) {
+    fn send(&mut self, evs: &[midi::Event]) {
         let mut shared = self.shared.lock().unwrap();
         shared.immediate_send.extend_from_slice(evs);
     }
 
-    fn play(&self) {
+    fn play(&mut self) -> io::Result<()> {
         unsafe {
             (self.lib.transport_start)(self.jack);
         }
+        Ok(())
     }
 
-    fn stop(&self) {
+    fn stop(&mut self) {
         unsafe {
             (self.lib.transport_stop)(self.jack);
         }
     }
 
-    fn seek(&self, time: f64) {
+    fn seek(&mut self, time: f64) {
         debug_assert!(time >= 0.0);
         unsafe {
             let mut pos: mem::MaybeUninit<jack::Position> = mem::MaybeUninit::uninit();
@@ -118,7 +120,7 @@ impl player::Player for Player {
         }
     }
 
-    fn status(&self) -> (bool, f64) {
+    fn status(&mut self) -> (bool, f64) {
         unsafe {
             let mut pos: mem::MaybeUninit<jack::Position> = mem::MaybeUninit::uninit();
             let playing = match (self.lib.transport_query)(self.jack, pos.as_mut_ptr()) {
@@ -135,7 +137,7 @@ impl player::Player for Player {
         }
     }
 
-    fn info(&self) -> String {
+    fn info(&mut self) -> String {
         "JACK is running.".into()
     }
 }

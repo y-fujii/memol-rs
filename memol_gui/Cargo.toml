@@ -7,7 +7,7 @@ build = "build.rs"
 gumdrop = "*"
 gl = "*"
 glutin = "0.29.*"
-image = "*"
+image = { version = "*", default-features = false, features = ["jpeg", "png"] }
 copypasta = "*"
 memol = { path = "../memol" }
 memol_util = { path = "../memol_util" }

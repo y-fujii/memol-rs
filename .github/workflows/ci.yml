@@ -3,7 +3,7 @@ jobs:
   x64_linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -11,8 +11,7 @@ jobs:
       - run: cargo build --release
       - run: |
           cd target/release
-          mv libmemol_vst.so memol_vst.so
-          tar czf memol_x64_linux.tar.gz memol_cli memol_gui memol_vst.so
+          tar czf memol_x64_linux.tar.gz memol_cli memol_gui
           gh release upload build_nightly memol_x64_linux.tar.gz --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -20,7 +19,7 @@ jobs:
   x64_macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -28,8 +27,7 @@ jobs:
       - run: cargo build --release
       - run: |
           cd target/release
-          mv libmemol_vst.dylib memol_vst.dylib
-          7z a memol_x64_macos.zip memol_cli memol_gui memol_vst.dylib
+          7z a memol_x64_macos.zip memol_cli memol_gui
           gh release upload build_nightly memol_x64_macos.zip --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,7 +38,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - uses: msys2/setup-msys2@v2
@@ -57,7 +55,7 @@ jobs:
       - run: CC=clang CXX=clang++ cargo build --release
       - run: |
           cd target/release
-          7z a memol_x64_windows.zip memol_cli.exe memol_gui.exe memol_vst.dll
+          7z a memol_x64_windows.zip memol_cli.exe memol_gui.exe
           gh release upload build_nightly memol_x64_windows.zip --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

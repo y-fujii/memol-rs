@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::player;
-use memol::midi;
+use memol::*;
 use std::*;
 use windows::Win32::Media;
 use windows::Win32::Media::Audio;
@@ -21,7 +21,13 @@ impl player::Player for Player {
 
     fn set_data(&mut self, events: &[midi::Event]) {
         self.clear_buffer();
-        self.events = events.to_vec();
+        let mut events = events.to_vec();
+        /*
+        let t_max = events.iter().map(|e| e.time).fold(0.0, f64::max);
+        smf::time_code_add(&mut events, 0.0, t_max);
+        */
+        events.sort_by(|x, y| (x.time, x.prio).partial_cmp(&(y.time, y.prio)).unwrap());
+        self.events = events;
     }
 
     fn ports_from(&mut self) -> io::Result<Vec<(String, bool)>> {
@@ -82,7 +88,15 @@ impl player::Player for Player {
         Ok(())
     }
 
-    fn send(&mut self, _events: &[midi::Event]) {}
+    fn send(&mut self, events: &[midi::Event]) {
+        let Some((_, stream)) = self.stream else {
+            return;
+        };
+        for ev in events {
+            let msg = u32::from_le_bytes([ev.msg[0], ev.msg[1], ev.msg[2], 0]);
+            unsafe { Audio::midiOutShortMsg(Audio::HMIDIOUT(stream.0), msg) };
+        }
+    }
 
     fn play(&mut self) -> io::Result<()> {
         if self.events.is_empty() {
@@ -99,6 +113,9 @@ impl player::Player for Player {
             let t1 = (TPS as f64 * ev.time).round() as i64;
             if t1 < t0 {
                 continue;
+            }
+            if buffer.len() > 16384 - 3 {
+                break;
             }
             buffer.push((t1 - t0) as u32);
             buffer.push(0);
@@ -121,7 +138,7 @@ impl player::Player for Player {
                 mem::size_of::<Audio::MIDIHDR>() as u32,
             ) != 0
             {
-                return Err(io::ErrorKind::Other.into());
+                return Err(io::Error::other("midiOutPrepareHeader()."));
             }
             Audio::midiStreamOut(stream, &mut *header, mem::size_of::<Audio::MIDIHDR>() as u32);
             Audio::midiStreamRestart(stream);

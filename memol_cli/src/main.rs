@@ -48,7 +48,7 @@ fn main() {
 
         if opts.batch {
             if let Some(events) = compile(&opts.file, opts.verbose) {
-                let smf = memol::smf::generate_smf(&events, 480);
+                let smf = memol::smf::smf_generate(&events, 480);
                 fs::write(opts.file.with_extension("mid"), smf)?;
             }
             return Ok(());

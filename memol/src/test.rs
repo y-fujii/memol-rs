@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::chord;
-use crate::random;
 
 fn test_chord(text: &str, rhs: &[isize]) {
     let (pos, mut lhs) = chord::parse(text);

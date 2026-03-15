@@ -157,7 +157,7 @@ impl Model {
     }
 
     pub fn generate_smf(&self) -> io::Result<()> {
-        let smf = memol::smf::generate_smf(&self.events, 480);
+        let smf = memol::smf::smf_generate(&self.events, 480);
         fs::write(self.path.with_extension("mid"), smf)
     }
 }

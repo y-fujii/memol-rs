@@ -11,7 +11,7 @@ pub struct Player {
     offset: f64,
     events: Vec<midi::Event>,
     stream: Option<(String, Audio::HMIDISTRM)>,
-    buffer: Option<(Vec<u32>, Box<Audio::MIDIHDR>)>,
+    buffer: Vec<(Vec<u32>, Box<Audio::MIDIHDR>)>,
 }
 
 unsafe impl Send for Player {}
@@ -22,10 +22,8 @@ impl player::Player for Player {
     fn set_data(&mut self, events: &[midi::Event]) {
         self.clear_buffer();
         let mut events = events.to_vec();
-        /*
         let t_max = events.iter().map(|e| e.time).fold(0.0, f64::max);
         smf::time_code_add(&mut events, 0.0, t_max);
-        */
         events.sort_by(|x, y| (x.time, x.prio).partial_cmp(&(y.time, y.prio)).unwrap());
         self.events = events;
     }
@@ -46,7 +44,9 @@ impl player::Player for Player {
         let mut dst = Vec::new();
         let n = unsafe { Audio::midiOutGetNumDevs() };
         for i in 0..n {
-            let name = Self::out_device_name(i);
+            let Some(name) = Self::out_device_name(i) else {
+                continue;
+            };
             let is_conn = self.is_connected_to(&name);
             dst.push((name, is_conn));
         }
@@ -57,7 +57,9 @@ impl player::Player for Player {
         unsafe {
             let n = Audio::midiOutGetNumDevs();
             for i in 0..n {
-                let name = Self::out_device_name(i);
+                let Some(name) = Self::out_device_name(i) else {
+                    continue;
+                };
                 if name != a_name {
                     continue;
                 }
@@ -65,14 +67,18 @@ impl player::Player for Player {
                 if Audio::midiStreamOpen(&mut stream, &mut [i], None, None, Audio::CALLBACK_NULL.0) != 0 {
                     continue;
                 }
-                Audio::midiStreamProperty(
+                if Audio::midiStreamProperty(
                     stream,
                     &mut Audio::MIDIPROPTIMEDIV {
                         cbStruct: mem::size_of::<Audio::MIDIPROPTIMEDIV>() as u32,
                         dwTimeDiv: TPS / 2,
                     } as *mut _ as *mut u8,
                     (Audio::MIDIPROP_SET | Audio::MIDIPROP_TIMEDIV) as u32,
-                );
+                ) != 0
+                {
+                    Audio::midiStreamClose(stream);
+                    continue;
+                }
                 self.close();
                 self.stream = Some((name, stream));
                 return Ok(());
@@ -99,52 +105,60 @@ impl player::Player for Player {
     }
 
     fn play(&mut self) -> io::Result<()> {
-        if self.events.is_empty() {
-            return Ok(());
-        }
         let Some((_, stream)) = self.stream else {
             return Err(io::Error::other("Output is not connected."));
         };
         self.clear_buffer();
 
-        let mut buffer = Vec::new();
         let mut t0 = (TPS as f64 * self.offset).round() as i64;
-        for ev in self.events.iter() {
-            let t1 = (TPS as f64 * ev.time).round() as i64;
-            if t1 < t0 {
-                continue;
+        let mut index = 0;
+        while index < self.events.len() {
+            let mut chunk = Vec::new();
+            while index < self.events.len() && chunk.len() <= 16384 - 3 {
+                let ev = &self.events[index];
+                index += 1;
+                let t1 = (TPS as f64 * ev.time).round() as i64;
+                if t1 < t0 {
+                    continue;
+                }
+                chunk.push((t1 - t0) as u32);
+                chunk.push(0);
+                chunk.push(u32::from_le_bytes([ev.msg[0], ev.msg[1], ev.msg[2], 0]));
+                t0 = t1;
             }
-            if buffer.len() > 16384 - 3 {
-                break;
+
+            unsafe {
+                let n_bytes = 4 * chunk.len();
+                let mut header = Box::new(Audio::MIDIHDR {
+                    lpData: mem::transmute(chunk.as_ptr()),
+                    dwBufferLength: n_bytes as u32,
+                    dwBytesRecorded: n_bytes as u32,
+                    dwFlags: 0,
+                    ..Audio::MIDIHDR::default()
+                });
+                if Audio::midiOutPrepareHeader(
+                    Audio::HMIDIOUT(stream.0),
+                    &mut *header,
+                    mem::size_of::<Audio::MIDIHDR>() as u32,
+                ) != 0
+                {
+                    return Err(io::Error::other("midiOutPrepareHeader()."));
+                }
+                if Audio::midiStreamOut(stream, &mut *header, mem::size_of::<Audio::MIDIHDR>() as u32) != 0 {
+                    Audio::midiOutUnprepareHeader(
+                        Audio::HMIDIOUT(stream.0),
+                        &mut *header,
+                        mem::size_of::<Audio::MIDIHDR>() as u32,
+                    );
+                    return Err(io::Error::other("midiStreamOut()."));
+                }
+                self.buffer.push((chunk, header));
             }
-            buffer.push((t1 - t0) as u32);
-            buffer.push(0);
-            buffer.push(u32::from_le_bytes([ev.msg[0], ev.msg[1], ev.msg[2], 0]));
-            t0 = t1;
+        }
+        if unsafe { Audio::midiStreamRestart(stream) } != 0 {
+            return Err(io::Error::other("midiStreamRestart()."));
         }
 
-        unsafe {
-            let n_bytes = 4 * buffer.len();
-            let mut header = Box::new(Audio::MIDIHDR {
-                lpData: mem::transmute(buffer.as_ptr()),
-                dwBufferLength: n_bytes as u32,
-                dwBytesRecorded: n_bytes as u32,
-                dwFlags: 0,
-                ..Audio::MIDIHDR::default()
-            });
-            if Audio::midiOutPrepareHeader(
-                Audio::HMIDIOUT(stream.0),
-                &mut *header,
-                mem::size_of::<Audio::MIDIHDR>() as u32,
-            ) != 0
-            {
-                return Err(io::Error::other("midiOutPrepareHeader()."));
-            }
-            Audio::midiStreamOut(stream, &mut *header, mem::size_of::<Audio::MIDIHDR>() as u32);
-            Audio::midiStreamRestart(stream);
-
-            self.buffer = Some((buffer, header));
-        }
         Ok(())
     }
 
@@ -158,12 +172,12 @@ impl player::Player for Player {
     }
 
     fn status(&mut self) -> (bool, f64) {
-        if self.buffer.is_some() {
+        if self.buffer.is_empty() {
+            (false, self.offset)
+        } else {
             let (_, stream) = self.stream.as_ref().unwrap();
             let dt = Self::position(*stream);
             (true, self.offset + dt)
-        } else {
-            (false, self.offset)
         }
     }
 
@@ -184,26 +198,27 @@ impl Player {
             offset: 0.0,
             events: Vec::new(),
             stream: None,
-            buffer: None,
+            buffer: Vec::new(),
         })
     }
 
     fn clear_buffer(&mut self) {
-        let Some((buffer, mut header)) = self.buffer.take() else {
+        let Some((_, stream)) = self.stream else {
             return;
         };
-        let (_, stream) = self.stream.as_ref().unwrap();
-        unsafe {
-            Audio::midiStreamPause(*stream);
-            self.offset += Self::position(*stream);
-            Audio::midiStreamStop(*stream);
-            Audio::midiOutUnprepareHeader(
-                Audio::HMIDIOUT(stream.0),
-                &mut *header,
-                mem::size_of::<Audio::MIDIHDR>() as u32,
-            );
+        for (buffer, mut header) in self.buffer.drain(..) {
+            unsafe {
+                Audio::midiStreamPause(stream);
+                self.offset += Self::position(stream);
+                Audio::midiStreamStop(stream);
+                Audio::midiOutUnprepareHeader(
+                    Audio::HMIDIOUT(stream.0),
+                    &mut *header,
+                    mem::size_of::<Audio::MIDIHDR>() as u32,
+                );
+            }
+            mem::drop(buffer);
         }
-        mem::drop(buffer);
     }
 
     fn close(&mut self) {
@@ -220,12 +235,16 @@ impl Player {
         }
     }
 
-    fn out_device_name(n: u32) -> String {
+    fn out_device_name(n: u32) -> Option<String> {
         let mut caps = Audio::MIDIOUTCAPSW::default();
-        unsafe { Audio::midiOutGetDevCapsW(n as usize, &mut caps, mem::size_of::<Audio::MIDIOUTCAPSW>() as u32) };
+        if unsafe { Audio::midiOutGetDevCapsW(n as usize, &mut caps, mem::size_of::<Audio::MIDIOUTCAPSW>() as u32) }
+            != 0
+        {
+            return None;
+        }
         // caps.szPname is not aligned.
         let name: Vec<u16> = caps.szPname.into_iter().take_while(|c| *c != 0).collect();
-        String::from_utf16_lossy(&name)
+        Some(String::from_utf16_lossy(&name))
     }
 
     fn position(stream: Audio::HMIDISTRM) -> f64 {

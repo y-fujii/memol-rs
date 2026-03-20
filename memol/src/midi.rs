@@ -25,7 +25,10 @@ impl Event {
 
     pub fn len(&self) -> usize {
         // XXX
-        3
+        match self.msg[0] {
+            0xf1 => 2,
+            _ => 3,
+        }
     }
 
     pub fn validate(&self) -> bool {

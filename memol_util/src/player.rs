@@ -11,7 +11,7 @@ pub trait Player: Send {
     fn ports_to(&mut self) -> io::Result<Vec<(String, bool)>>;
     fn connect_to(&mut self, _: &str) -> io::Result<()>;
     fn disconnect_to(&mut self, _: &str) -> io::Result<()>;
-    fn send(&mut self, _: &[midi::Event]);
+    fn send(&mut self, _: &[midi::Event]) -> io::Result<()>;
     fn play(&mut self) -> io::Result<()>;
     fn stop(&mut self);
     fn seek(&mut self, _: f64);

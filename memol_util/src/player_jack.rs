@@ -92,9 +92,10 @@ impl player::Player for Player {
         unsafe { self.disconnect((self.lib.port_name)(self.port_send), format!("{}\0", port).as_ptr()) }
     }
 
-    fn send(&mut self, evs: &[midi::Event]) {
+    fn send(&mut self, evs: &[midi::Event]) -> io::Result<()> {
         let mut shared = self.shared.lock().unwrap();
         shared.immediate_send.extend_from_slice(evs);
+        Ok(())
     }
 
     fn play(&mut self) -> io::Result<()> {

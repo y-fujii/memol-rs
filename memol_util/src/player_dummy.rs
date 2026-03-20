@@ -36,7 +36,9 @@ impl player::Player for Player {
         Err(io::ErrorKind::Other.into())
     }
 
-    fn send(&mut self, _: &[midi::Event]) {}
+    fn send(&mut self, _: &[midi::Event]) -> io::Result<()> {
+        Err(io::ErrorKind::Other.into())
+    }
 
     fn play(&mut self) -> io::Result<()> {
         Err(io::ErrorKind::Other.into())

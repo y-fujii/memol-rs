@@ -187,9 +187,6 @@ $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://git
 $ cargo install --git <a href="https://github.com/y-fujii/memol-rs/">https://github.com/y-fujii/memol-rs/</a> memol_gui
 </pre>
 <p style="text-align: center"><img src="memol_gui.png" style="width: 50%; border: 1px solid #e0e0e0">
-<p>Building <code>memol_gui</code> on Windows requires a workaround due to
-<a href="https://github.com/rust-lang/rust/issues/47048">issue #47048</a> for
-now.  I recommended using prebuild binaries above.
 
 <h2>Run</h2>
 <pre>
@@ -197,37 +194,30 @@ $ memol_cli
 Usage: memol_cli [options] FILE
   -v, --verbose       Be verbose.
   -b, --batch         Generate a MIDI file and exit.
-  -j, --jack          Use JACK.
-  -p, --plugin        Use plugins.
-  -a, --any           Accept remote connections.
   -c, --connect PORT  Connect to specified ports.
 
 $ memol_gui
 Usage: memol_gui [options] [FILE]
   -w, --wallpaper FILE  Set a background image.
-  -j, --jack            Use JACK.
-  -p, --plugin          Use plugins.
-  -a, --any             Accept remote connections.
   -c, --connect PORT    Connect to specified ports.
 </pre>
 <p>There are three ways to interact with other applications.
 <ul>
-	<li>Generates MIDI file.
-	<li>Use JACK (recommended if available).
-	<li>Use the VST plugin.
+	<li>SMF file.
+	<li><a href="https://jackaudio.org/">JACK</a> audio (recommended if available).
+	<li>OS-specific MIDI APIs with loop-back devices (currently Windows only).
 </ul>
-<p>XXX
-<p>XXX
 <p>PORT can be specified multiple times and then the memol output port is being
 connected to them.
 <p>memol keeps watching the change of the file and reflects it immediately.  If
 <code>$out.begin</code>, <code>$out.end</code> (see below) are specified, memol
 automatically seeks and starts playing each time the file has changed.
-<p>Since memol supports JACK transport, start/stop/seek operations are synced
-with other JACK clients.  Personally I
-use <a href="https://github.com/falkTX/Carla/">Carla</a> to manage JACK
-connections, plugins, etc.  Many JACK supported DAW like
-<a href="http://ardour.org/">Ardour</a> can be used, of course.
+<p>Start/stop/seek operations are synced with other applications via JACK
+transport or MIDI time code.  memol sends MTC when OS-specific MIDI backend is
+used (Receiving MTC is also planned).
+<p>Recent versions of Windows can have MIDI loop-back devices.  See
+<a href="https://microsoft.github.io/MIDI/">Windows MIDI Services</a>.
+<a href="https://pipewire.org/">Pipewire</a> can also be used for JACK backend.
 
 <h2>Hello, twinkle little star</h2>
 
@@ -238,10 +228,10 @@ score $out.0() = { c c G G | A A g _ | f f e e | d d c _ }
 	{ c c g' g a a g r f f e e d d c r }
 </lilypond>
 <p>memol language structure is roughly divided into two layers: inside of
-<code>{...}</code> and outside of.  Both layers have similar syntax and similar
-semantics, but different.  Inside <code>{...}</code>, a sequence is split by
-<code>"|"</code> and each part gets the unit time length regardless of the
-number of the elements.
+<code>{...}</code> and outside of <code>{...}</code>.  Both layers have similar
+syntax and similar semantics, but different.  Inside <code>{...}</code>, a
+sequence is split by <code>"|"</code> and each part gets the unit time length
+regardless of the number of the elements.
 <p>XXX
 <p>Outside <code>{...}</code>, on the other hand, all elements have specific
 lengths.

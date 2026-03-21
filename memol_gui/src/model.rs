@@ -104,13 +104,13 @@ impl Model {
     }
 
     pub fn note_on(&mut self, nn: u8) {
-        let evs = [midi::Event::new(0.0, 1, &[0x90 + self.channel_main as u8, nn, 0x40])];
+        let evs = [midi::Event::new(0.0, 2, &[0x90 + self.channel_main as u8, nn, 0x40])];
         self.player.send(&evs).ok();
     }
 
     pub fn note_off_all(&mut self) {
         // all sound off.
-        let evs = [midi::Event::new(0.0, 0, &[0xb0 + self.channel_main as u8, 0x78, 0x00])];
+        let evs = [midi::Event::new(0.0, -2, &[0xb0 + self.channel_main as u8, 0x78, 0x00])];
         self.player.send(&evs).ok();
     }
 

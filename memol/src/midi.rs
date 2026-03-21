@@ -8,7 +8,7 @@ use std::*;
 #[derive(Clone, Debug)]
 pub struct Event {
     pub time: f64,
-    pub prio: i8,
+    pub prio: i8, // -2: note_off, -1: time_code, 0: cc, 1: pitch, 2: note_on.
     pub msg: [u8; 3],
 }
 
@@ -99,9 +99,9 @@ impl<'a> Generator<'a> {
 
             let vel = (evaluator.eval(ir_vel, f.t0) * 127.0).round().max(0.0).min(127.0);
             self.events
-                .push(Event::new(t0, 1, &[(0x90 + ch) as u8, nnum as u8, vel as u8]));
+                .push(Event::new(t0, 2, &[(0x90 + ch) as u8, nnum as u8, vel as u8]));
             self.events
-                .push(Event::new(t1, -1, &[(0x80 + ch) as u8, nnum as u8, vel as u8]));
+                .push(Event::new(t1, -2, &[(0x80 + ch) as u8, nnum as u8, vel as u8]));
         }
     }
 
@@ -115,7 +115,7 @@ impl<'a> Generator<'a> {
                 let lsb = ((v >> 0) & 0x7f) as u8;
                 let msb = ((v >> 7) & 0x7f) as u8;
                 self.events
-                    .push(Event::new(t.to_float(), 0, &[(0xe0 + ch) as u8, lsb, msb]));
+                    .push(Event::new(t.to_float(), 1, &[(0xe0 + ch) as u8, lsb, msb]));
                 prev_v = v;
             }
         }

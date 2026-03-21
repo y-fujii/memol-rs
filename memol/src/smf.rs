@@ -66,7 +66,7 @@ pub fn time_code_add(dst: &mut Vec<midi::Event>, t_min: f64, t_max: f64) {
                 continue;
             }
             let piece = 0xf & (packet >> (4 * j));
-            dst.push(midi::Event::new(t, 0, &[0xf1, (j << 4) as u8 | piece as u8]));
+            dst.push(midi::Event::new(t, -1, &[0xf1, (j << 4) as u8 | piece as u8]));
         }
     }
 }

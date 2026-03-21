@@ -215,9 +215,10 @@ impl player::Player for Player {
     }
 
     fn connect_to(&mut self, name: &str) -> io::Result<()> {
-        let internal = Internal::new(name, TPS / 2)?;
         self.stop();
-        self.internal = Some(internal);
+        self.internal = None;
+        self.internal = Some(Internal::new(name, TPS / 2)?);
+        self.stop();
         Ok(())
     }
 
@@ -234,7 +235,7 @@ impl player::Player for Player {
         if self.is_playing {
             return Ok(());
         }
-        let Some(internal) = self.internal.as_mut() else {
+        let Some(ref mut internal) = self.internal else {
             return Err(io::ErrorKind::Other.into());
         };
         internal.clear();
@@ -243,11 +244,14 @@ impl player::Player for Player {
     }
 
     fn play(&mut self) -> io::Result<()> {
-        self.stop();
-        let Some(internal) = self.internal.as_mut() else {
+        if self.is_playing {
+            return Ok(());
+        }
+        let Some(ref mut internal) = self.internal else {
             return Err(io::ErrorKind::Other.into());
         };
         internal.clear();
+        internal.add_time_code(self.offset)?;
         internal.add_data(&self.events, self.offset)?;
         internal.play()?;
         self.is_playing = true;
@@ -255,7 +259,7 @@ impl player::Player for Player {
     }
 
     fn stop(&mut self) {
-        if let Some(internal) = self.internal.as_mut() {
+        if let Some(ref mut internal) = self.internal {
             internal.pause();
             if self.is_playing {
                 self.offset += internal.position();
@@ -269,8 +273,7 @@ impl player::Player for Player {
     }
 
     fn seek(&mut self, offset: f64) {
-        if let Some(internal) = self.internal.as_mut() {
-            internal.pause();
+        if let Some(ref mut internal) = self.internal {
             internal.clear();
             if internal.add_time_code(offset).is_ok() {
                 internal.play().ok();
@@ -281,7 +284,7 @@ impl player::Player for Player {
     }
 
     fn status(&mut self) -> (bool, f64) {
-        let Some(internal) = self.internal.as_mut() else {
+        let Some(ref mut internal) = self.internal else {
             return (false, self.offset);
         };
         if self.is_playing {
@@ -308,8 +311,8 @@ impl Player {
     }
 
     fn is_connected_to(&self, name: &str) -> bool {
-        match self.internal.as_ref() {
-            Some(internal) => internal.name == name,
+        match self.internal {
+            Some(ref internal) => internal.name == name,
             _ => false,
         }
     }

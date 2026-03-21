@@ -2,6 +2,9 @@
 members = ["memol", "memol_util", "memol_cli", "memol_gui"]
 resolver = "3"
 
+[profile.dev]
+incremental = false
+
 [profile.dev.package."*"]
 overflow-checks = false
 debug = false

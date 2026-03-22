@@ -7,6 +7,9 @@ jobs:
         with:
           submodules: true
 
+      - run: |
+          sudo apt-get update
+          sudo apt-get install libfreetype6-dev libfontconfig1-dev # XXX
       - run: cargo test
       - run: cargo build --release
       - run: |

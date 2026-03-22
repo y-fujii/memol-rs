@@ -5,7 +5,7 @@ use std::*;
 pub fn wait_file<T: AsRef<path::Path>>(path: T) -> io::Result<()> {
     const IN_CLOEXEC: i32 = 0o2000000;
     const IN_CLOSE_WRITE: u32 = 0x8;
-    extern "C" {
+    unsafe extern "C" {
         fn inotify_init1(_: i32) -> i32;
         fn inotify_add_watch(_: i32, _: *const os::raw::c_char, _: u32) -> i32;
     }

@@ -54,8 +54,8 @@ jobs:
             mingw-w64-ucrt-x86_64-github-cli
             git
 
-      - run: CC=clang CXX=clang++ cargo test
-      - run: CC=clang CXX=clang++ cargo build --release
+      - run: CC=clang CXX=clang++ LIBCLANG_PATH=/ucrt64/bin cargo test
+      - run: CC=clang CXX=clang++ LIBCLANG_PATH=/ucrt64/bin cargo build --release
       - run: |
           cd target/release
           7z a memol_x64_windows.zip memol_cli.exe memol_gui.exe

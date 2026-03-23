@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[macro_use]
 mod imutil;
-mod compile_thread;
 mod imgui;
 mod main_widget;
 mod model;
@@ -11,7 +10,7 @@ mod sequencer_widget;
 mod window;
 use gumdrop::Options;
 use memol::*;
-use memol_util::player::PlayerExt;
+use memol_util::{compile_thread, player::PlayerExt};
 use std::*;
 
 const JACK_FRAME_WAIT: i32 = 12;
@@ -188,7 +187,7 @@ fn main() {
         if let Some(path) = opts.file {
             compiler
                 .create_sender()
-                .send(compile_thread::Message::File(path.into()))
+                .send(compile_thread::Message::File(path))
                 .unwrap();
         } else {
             window

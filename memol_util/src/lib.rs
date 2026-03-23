@@ -1,3 +1,4 @@
+pub mod compile_thread;
 pub mod jack;
 pub mod notify;
 pub mod player;
@@ -8,7 +9,7 @@ pub mod player_winmm;
 use std::*;
 
 pub fn new_player(name: &str) -> Box<dyn player::Player> {
-    if let Ok(player) = player_jack::Player::new(&name) {
+    if let Ok(player) = player_jack::Player::new(name) {
         return Box::new(player);
     }
     #[cfg(target_family = "windows")]

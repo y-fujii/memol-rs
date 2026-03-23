@@ -45,7 +45,7 @@ impl<'a> Evaluator<'a> {
             }
             ValueIr::Sequence(t0, ref irs) => {
                 let t = cmp::min(cmp::max(t, t0), irs.last().unwrap().1);
-                let i = misc::bsearch_boundary(&irs, |&(_, t1)| t1 <= t);
+                let i = misc::bsearch_boundary(irs, |&(_, t1)| t1 <= t);
                 let i = cmp::min(i, irs.len() - 1);
                 self.eval(&irs[i].0, t)
             }

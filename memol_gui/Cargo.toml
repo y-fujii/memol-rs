@@ -4,14 +4,13 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-gumdrop = "*"
-gl = "*"
-glutin = "0.29.*"
+gumdrop = { version = "*", default-features = false }
+gl = { version = "*", default-features = false }
+glutin = { version = "0.29.*", default-features = false, features = ["wayland", "wayland-dlopen"] }
 image = { version = "*", default-features = false, features = ["jpeg", "png"] }
-copypasta = "*"
 memol = { path = "../memol" }
 memol_util = { path = "../memol_util" }
 
 [build-dependencies]
-cc = "*"
-bindgen = "*"
+cc = { version = "*", default-features = false }
+bindgen = { version = "*", default-features = false }

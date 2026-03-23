@@ -18,7 +18,7 @@ pub struct ScoreState<'a> {
 impl<'a> Generator<'a> {
     pub fn generate_score(&self, key: &str) -> Result<Option<ScoreIr>, misc::Error> {
         let syms = self.syms.iter().map(|&(s, ref ns)| (s, &ns[..])).collect();
-        let &(ref path, ref s) = match self.defs.scores.get(key) {
+        let (path, s) = match self.defs.scores.get(key) {
             Some(v) => v,
             None => return Ok(None),
         };
@@ -62,16 +62,16 @@ impl<'a> Generator<'a> {
                 t1
             }
             ast::Score::Symbol(ref key) => {
-                let &(ref path, ref s) = match self.defs.scores.get(key) {
+                let (path, s) = match self.defs.scores.get(key) {
                     Some(v) => v,
-                    None => return misc::error(&span.path, score.bgn, "undefined symbol."),
+                    None => return misc::error(span.path, score.bgn, "undefined symbol."),
                 };
                 let span = Span { path: path, ..*span };
                 self.generate_score_inner(s, &span, dst)?
             }
             ast::Score::With(ref lhs, ref key, ref rhs) => {
                 let mut dst_rhs = Vec::new();
-                self.generate_score_inner(rhs, &span, &mut dst_rhs)?;
+                self.generate_score_inner(rhs, span, &mut dst_rhs)?;
                 let mut syms = span.syms.clone();
                 syms.insert(*key, &dst_rhs[..]);
                 let span = Span { syms: &syms, ..*span };
@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
             ast::Score::Parallel(ref ss) => {
                 let mut t = span.t0;
                 for s in ss.iter() {
-                    t = cmp::max(t, self.generate_score_inner(s, &span, dst)?);
+                    t = cmp::max(t, self.generate_score_inner(s, span, dst)?);
                 }
                 t
             }
@@ -108,11 +108,11 @@ impl<'a> Generator<'a> {
                 self.generate_score_inner(s, &span, dst)?
             }
             ast::Score::Filter(ref cond, ref then) => {
-                let (ir_cond, _) = self.generate_value_inner(cond, &span)?;
+                let (ir_cond, _) = self.generate_value_inner(cond, span)?;
                 let mut ir_then = Vec::new();
-                let t = self.generate_score_inner(then, &span, &mut ir_then)?;
+                let t = self.generate_score_inner(then, span, &mut ir_then)?;
 
-                let mut evaluator = Evaluator::new(&self.rng);
+                let mut evaluator = Evaluator::new(self.rng);
                 for f in ir_then.iter() {
                     evaluator.set_note(&ir_then, f);
                     if evaluator.eval(&ir_cond, f.t0) >= 0.5 {
@@ -137,11 +137,11 @@ impl<'a> Generator<'a> {
                 span.t0 + (t1 - t0)
             }
             ast::Score::Transpose(ref sn, ref ss) => {
-                let (ir_n, _) = self.generate_value_inner(sn, &span)?;
+                let (ir_n, _) = self.generate_value_inner(sn, span)?;
                 let mut ir_s = Vec::new();
-                let t = self.generate_score_inner(ss, &span, &mut ir_s)?;
+                let t = self.generate_score_inner(ss, span, &mut ir_s)?;
 
-                let mut evaluator = Evaluator::new(&self.rng);
+                let mut evaluator = Evaluator::new(self.rng);
                 for f in ir_s.iter() {
                     evaluator.set_note(&ir_s, f);
                     let n = evaluator.eval(&ir_n, f.t0).round() as i64;
@@ -151,7 +151,7 @@ impl<'a> Generator<'a> {
                 t
             }
             _ => {
-                return misc::error(&span.path, score.bgn, "syntax error.");
+                return misc::error(span.path, score.bgn, "syntax error.");
             }
         };
         Ok(end)
@@ -219,7 +219,7 @@ impl<'a> Generator<'a> {
                     Some(n) => n,
                     None => match state.note {
                         Some(n) => n,
-                        None => return misc::error(&span.path, note.bgn, "previous note does not exist."),
+                        None => return misc::error(span.path, note.bgn, "previous note does not exist."),
                     },
                 };
                 cn.set(Some(rn));
@@ -253,12 +253,12 @@ impl<'a> Generator<'a> {
             ast::Note::Group(ref ns) => {
                 let tot = ns.iter().map(|e| e.1).sum();
                 if tot == 0 {
-                    return misc::error(&span.path, note.end, "zero length group.");
+                    return misc::error(span.path, note.end, "zero length group.");
                 }
 
                 // the most non-trivial part is here...
-                let mut prev_ties = mem::replace(&mut state.prev_ties, Vec::new());
-                let mut next_ties = mem::replace(&mut state.next_ties, Vec::new());
+                let mut prev_ties = mem::take(&mut state.prev_ties);
+                let mut next_ties = mem::take(&mut state.next_ties);
                 let mut acc = 0;
                 for &(ref n, i) in ns.iter() {
                     let span = Span {
@@ -320,7 +320,7 @@ impl<'a> Generator<'a> {
                 state.note = Some(note);
             }
             _ => {
-                return misc::error(&span.path, note.bgn, "syntax error.");
+                return misc::error(span.path, note.bgn, "syntax error.");
             }
         }
         Ok(())
@@ -335,7 +335,7 @@ impl<'a> Generator<'a> {
     ) -> Result<Option<i64>, misc::Error> {
         let fs = match span.syms.get(&sym) {
             Some(v) => v,
-            None => return misc::error(&span.path, note.bgn, "note does not exist."),
+            None => return misc::error(span.path, note.bgn, "note does not exist."),
         };
         // XXX: O(N^2).
         let f = match fs
@@ -344,7 +344,7 @@ impl<'a> Generator<'a> {
             .nth(ord as usize)
         {
             Some(v) => v,
-            None => return misc::error(&span.path, note.bgn, "note does not exist."),
+            None => return misc::error(span.path, note.bgn, "note does not exist."),
         };
         Ok(f.nnum)
     }

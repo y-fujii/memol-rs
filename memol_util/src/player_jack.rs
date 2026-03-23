@@ -1,6 +1,5 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use crate::jack;
-use crate::player;
+use crate::*;
 use memol::{midi, misc};
 use std::*;
 

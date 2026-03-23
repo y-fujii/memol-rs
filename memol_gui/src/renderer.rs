@@ -101,7 +101,7 @@ impl Drop for Renderer {
     }
 }
 
-const VERT_SHADER_CODE: &'static str = r#"
+const VERT_SHADER_CODE: &str = r#"
 uniform vec2 u_scale;
 layout(location = 0) in vec2 a_pos;
 layout(location = 1) in vec2 a_uv;
@@ -116,7 +116,7 @@ void main() {
 }
 "#;
 
-const FRAG_SHADER_CODE: &'static str = r#"
+const FRAG_SHADER_CODE: &str = r#"
 uniform sampler2D u_texture;
 in vec2 m_uv;
 in vec4 m_color;

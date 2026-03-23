@@ -3,6 +3,6 @@ name = "memol_cli"
 edition = "2024"
 
 [dependencies]
-gumdrop = "*"
+gumdrop = { version = "*", default-features = false }
 memol = { path = "../memol" }
 memol_util = { path = "../memol_util" }

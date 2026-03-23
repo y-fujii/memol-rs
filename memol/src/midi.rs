@@ -97,7 +97,7 @@ impl<'a> Generator<'a> {
                 continue;
             }
 
-            let vel = (evaluator.eval(ir_vel, f.t0) * 127.0).round().max(0.0).min(127.0);
+            let vel = (evaluator.eval(ir_vel, f.t0) * 127.0).round().clamp(0.0, 127.0);
             self.events
                 .push(Event::new(t0, 2, &[(0x90 + ch) as u8, nnum as u8, vel as u8]));
             self.events
@@ -110,7 +110,7 @@ impl<'a> Generator<'a> {
         let mut prev_v = 8192;
         for i in self.bgn..self.end {
             let t = Ratio::new(i, self.tick);
-            let v = (evaluator.eval(ir, t) * 8192.0 + 8192.0).round().max(0.0).min(16383.0) as usize;
+            let v = (evaluator.eval(ir, t) * 8192.0 + 8192.0).round().clamp(0.0, 16383.0) as usize;
             if v != prev_v {
                 let lsb = ((v >> 0) & 0x7f) as u8;
                 let msb = ((v >> 7) & 0x7f) as u8;
@@ -126,7 +126,7 @@ impl<'a> Generator<'a> {
         let mut prev_v = 255;
         for i in self.bgn..self.end {
             let t = Ratio::new(i, self.tick);
-            let v = (evaluator.eval(ir, t) * 127.0).round().max(0.0).min(127.0) as u8;
+            let v = (evaluator.eval(ir, t) * 127.0).round().clamp(0.0, 127.0) as u8;
             if v != prev_v {
                 self.events
                     .push(Event::new(t.to_float(), 0, &[(0xb0 + ch) as u8, cc as u8, v]));

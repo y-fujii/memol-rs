@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use crate::player;
-use memol::*;
+use crate::*;
+use memol::{midi, smf};
 use std::*;
 use windows::Win32::Media;
 use windows::Win32::Media::Audio;

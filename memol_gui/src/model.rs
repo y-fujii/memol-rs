@@ -1,6 +1,4 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use crate::compile_thread;
-use copypasta::ClipboardProvider;
 use memol::*;
 use memol_util::*;
 use std::*;
@@ -29,7 +27,6 @@ pub struct Model {
     pub pedal: bool,
     pub on_notes: [bool; 128],
     pub copying_notes: Vec<i64>,
-    pub clipboard: Option<cell::RefCell<copypasta::ClipboardContext>>,
 }
 
 impl Model {
@@ -52,7 +49,6 @@ impl Model {
             pedal: false,
             on_notes: [false; 128],
             copying_notes: Vec::new(),
-            clipboard: copypasta::ClipboardContext::new().map(|e| cell::RefCell::new(e)).ok(),
         }
     }
 
@@ -147,12 +143,7 @@ impl Model {
         if self.copying_notes.is_empty() {
             return;
         }
-        if let Some(ref clipboard) = self.clipboard {
-            clipboard
-                .borrow_mut()
-                .set_contents(self.note_symbols(&self.copying_notes))
-                .ok();
-        }
+        // XXX: copy self.copying_notes to clipboard.
         self.copying_notes.clear();
     }
 

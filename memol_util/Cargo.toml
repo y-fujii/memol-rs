@@ -3,8 +3,8 @@ name = "memol_util"
 edition = "2024"
 
 [dependencies]
-libloading = "*"
+libloading = { version = "*", default-features = false }
 memol = { path = "../memol" }
 
 [target.'cfg(target_family = "windows")'.dependencies]
-windows = { version = "*", features = ["Win32_Media_Audio"] }
+windows = { version = "*", default-features = false, features = ["Win32_Media_Audio"] }

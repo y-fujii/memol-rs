@@ -178,7 +178,7 @@ note: Box<Ast<Note<'a>>> = {
 		Ast::new_box( lo, hi, Note::Tie( a ) ),
 	// XXX
 	<lo:@L> <a:str> <hi:@R> =>
-		Ast::new_box( lo, hi, Note::ChordSymbol( String::from( a ) ) ),
+		Ast::new_box( lo, hi, Note::ChordSymbol( a ) ),
 };
 
 key_signature: i64 = {

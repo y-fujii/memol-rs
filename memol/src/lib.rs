@@ -150,7 +150,7 @@ pub fn compile(rng: &random::Generator, src: &path::Path) -> Result<Assembly, mi
 
     let len = channels
         .iter()
-        .flat_map(|&(_, ref v)| v.score.iter())
+        .flat_map(|(_, v)| v.score.iter())
         .map(|v| v.t1)
         .max()
         .unwrap_or(Ratio::zero());
@@ -182,9 +182,9 @@ pub fn assemble(rng: &random::Generator, src: &Assembly) -> Result<Vec<midi::Eve
         migen.add_score(ch, &irs.score, &irs.velocity, &irs.offset, &irs.duration);
         migen.add_pitch(ch, &irs.pitch);
         for &(cc, ref ir) in irs.ccs.iter() {
-            migen.add_cc(ch, cc, &ir);
+            migen.add_cc(ch, cc, ir);
         }
     }
     migen.add_tempo(&src.tempo);
-    Ok(migen.generate()?)
+    migen.generate()
 }

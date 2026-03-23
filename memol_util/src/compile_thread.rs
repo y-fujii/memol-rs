@@ -1,6 +1,6 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
-use memol::*;
-use memol_util::notify;
+use crate::*;
+use memol::midi;
 use std::*;
 
 pub enum Message {
@@ -14,7 +14,7 @@ pub enum Message {
 pub struct CompileThread {
     tx: sync::mpsc::Sender<Message>,
     rx: sync::mpsc::Receiver<Message>,
-    on_success: Box<dyn FnMut(path::PathBuf, Assembly, Vec<midi::Event>) + marker::Send>,
+    on_success: Box<dyn FnMut(path::PathBuf, memol::Assembly, Vec<midi::Event>) + marker::Send>,
     on_failure: Box<dyn FnMut(String) + marker::Send>,
 }
 
@@ -29,7 +29,10 @@ impl CompileThread {
         }
     }
 
-    pub fn on_success<T: 'static + FnMut(path::PathBuf, Assembly, Vec<midi::Event>) + marker::Send>(&mut self, f: T) {
+    pub fn on_success<T: 'static + FnMut(path::PathBuf, memol::Assembly, Vec<midi::Event>) + marker::Send>(
+        &mut self,
+        f: T,
+    ) {
         self.on_success = Box::new(f);
     }
 
@@ -64,14 +67,14 @@ impl CompileThread {
                 }
 
                 let rng = memol::random::Generator::new(0);
-                let asm = match compile(&rng, &path) {
+                let asm = match memol::compile(&rng, &path) {
                     Ok(v) => v,
                     Err(e) => {
                         (self.on_failure)(format!("{}", e));
                         continue;
                     }
                 };
-                let evs = match assemble(&rng, &asm) {
+                let evs = match memol::assemble(&rng, &asm) {
                     Ok(v) => v,
                     Err(e) => {
                         (self.on_failure)(format!("{}", e));

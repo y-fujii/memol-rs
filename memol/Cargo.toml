@@ -4,8 +4,8 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
-lalrpop-util = { version = "*", features = ["lexer"] }
-regex = "*"
+lalrpop-util = { version = "*", default-features = false, features = ["lexer"] }
+regex = { version = "*", default-features = false }
 
 [build-dependencies]
-lalrpop = { version = "*", features = ["lexer"] }
+lalrpop = { version = "*", default-features = false, features = ["lexer"] }

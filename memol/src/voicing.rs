@@ -41,7 +41,7 @@ pub fn voice_closed_with_center(notes: &[isize], center: isize) -> Vec<isize> {
     dst
 }
 
-pub fn split_bass_and_chord<'a>(notes: &'a [isize], n_min: usize) -> (isize, &'a [isize]) {
+pub fn split_bass_and_chord(notes: &[isize], n_min: usize) -> (isize, &[isize]) {
     assert!(notes.len() > 0);
 
     if notes.len() < n_min {

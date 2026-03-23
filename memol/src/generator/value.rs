@@ -27,7 +27,7 @@ pub struct ValueState<'a> {
 impl<'a> Generator<'a> {
     pub fn generate_value(&self, key: &str) -> Result<Option<ValueIr>, misc::Error> {
         let syms = self.syms.iter().map(|&(s, ref ns)| (s, &ns[..])).collect();
-        let &(ref path, ref s) = match self.defs.values.get(key) {
+        let (path, s) = match self.defs.values.get(key) {
             Some(v) => v,
             None => return Ok(None),
         };
@@ -64,7 +64,7 @@ impl<'a> Generator<'a> {
                 }
                 let t1 = span.t0 + span.dt * ns.len() as i64;
                 if state.t != t1 {
-                    return misc::error(&span.path, track.end, "the last value must be specified.");
+                    return misc::error(span.path, track.end, "the last value must be specified.");
                 }
                 (ValueIr::Sequence(span.t0, irs), t1)
             }
@@ -75,9 +75,9 @@ impl<'a> Generator<'a> {
                 "note.cnt" => (ValueIr::NoteCnt, span.t0),
                 "note.nth" => (ValueIr::NoteNth, span.t0),
                 _ => {
-                    let &(ref path, ref s) = match self.defs.values.get(key) {
+                    let (path, s) = match self.defs.values.get(key) {
                         Some(v) => v,
-                        None => return misc::error(&span.path, track.bgn, "undefined symbol."),
+                        None => return misc::error(span.path, track.bgn, "undefined symbol."),
                     };
                     let span = Span { path: path, ..*span };
                     self.generate_value_inner(s, &span)?
@@ -85,9 +85,9 @@ impl<'a> Generator<'a> {
             },
             ast::Score::Parallel(ref ss) => {
                 if ss.len() != 1 {
-                    return misc::error(&span.path, track.bgn, "syntax error.");
+                    return misc::error(span.path, track.bgn, "syntax error.");
                 }
-                self.generate_value_inner(&ss[0], &span)?
+                self.generate_value_inner(&ss[0], span)?
             }
             ast::Score::Sequence(ref ss) => {
                 let mut irs = Vec::new();
@@ -119,16 +119,16 @@ impl<'a> Generator<'a> {
                 self.generate_value_inner(s, &span)?
             }
             ast::Score::BinaryOp(ref lhs, ref rhs, op) => {
-                let (ir_lhs, t_lhs) = self.generate_value_inner(lhs, &span)?;
-                let (ir_rhs, t_rhs) = self.generate_value_inner(rhs, &span)?;
+                let (ir_lhs, t_lhs) = self.generate_value_inner(lhs, span)?;
+                let (ir_rhs, t_rhs) = self.generate_value_inner(rhs, span)?;
                 let ir = ValueIr::BinaryOp(Box::new(ir_lhs), Box::new(ir_rhs), op);
                 let t = cmp::max(t_lhs, t_rhs);
                 (ir, t)
             }
             ast::Score::Branch(ref cond, ref then, ref elze) => {
-                let (ir_cond, _) = self.generate_value_inner(cond, &span)?;
-                let (ir_then, t_then) = self.generate_value_inner(then, &span)?;
-                let (ir_elze, t_elze) = self.generate_value_inner(elze, &span)?;
+                let (ir_cond, _) = self.generate_value_inner(cond, span)?;
+                let (ir_then, t_then) = self.generate_value_inner(then, span)?;
+                let (ir_elze, t_elze) = self.generate_value_inner(elze, span)?;
                 let ir = ValueIr::Branch(Box::new(ir_cond), Box::new(ir_then), Box::new(ir_elze));
                 let t = cmp::max(t_then, t_elze);
                 (ir, t)
@@ -143,7 +143,7 @@ impl<'a> Generator<'a> {
                 (ValueIr::Sequence(span.t0, vec![(ir, t)]), t)
             }
             _ => {
-                return misc::error(&span.path, track.bgn, "syntax error.");
+                return misc::error(span.path, track.bgn, "syntax error.");
             }
         };
         Ok(dst)
@@ -178,7 +178,7 @@ impl<'a> Generator<'a> {
                     Some(n) => n,
                     None => match state.note {
                         Some(n) => n,
-                        None => return misc::error(&span.path, note.bgn, "previous note does not exist."),
+                        None => return misc::error(span.path, note.bgn, "previous note does not exist."),
                     },
                 };
                 cn.set(Some(rn));
@@ -188,7 +188,7 @@ impl<'a> Generator<'a> {
                 let mut acc = 0;
                 for &(ref n, i) in ns.iter() {
                     if acc > 0 {
-                        return misc::error(&span.path, note.bgn, "syntax error.");
+                        return misc::error(span.path, note.bgn, "syntax error.");
                     }
                     self.generate_value_note(n, span, state, dst)?;
                     acc += i;
@@ -209,7 +209,7 @@ impl<'a> Generator<'a> {
                 }
             }
             _ => {
-                return misc::error(&span.path, note.bgn, "syntax error.");
+                return misc::error(span.path, note.bgn, "syntax error.");
             }
         }
         Ok(())

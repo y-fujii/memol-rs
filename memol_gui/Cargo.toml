@@ -13,4 +13,4 @@ memol_util = { path = "../memol_util" }
 
 [build-dependencies]
 cc = { version = "*", default-features = false }
-bindgen = { version = "*", default-features = false }
+bindgen = { version = "*", default-features = false, features = ["runtime"] }
